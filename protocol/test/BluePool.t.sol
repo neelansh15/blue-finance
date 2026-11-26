@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ICreditDelegationToken} from "aave/interfaces/ICreditDelegationToken.sol";
 import {IMarketCalendar} from "../src/interfaces/IMarketCalendar.sol";
 import {MockBStock} from "../src/mocks/MockBStock.sol";
@@ -58,6 +59,8 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
     function testAllMockStocksDrawFromOneReserve() external {
         assertEq(d.pool.getReservesCount(), STOCK_COUNT + 1);
         address aUsdt = d.pool.getReserveAToken(address(usdt));
+        assertEq(IERC20Metadata(aUsdt).symbol(), "bluUSDT");
+        assertEq(IERC20Metadata(d.pool.getReserveVariableDebtToken(address(usdt))).symbol(), "bluDebtUSDT");
         _borrow(TESLA_BORROWER, 70 ether);
         _borrow(NVIDIA_BORROWER, 30 ether);
         assertEq(d.pool.stockDebt(address(d.stocks[TESLA].token)), 70 ether);
