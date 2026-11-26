@@ -5,6 +5,7 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request
 from app.models import (Assessment, AssessRequest, Model, Recommendation, RiskEvent, RiskScore,
                         SimulateRequest, SimulationResult)
 from app.services.risk_service import RiskService
+from app.integrations.market_status import AssetMarketStatus
 from app.routing.engine import route_markets
 from app.routing.models import RoutingDecision, RoutingRequest
 
@@ -91,4 +92,18 @@ def recommendations(asset: str, request: Request, limit: int = Query(100, ge=1, 
 @router.post("/route/{asset}", response_model=RoutingDecision,
              summary="Assess configured markets and propose an eligible alternative contract for approval")
 def route(asset: str, request: Request, body: RoutingRequest):
-    return route_markets(service(request), asset, body, request.app.state.routing_policy)
+    return route_markets(service(request), asset, body, request.app.state.routing_policy,
+                         request.app.state.market_status)
+
+
+@router.get('/market-status/{asset}', response_model=list[AssetMarketStatus],
+            summary='Fetch live Nasdaq session/halts and individual Binance bStock status')
+def market_status(asset: str, request: Request):
+    canonical = service(request).assets.get(asset.upper(), asset.upper())
+    matches = [t for t in request.app.state.routing_policy.targets if t.collateral_asset == canonical]
+    if not matches:
+        raise HTTPException(404, 'Asset has no server-configured status mapping')
+    observations = [request.app.state.market_status.get(t) for t in matches]
+    for status in observations:
+        service(request).store.put('market_status', canonical, status.as_of.isoformat(), status.model_dump(mode='json'))
+    return observations

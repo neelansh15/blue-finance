@@ -12,7 +12,7 @@ from app.services.store import AuditStore
 
 def demo_request() -> RoutingRequest:
     at = DEMO_TIMES['baseline']
-    return RoutingRequest(as_of=at, primary_target_id='demo-nvda-primary', markets=[
+    return RoutingRequest(status_mode='SIMULATED', as_of=at, primary_target_id='demo-nvda-primary', markets=[
         MarketInput(target_id=t.target_id, controls=Controls(observed_at=at, source_reference='mock://control-evidence',
                     government_pause='NONE', governance_paused=False, token_transfers_paused=False))
         for t in demo_policy().targets])

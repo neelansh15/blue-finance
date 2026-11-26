@@ -36,5 +36,6 @@
         "snapshot": null
       }
     }
-  ]
+  ],
+  "status_mode": "SIMULATED"
 }

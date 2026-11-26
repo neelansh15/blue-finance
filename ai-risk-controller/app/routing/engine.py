@@ -2,13 +2,15 @@
 from datetime import timedelta
 from uuid import uuid4
 from app.integrations.signing import evidence_hash
-from app.models import Assessment
+from app.integrations.market_status import LiveMarketStatusProvider
+from app.models import Assessment, Session
 from app.risk.issuer import issuer_risk
 from app.routing.models import MarketEvaluation, RoutingDecision, RoutingPolicy, RoutingRequest
 from app.services.risk_service import RiskService
 
 
-def route_markets(service: RiskService, asset: str, request: RoutingRequest, policy: RoutingPolicy) -> RoutingDecision:
+def route_markets(service: RiskService, asset: str, request: RoutingRequest, policy: RoutingPolicy,
+                  status_provider: LiveMarketStatusProvider | None = None) -> RoutingDecision:
     targets = {t.target_id: t for t in policy.targets}
     if any(m.target_id not in targets for m in request.markets):
         raise ValueError('Market input is not in the server-configured destination registry')
@@ -17,6 +19,12 @@ def route_markets(service: RiskService, asset: str, request: RoutingRequest, pol
         raise ValueError('Primary target collateral must match the route asset')
     if primary.chain_id != service.chain_id or primary.loan_asset != 'USDT':
         raise ValueError('Primary target must use the configured chain and USD-valued USDT debt')
+    if request.status_mode == 'LIVE':
+        if status_provider is None:
+            raise ValueError('Live routing requires a server-configured status provider')
+        if abs((status_provider.clock() - request.as_of).total_seconds()) > 60:
+            raise ValueError('Live routing requires current evidence time; use SIMULATED for historical replay')
+    live_status = {t.target_id: status_provider.get(t) for t in policy.targets} if request.status_mode == 'LIVE' else {}
     inputs = {m.target_id: m for m in request.markets}
     blocked_assets, blocked_venues = set(), set()
     global_pause = False
@@ -34,6 +42,19 @@ def route_markets(service: RiskService, asset: str, request: RoutingRequest, pol
         item, reasons = inputs.get(target.target_id), []
         assessment: Assessment | None = None
         parameters = None
+        status = live_status.get(target.target_id)
+        if status:
+            now = status_provider.clock()
+            observations = [
+                ('Nasdaq market', status.nasdaq_market, {'OPEN', 'CLOSED', 'PRE_MARKET', 'AFTER_HOURS'}),
+                ('Underlying stock', status.underlying_halt, {'NO_ACTIVE_HALT', 'RESUMED'}),
+                ('Binance bStock', status.binance_bstock, {'TRADING', 'CLOSED'}),
+            ]
+            if status.binance_spot: observations.append(('Binance Spot', status.binance_spot, {'TRADING'}))
+            for label, observation, accepted in observations:
+                age = (now - observation.fetched_at).total_seconds()
+                if observation.status not in accepted or not 0 <= age <= policy.observation_max_age_seconds:
+                    reasons.append(f'{label} status {observation.status}: unavailable, restricted or stale')
         if not target.approved or not target.enabled: reasons.append('Destination not approved/enabled')
         if target.chain_id != primary.chain_id: reasons.append('Cross-chain movement is unsupported')
         if target.loan_asset != primary.loan_asset: reasons.append('Loan asset is incompatible')
@@ -60,8 +81,18 @@ def route_markets(service: RiskService, asset: str, request: RoutingRequest, pol
             target_policy = type(service.policy).model_validate(service.policy.model_dump() | {'market_lltv': target.market_lltv})
             evaluator = RiskService(target_policy, service.store, provider=service.provider, agent=service.agent,
                                     assets={t.collateral_asset: t.collateral_asset for t in policy.targets})
+            if status:
+                req.snapshot = evaluator.resolve(target.collateral_asset, req)
+                req.snapshot.market.halted |= (status.underlying_halt.status == 'HALTED' or
+                    status.nasdaq_market.status == 'HALTED' or
+                    status.binance_bstock.status in {'PAUSED', 'CORP_ACTION', 'LIMITED', 'MAINTENANCE'} or
+                    status.binance_spot is not None and status.binance_spot.status in {'HALTED', 'PAUSED', 'LIMITED'})
+                req.snapshot.market.data_degraded |= any(o.status == 'UNKNOWN' for o in
+                    [status.nasdaq_market, status.underlying_halt, status.binance_bstock])
             assessment, _ = evaluator.assess(target.collateral_asset, req)
             parameters, _ = evaluator.optimiser.recommend(assessment)
+            if status and status.nasdaq_market.status != 'OPEN' and assessment.session.underlying_session in {Session.REGULAR, Session.EARLY_CLOSE}:
+                reasons.append('Nasdaq reports market not open during calendar regular session')
             vol = assessment.metrics.annualised_volatility
             if assessment.score.overall >= policy.max_score: reasons.append('Market risk score reaches policy limit')
             if vol is None or vol >= policy.max_annualised_volatility: reasons.append('Volatility missing or reaches policy limit')
@@ -69,7 +100,7 @@ def route_markets(service: RiskService, asset: str, request: RoutingRequest, pol
             if not parameters.collateral_accepted or parameters.borrow_cap == 0:
                 reasons.append('Deterministic risk constraints reject new borrowing')
         evaluations.append(MarketEvaluation(target=target, controls=item.controls if item else None,
-                                            eligible=not reasons, reasons=reasons, assessment=assessment, parameters=parameters))
+                                            market_status=status, eligible=not reasons, reasons=reasons, assessment=assessment, parameters=parameters))
     # Underlying volatility is shared: relabelling the same asset into another contract cannot erase it.
     risky_assets = {e.target.collateral_asset for e in evaluations if e.assessment and
                     (e.assessment.metrics.annualised_volatility is None or
@@ -84,6 +115,16 @@ def route_markets(service: RiskService, asset: str, request: RoutingRequest, pol
             e.eligible = False
             if 'Underlying volatility missing/high in another market for this asset' not in e.reasons:
                 e.reasons.append('Underlying volatility missing/high in another market for this asset')
+    # A different contract cannot bypass a halt on the same underlying or bStock token.
+    halted_tickers = {s.ticker for s in live_status.values() if s.underlying_halt.status == 'HALTED'}
+    paused_tokens = {(s.chain_id, s.collateral_token_address.lower()) for s in live_status.values()
+                     if s.collateral_token_address and s.binance_bstock.status in {'PAUSED', 'CORP_ACTION', 'LIMITED', 'MAINTENANCE'}}
+    for e in evaluations:
+        token = e.target.collateral_token_address
+        if (e.target.underlying_ticker and e.target.underlying_ticker in halted_tickers or
+                token and (e.target.chain_id, token.lower()) in paused_tokens):
+            e.eligible = False
+            e.reasons.append('Live underlying/token restriction applies across configured contracts')
     current = next(e for e in evaluations if e.target.target_id == request.primary_target_id)
     candidates = sorted([e for e in evaluations if e.eligible], key=lambda e: (
         e.assessment.score.overall, e.assessment.metrics.annualised_volatility, e.target.target_id))
@@ -93,8 +134,14 @@ def route_markets(service: RiskService, asset: str, request: RoutingRequest, pol
     reasoning.append('Alternative must pass independent controls, quantitative risk and recovery checks; existing positions stay in their original market')
     evidence = {'request': request.model_dump(mode='json'), 'routing_policy': policy.model_dump(mode='json'),
                 'risk_policy': service.policy.model_dump(mode='json'),
+                'live_market_status': {k: v.model_dump(mode='json') for k, v in live_status.items()},
                 'assessments': {e.target.target_id: e.assessment.evidence_hash if e.assessment else None for e in evaluations}}
     expires_at = request.as_of + timedelta(seconds=policy.expiry_seconds)
+    if selected and selected.market_status:
+        observations = [selected.market_status.nasdaq_market, selected.market_status.underlying_halt,
+                        selected.market_status.binance_bstock]
+        if selected.market_status.binance_spot: observations.append(selected.market_status.binance_spot)
+        expires_at = min(expires_at, *(o.fetched_at + timedelta(seconds=policy.observation_max_age_seconds) for o in observations))
     if selected and selected.controls.observed_at:
         expires_at = min(expires_at, selected.controls.observed_at + timedelta(seconds=policy.observation_max_age_seconds))
     decision = RoutingDecision(decision_id=str(uuid4()), action=action, primary_target_id=request.primary_target_id,

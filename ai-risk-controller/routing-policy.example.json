@@ -12,7 +12,9 @@
       "market_lltv": 0.625,
       "approved": true,
       "enabled": true,
-      "simulated": true
+      "simulated": true,
+      "underlying_ticker": "NVDA",
+      "collateral_token_address": "0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436"
     },
     {
       "target_id": "demo-spy-alternative",
@@ -25,7 +27,8 @@
       "market_lltv": 0.625,
       "approved": true,
       "enabled": true,
-      "simulated": true
+      "simulated": true,
+      "underlying_ticker": "SPY"
     }
   ],
   "max_score": 60.0,

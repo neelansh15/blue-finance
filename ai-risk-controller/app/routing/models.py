@@ -1,6 +1,7 @@
 """Server-approved destinations and untrusted, explicitly simulated control observations."""
 from typing import Literal
 from pydantic import AwareDatetime, Field, model_validator
+from app.integrations.market_status import AssetMarketStatus
 from app.models import Assessment, AssessRequest, Model, Parameters, Ratio, Score
 
 
@@ -11,6 +12,9 @@ class ContractTarget(Model):
     contract_address: str = Field(pattern=r'^0x[0-9a-fA-F]{40}$')
     collateral_asset: str = Field(min_length=1)
     underlying_venue: str = Field(min_length=1)
+    underlying_ticker: str | None = Field(default=None, pattern=r'^[A-Z0-9.\-]{1,20}$')
+    collateral_token_address: str | None = Field(default=None, pattern=r'^0x[0-9a-fA-F]{40}$')
+    binance_spot_symbol: str | None = Field(default=None, pattern=r'^[A-Z0-9]{1,30}$')
     loan_asset: str = 'USDT'
     market_lltv: float = Field(default=.625, gt=0, lt=1)
     approved: bool = False
@@ -19,7 +23,8 @@ class ContractTarget(Model):
 
     @model_validator(mode='after')
     def nonzero(self):
-        if int(self.contract_address, 16) == 0 or int(self.market_id, 16) == 0:
+        if (int(self.contract_address, 16) == 0 or int(self.market_id, 16) == 0 or
+                self.collateral_token_address is not None and int(self.collateral_token_address, 16) == 0):
             raise ValueError('Zero contract address or market identity is not a destination')
         return self
 
@@ -58,6 +63,7 @@ class MarketInput(Model):
 
 
 class RoutingRequest(Model):
+    status_mode: Literal['LIVE', 'SIMULATED'] = 'LIVE'
     as_of: AwareDatetime
     primary_target_id: str
     markets: list[MarketInput] = Field(min_length=1, max_length=50)
@@ -73,6 +79,7 @@ class RoutingRequest(Model):
 class MarketEvaluation(Model):
     target: ContractTarget
     controls: Controls | None
+    market_status: AssetMarketStatus | None = None
     eligible: bool
     reasons: list[str]
     assessment: Assessment | None = None

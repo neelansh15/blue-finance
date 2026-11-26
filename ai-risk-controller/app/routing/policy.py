@@ -8,10 +8,11 @@ def demo_policy() -> RoutingPolicy:
     return RoutingPolicy(targets=[
         ContractTarget(target_id='demo-nvda-primary', chain_id=56, market_id='0x' + 'a'*64,
                        contract_address='0x' + '1'*40, collateral_asset='BNB_STOCK_NVDA',
-                       underlying_venue='NASDAQ', approved=True),
+                       underlying_venue='NASDAQ', underlying_ticker='NVDA',
+                       collateral_token_address='0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436', approved=True),
         ContractTarget(target_id='demo-spy-alternative', chain_id=56, market_id='0x' + 'b'*64,
                        contract_address='0x' + '2'*40, collateral_asset='BNB_STOCK_SPY',
-                       underlying_venue='NYSE_ARCA', approved=True)])
+                       underlying_venue='NYSE_ARCA', underlying_ticker='SPY', approved=True)])
 
 
 def load_routing_policy() -> RoutingPolicy:
