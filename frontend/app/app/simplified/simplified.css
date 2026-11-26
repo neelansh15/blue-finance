@@ -283,6 +283,18 @@
   overflow-wrap: anywhere;
 }
 
+.simple-explorer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--blue);
+  text-underline-offset: 3px;
+}
+
+.simple-explorer-link svg {
+  flex: none;
+}
+
 .simple-receipt .btn {
   margin-top: 16px;
 }

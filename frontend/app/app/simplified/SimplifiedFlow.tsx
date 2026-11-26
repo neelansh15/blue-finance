@@ -1,7 +1,7 @@
 "use client";
 
 import { useModal } from "connectkit";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useAccount } from "wagmi";
 import { IconArrow } from "../../components/Icons";
 import TokenIcon from "../../components/TokenIcon";
@@ -36,12 +36,13 @@ type Receipt = {
   rate: number;
   address: string;
   timestamp: string;
+  transactionHash?: `0x${string}`;
 };
 
 const usdt = (cents: number) => `${quantity.format(cents / CENTS_PER_USDT)} USDT`;
 const tokens = (units: number, market: Market) => `${quantity.format(units / TOKENS_PER_UNIT)} ${market.symbol}`;
 
-function Details({ rows }: { rows: [string, string][] }) {
+function Details({ rows }: { rows: [string, ReactNode][] }) {
   return <dl className="app-preview">{rows.map(([label, value]) => (
     <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
   ))}</dl>;
@@ -270,6 +271,17 @@ export default function SimplifiedFlow() {
               [receipt.action === "borrow" ? "Borrow APR" : "Supply APR", `${receipt.rate.toFixed(2)}%`],
               ["Wallet", receipt.address],
               ["Executed at", receipt.timestamp],
+              ["Transaction Hash", receipt.transactionHash ? (
+                <a className="simple-explorer-link" href={`https://bscscan.com/tx/${receipt.transactionHash}`}
+                  target="_blank" rel="noopener noreferrer" aria-label={`View transaction ${receipt.transactionHash} on BscScan (opens in a new tab)`}>
+                  <span>{receipt.transactionHash.slice(0, 10)}…{receipt.transactionHash.slice(-8)}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M13 5h6v6M19 5l-9 9" />
+                    <path d="M19 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4" />
+                  </svg>
+                </a>
+              ) : "Unavailable for simulated transactions"],
               ["Demo wallet balance", `${usdt(receipt.walletBefore)} → ${usdt(receipt.walletAfter)}`],
               ...(receipt.action === "borrow" ? [
                 ["Market session", receipt.session],
