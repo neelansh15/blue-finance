@@ -39,7 +39,8 @@ Zona Lend uses Aave V3 Origin 3.6.0 on Robinhood Chain. Its borrow permission ex
 | Stock status | Borrow and withdraw with debt | Repay and liquidate |
 |---|---|---|
 | `OPEN`, `EXTENDED`, `CLOSED`, `WEEKEND` with fresh prices and permission | Check stock-specific caps and borrowing power. A withdrawal with debt must leave enough collateral under the current limits. | Repay through the pool. Liquidation uses Aave’s health factor and applicable prices. |
-| `HALTED`, `CORP_ACTION`, expired monitoring, guardian hold, or stale price for new risk | Block these actions for accounts using the affected stock. Other eligible stocks can continue drawing USDT. | Keep repayment available. Liquidation can continue if its price and transfer checks pass. |
+| Expired monitoring, recovery window, or a price too old for new borrowing | Block new borrowing for that stock. Following Zona, withdrawals and aToken transfers with debt continue while the valuation price is valid and the account stays within the current limit. | Keep repayment available. Liquidation can continue if its price and transfer checks pass. |
+| `HALTED`, `CORP_ACTION`, or guardian hold | Block both for accounts using the affected stock. Other eligible stocks can continue drawing USDT. | Keep repayment available. Liquidation can continue if its price and transfer checks pass. |
 | Valuation unusable for liquidation | Block new risk for that stock. | Keep repayment available. Liquidation waits for a usable valuation. |
 
 The borrow restriction leaves debt-free withdrawal and collateral top-ups available when pool limits and issuer transfer rules allow them. A stock issuer can independently block collateral movement, including liquidation transfers. Avoid using a blanket pool pause for a routine stock halt so unaffected borrowers retain access and affected borrowers can reduce debt.

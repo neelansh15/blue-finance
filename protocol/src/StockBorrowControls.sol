@@ -182,6 +182,16 @@ contract StockBorrowControls is EIP712 {
         return (uint256(policy.baseLtv) * (BPS - policy.discounts[marketStatus]) / BPS, policy.caps[marketStatus]);
     }
 
+    /// @notice LTV that a withdrawal or aToken transfer must respect while the account has debt.
+    /// @dev Following Zona, a lapse in monitoring or a borrow-stale price does not block withdrawals. The pool's
+    ///      oracle still requires a valid valuation price. A guardian hold, halt or corporate action blocks them.
+    function withdrawLimit(address stock) external view returns (uint256 ltv) {
+        Policy storage policy = _policy(stock);
+        uint256 marketStatus = uint256(calendar.status(stock));
+        if (policy.held || marketStatus >= 4) revert NewRiskBlocked(stock);
+        return uint256(policy.baseLtv) * (BPS - policy.discounts[marketStatus]) / BPS;
+    }
+
     function _fresh(address stock, Policy storage policy) private view returns (bool) {
         return uint256(calendar.status(stock)) < 4 && policy.source.usableForBorrow() && debtPrice.usableForBorrow();
     }

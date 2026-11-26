@@ -135,6 +135,32 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
         _borrow(NVIDIA_BORROWER, 1 ether);
     }
 
+    function testMonitoringLapseStillAllowsWithdrawalWithinLimit() external {
+        address tesla = address(d.stocks[TESLA].token);
+        _borrow(TESLA_BORROWER, 100 ether);
+        vm.warp(block.timestamp + HEARTBEAT);
+        vm.expectRevert(abi.encodeWithSelector(StockBorrowControls.NewRiskBlocked.selector, tesla));
+        _borrow(TESLA_BORROWER, 1 ether);
+
+        // $100 of debt at a 50% LTV needs 0.8 TSLAB. Aave's 62.5% liquidation threshold alone needs only 0.64.
+        vm.startPrank(TESLA_BORROWER);
+        d.pool.withdraw(tesla, 1 ether, TESLA_BORROWER);
+        IERC20 aStock = IERC20(d.pool.getReserveAToken(tesla));
+        aStock.transfer(NVIDIA_BORROWER, 0.5 ether);
+        vm.expectRevert(BluePool.AboveStockLtv.selector);
+        d.pool.withdraw(tesla, 0.8 ether, TESLA_BORROWER); // Leaves 0.7 TSLAB.
+        vm.stopPrank();
+    }
+
+    function testWithdrawalWithDebtNeedsValidPrice() external {
+        address tesla = address(d.stocks[TESLA].token);
+        _borrow(TESLA_BORROWER, 100 ether);
+        vm.warp(block.timestamp + LIQUIDATION_MAX_AGE + 1);
+        vm.expectRevert(StockPriceSource.UnusablePrice.selector);
+        vm.prank(TESLA_BORROWER);
+        d.pool.withdraw(tesla, 0.1 ether, TESLA_BORROWER);
+    }
+
     function testExpiredOverrideCannotReopenUsingOldPermission() external {
         d.calendar.setOverride(address(d.stocks[TESLA].token), IMarketCalendar.MarketStatus.CORP_ACTION, 2 minutes);
         vm.warp(block.timestamp + 2 minutes);

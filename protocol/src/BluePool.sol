@@ -80,7 +80,7 @@ contract BluePool is PoolInstance {
     {
         address account = _msgSender();
         if (debtStock[account] == asset) {
-            (uint256 ltv,) = CONTROLS.riskLimits(asset);
+            uint256 ltv = CONTROLS.withdrawLimit(asset);
             withdrawn = super.withdraw(asset, amount, to);
             _checkLtv(account, ltv);
         } else {
@@ -111,7 +111,7 @@ contract BluePool is PoolInstance {
             })
         );
         if (from != to && scaledAmount != 0 && debtStock[from] == asset) {
-            (uint256 ltv,) = CONTROLS.riskLimits(asset);
+            uint256 ltv = CONTROLS.withdrawLimit(asset);
             _checkLtv(from, ltv);
         }
     }
