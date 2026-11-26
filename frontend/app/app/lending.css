@@ -257,11 +257,25 @@
   gap: 8px;
 }
 
+.lending-app .btn:not(.btn-quiet):not(.dashboard-secondary) {
+  border: 1px solid var(--blue);
+  background: var(--blue);
+  color: var(--on-blue);
+  box-shadow: none;
+}
+
+.lending-app .btn:not(.btn-quiet):not(.dashboard-secondary):not(:disabled):hover {
+  background: var(--accent-hover);
+}
+
+.lending-app .btn-quiet,
 .dashboard-secondary {
+  border: 1px solid var(--rule-strong);
   background: var(--paper);
   color: var(--blue);
 }
 
+.lending-app .btn-quiet:hover,
 .dashboard-secondary:hover {
   background: var(--sheet);
   border-color: var(--blue);
@@ -609,6 +623,12 @@
   background: var(--sheet);
   color: var(--blue);
   font: 550 0.875rem/1.2 var(--font-instrument-sans), system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.app-amount button:not(:disabled):hover {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 12%, var(--paper));
 }
 
 .app-amount-heading {
@@ -701,7 +721,7 @@
   width: 100%;
 }
 
-.app-submit:disabled,
+.lending-app .btn:disabled,
 .app-amount button:disabled {
   border-color: var(--rule);
   background: var(--sheet);
