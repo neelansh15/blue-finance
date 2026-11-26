@@ -392,7 +392,14 @@
 .app-market-ledger,
 .app-positions {
   margin-top: 12px;
-  border-block: 1px solid var(--rule-strong);
+}
+
+.app-market-ledger {
+  border: 1px solid light-dark(#132544, #b9caec);
+}
+
+.app-positions li {
+  border: 1px solid light-dark(#132544, #b9caec);
 }
 
 .app-market-ledger {
@@ -492,7 +499,7 @@
 }
 
 .app-positions li + li {
-  border-top: 1px solid var(--rule);
+  margin-top: 12px;
 }
 
 .app-positions dl {
