@@ -13,5 +13,6 @@ Isolated-market lending for tokenized equities and RWAs, stablecoin borrow only 
 - [morpho-blue.md](morpho-blue.md): Morpho Blue research (market model, oracle, liquidation, vaults, tokenized-stock markets)
 - [architecture-v1.md](architecture-v1.md): architecture on top of unmodified Morpho Blue (splits, market hours, pause/whitelist, halts, dividends, ScaledUI)
 - [frontend/](frontend): Next.js landing page (App Router, TypeScript). Run `npm install && npm run dev` inside the folder
+- [protocol/](protocol): smart contracts (placeholder)
 
 Compiled Nov 2026.
