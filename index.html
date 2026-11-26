@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dawn Finance: lending for tokenized US stocks on BNB Chain (draft)</title>
+<meta name="description" content="Dawn Finance is a draft lending protocol for tokenized US stocks on BNB Chain, built on Morpho Blue isolated markets, with a risk layer that knows when the US market is open. Prototype for BNB Bangkok. Not live.">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root {
+    --night: #1E2A38;
+    --slate: #3E5568;
+    --mist: #8FA3B5;
+    --haze: #EEF1F4;
+    --sunrise: #FFF1B8;
+    --gold: #F2C14E;
+
+    --ok: #3F6B52;      /* desaturated green: healthy */
+    --ok-bg: #E2ECE5;
+    --warn: #8A5A12;    /* amber: market closed / reduced borrowing power */
+    --warn-bg: #F7E9CC;
+    --risk: #9A3F3F;    /* muted red: liquidation risk */
+    --risk-bg: #F3DEDC;
+
+    --bg: var(--haze);
+    --surface: #FFFFFF;
+    --text: var(--night);
+    --text-muted: #3E5568;
+    --border: #D3DAE1;
+    --focus: #1E2A38;
+
+    --radius: 14px;
+    --maxw: 68rem;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ok: #9CC7AB;
+      --ok-bg: #22372C;
+      --warn: #F0CB85;
+      --warn-bg: #3D3220;
+      --risk: #E3A3A3;
+      --risk-bg: #402828;
+
+      --bg: #18222E;
+      --surface: #1E2A38;
+      --text: #EEF1F4;
+      --text-muted: #B4C2CF;
+      --border: #34465A;
+      --focus: #FFF1B8;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: auto; -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+  }
+  img, svg { display: block; max-width: 100%; }
+  a { color: inherit; text-underline-offset: 0.18em; }
+  :focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  .skip {
+    position: absolute; left: 1rem; top: -4rem; z-index: 100;
+    background: var(--surface); color: var(--text);
+    padding: 0.6rem 1rem; border-radius: 8px; border: 1px solid var(--border);
+  }
+  .skip:focus { top: 1rem; }
+  .wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 1.25rem; }
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+
+  /* Nav */
+  .nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(238, 241, 244, 0.88);
+    backdrop-filter: saturate(140%) blur(8px);
+    -webkit-backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  @media (prefers-color-scheme: dark) {
+    .nav { background: rgba(24, 34, 46, 0.88); }
+  }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 3.5rem; }
+  .brand { display: inline-flex; align-items: center; gap: 0.55rem; font-weight: 700; text-decoration: none; letter-spacing: 0.01em; }
+  .brand svg { width: 28px; height: 28px; }
+  .nav ul { list-style: none; display: flex; gap: 1.1rem; margin: 0; padding: 0; font-size: 0.95rem; }
+  .nav ul a { text-decoration: none; color: var(--text-muted); }
+  .nav ul a:hover { color: var(--text); text-decoration: underline; }
+  .nav .hide-sm { display: none; }
+  @media (min-width: 46rem) { .nav .hide-sm { display: list-item; } }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    color: var(--night);
+    background: linear-gradient(to bottom,
+      #FFF1B8 0%, #F8F1D6 22%, #EEF1F4 42%, #B9C7D3 62%, #8FA3B5 74%, #3E5568 88%, #1E2A38 100%);
+    padding: 4.5rem 0 0;
+  }
+  .hero-inner { position: relative; z-index: 2; text-align: center; padding-bottom: 1rem; }
+  .draft-chip {
+    display: inline-block; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 0.25rem 0.7rem; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.7); border: 1px solid #C9D3DC; color: var(--slate);
+  }
+  .hero h1 { font-size: clamp(2.4rem, 8vw, 4.2rem); line-height: 1.05; margin: 1rem 0 0.75rem; letter-spacing: -0.02em; }
+  .hero .lead { font-size: clamp(1.15rem, 3.2vw, 1.45rem); font-weight: 600; max-width: 38rem; margin: 0 auto 0.75rem; }
+  .hero .sub { color: #33475A; max-width: 36rem; margin: 0 auto 1.75rem; }
+  .ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 2.9rem; padding: 0.65rem 1.25rem; border-radius: 999px;
+    font-weight: 650; text-decoration: none; border: 2px solid transparent;
+  }
+  .btn-primary { background: var(--gold); color: var(--night); border-color: #D9A93A; }
+  .btn-primary:hover { background: #F5CD6A; }
+  .btn-ghost { background: rgba(255, 255, 255, 0.55); color: var(--night); border-color: var(--slate); }
+  .btn-ghost:hover { background: rgba(255, 255, 255, 0.85); }
+  .hero :focus-visible { outline-color: var(--night); }
+
+  .scene { position: relative; z-index: 1; margin-top: -1rem; }
+  .scene svg { width: 100%; height: auto; }
+  .glow { transform-origin: 50% 70%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .glow { animation: pulse 9s ease-in-out infinite; }
+    .ridge-far { animation: drift 28s ease-in-out infinite alternate; }
+    .ridge-mid { animation: drift 22s ease-in-out infinite alternate-reverse; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.82; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.04); }
+  }
+  @keyframes drift {
+    from { transform: translateX(-6px); }
+    to { transform: translateX(6px); }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .hero {
+      color: var(--haze);
+      background: linear-gradient(to bottom,
+        #2B3B4D 0%, #34495D 30%, #4A6175 50%, #6E8394 62%, #3E5568 80%, #1E2A38 100%);
+    }
+    .hero .sub { color: #D5DEE6; }
+    .draft-chip { background: rgba(30, 42, 56, 0.6); border-color: #5A7084; color: var(--haze); }
+    .btn-ghost { background: rgba(30, 42, 56, 0.5); color: var(--haze); border-color: var(--mist); }
+    .btn-ghost:hover { background: rgba(30, 42, 56, 0.8); }
+    .hero :focus-visible { outline-color: var(--sunrise); }
+  }
+
+  /* Sections */
+  section { padding: 4rem 0; }
+  section + section { border-top: 1px solid var(--border); }
+  .eyebrow { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 0.4rem; }
+  h2 { font-size: clamp(1.6rem, 4.5vw, 2.25rem); line-height: 1.15; margin: 0 0 1rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.1rem; margin: 0 0 0.4rem; }
+  p { margin: 0 0 1rem; }
+  .intro { max-width: 42rem; color: var(--text-muted); }
+
+  .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+  @media (min-width: 40rem) { .grid-2 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 62rem) { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.25rem 1.1rem;
+  }
+  .card p { color: var(--text-muted); margin: 0; font-size: 0.98rem; }
+  .card .icon {
+    width: 2.25rem; height: 2.25rem; border-radius: 10px; margin-bottom: 0.75rem;
+    display: grid; place-items: center;
+    background: linear-gradient(160deg, var(--sunrise), #F6E3A6);
+    color: var(--night);
+  }
+  .card .icon svg { width: 1.25rem; height: 1.25rem; }
+
+  /* Problem timeline */
+  .gaps { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 0.75rem; }
+  @media (min-width: 40rem) { .gaps { grid-template-columns: repeat(3, 1fr); } }
+  .gaps li { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; }
+  .gaps strong { display: block; margin-bottom: 0.2rem; }
+  .gaps span { color: var(--text-muted); font-size: 0.96rem; }
+
+  /* Status chips */
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.82rem; font-weight: 650; padding: 0.2rem 0.65rem; border-radius: 999px;
+    border: 1px solid currentColor;
+  }
+  .chip::before { content: ""; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; }
+  .chip-ok { color: var(--ok); background: var(--ok-bg); }
+  .chip-warn { color: var(--warn); background: var(--warn-bg); }
+  .chip-risk { color: var(--risk); background: var(--risk-bg); }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0; padding: 0; list-style: none; }
+
+  /* Chart */
+  .chart-card { margin-top: 1.5rem; }
+  .chart-card figure { margin: 0; }
+  .chart-label {
+    display: inline-block; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 0.15rem 0.5rem; margin-bottom: 0.75rem;
+  }
+  .chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chart-scroll svg { min-width: 36rem; width: 100%; height: auto; }
+  .chart-card figcaption { color: var(--text-muted); font-size: 0.93rem; margin-top: 0.75rem; }
+  .c-axis { stroke: var(--border); stroke-width: 1; }
+  .c-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 5; }
+  .c-open { fill: var(--sunrise); opacity: 0.7; }
+  .c-weekend { fill: var(--mist); opacity: 0.16; }
+  .c-line { fill: none; stroke: var(--slate); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+  .c-text { fill: var(--text-muted); font-family: var(--font); font-size: 13px; }
+  .c-text-strong { fill: var(--text); font-family: var(--font); font-size: 13px; font-weight: 650; }
+  @media (prefers-color-scheme: dark) {
+    .c-open { fill: var(--gold); opacity: 0.18; }
+    .c-weekend { opacity: 0.12; }
+    .c-line { stroke: var(--sunrise); }
+  }
+
+  /* Roadmap */
+  .roadmap { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1rem; counter-reset: step; }
+  @media (min-width: 46rem) { .roadmap { grid-template-columns: repeat(3, 1fr); } }
+  .roadmap li { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+  .roadmap .stage { font-weight: 800; font-size: 1.5rem; color: var(--slate); line-height: 1; margin-bottom: 0.5rem; display: block; }
+  .roadmap li.now { border-color: #D9A93A; box-shadow: inset 0 4px 0 var(--gold); }
+  .roadmap li.now .stage { color: var(--night); }
+  .roadmap p { color: var(--text-muted); margin: 0; font-size: 0.98rem; }
+  .roadmap .when { display: inline-block; font-size: 0.8rem; font-weight: 650; color: var(--text-muted); margin-bottom: 0.4rem; }
+  @media (prefers-color-scheme: dark) {
+    .roadmap .stage { color: var(--mist); }
+    .roadmap li.now .stage { color: var(--gold); }
+  }
+
+  /* Docs */
+  .docs { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0.75rem; }
+  @media (min-width: 40rem) { .docs { grid-template-columns: repeat(3, 1fr); } }
+  .docs a {
+    display: block; height: 100%; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem;
+  }
+  .docs a:hover { border-color: var(--slate); }
+  .docs strong { display: block; text-decoration: underline; text-underline-offset: 0.18em; }
+  .docs span { color: var(--text-muted); font-size: 0.94rem; }
+
+  /* Footer */
+  footer { background: var(--night); color: var(--haze); padding: 2.5rem 0; }
+  footer p { margin: 0 0 0.5rem; }
+  footer .disclaimer { font-weight: 650; }
+  footer .small { color: #B4C2CF; font-size: 0.9rem; }
+  footer :focus-visible { outline-color: var(--sunrise); }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <nav class="wrap" aria-label="Primary">
+    <a class="brand" href="#top" aria-label="Dawn Finance, back to top">
+      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <circle cx="16" cy="19" r="8" fill="#F2C14E"/>
+        <path d="M0 32 L9 18 L14 24 L21 13 L32 28 L32 32 Z" fill="#3E5568"/>
+        <path d="M0 32 L6 26 L12 30 L20 22 L32 32 Z" fill="#1E2A38"/>
+      </svg>
+      <span>Dawn Finance</span>
+    </a>
+    <ul>
+      <li class="hide-sm"><a href="#problem">Problem</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li class="hide-sm"><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#docs">Docs</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="hero" id="top" aria-labelledby="hero-title" style="border-top:0">
+    <div class="wrap hero-inner">
+      <span class="draft-chip">Draft prototype &middot; not live</span>
+      <h1 id="hero-title">Dawn Finance</h1>
+      <p class="lead">Borrow stablecoins against tokenized US stocks, with a risk layer that knows when the market is open.</p>
+      <p class="sub">Isolated lending markets on unmodified Morpho Blue, on BNB Chain. Tokens trade 24/7; the stock market does not. Dawn prices that gap in.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="#how-it-works">How Dawn works</a>
+        <a class="btn btn-ghost" href="architecture-v1.md">Read the architecture</a>
+        <a class="btn btn-ghost" href="README.md">README</a>
+      </div>
+    </div>
+
+    <div class="scene">
+      <svg viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" role="img" aria-labelledby="scene-title">
+        <title id="scene-title">Illustration: a soft sunrise glowing from behind layered gray-blue mountain ridges.</title>
+        <defs>
+          <radialGradient id="sun" cx="50%" cy="100%" r="60%">
+            <stop offset="0%" stop-color="#FFFBEA" stop-opacity="1"/>
+            <stop offset="25%" stop-color="#FFF1B8" stop-opacity="0.95"/>
+            <stop offset="60%" stop-color="#F2C14E" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="#FFF1B8" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#8FA3B5"/>
+            <stop offset="100%" stop-color="#7D93A7"/>
+          </linearGradient>
+          <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#5D7488"/>
+            <stop offset="100%" stop-color="#3E5568"/>
+          </linearGradient>
+        </defs>
+        <ellipse class="glow" cx="720" cy="250" rx="620" ry="230" fill="url(#sun)"/>
+        <g class="ridge-far">
+          <path fill="url(#far)" d="M-20 250 L90 200 L180 222 L300 150 L410 198 L520 168 L620 210 L720 176 L830 206 L940 142 L1060 196 L1170 160 L1290 204 L1380 178 L1460 200 L1460 360 L-20 360 Z"/>
+        </g>
+        <g class="ridge-mid">
+          <path fill="url(#mid)" d="M-20 290 L120 236 L230 268 L360 214 L480 262 L600 240 L700 276 L820 226 L960 270 L1080 232 L1210 274 L1330 244 L1460 268 L1460 360 L-20 360 Z"/>
+        </g>
+        <path fill="#1E2A38" d="M-20 330 L140 290 L300 318 L460 284 L640 322 L800 296 L980 326 L1150 292 L1300 318 L1460 300 L1460 360 L-20 360 Z"/>
+      </svg>
+    </div>
+  </section>
+
+  <section id="problem" aria-labelledby="problem-title">
+    <div class="wrap">
+      <p class="eyebrow">The problem</p>
+      <h2 id="problem-title">Tokens trade 24/7. The stock market does not.</h2>
+      <p class="intro">A tokenized stock can change hands on a Saturday, but the US equity it tracks only trades in set sessions. When the market reopens, the price can jump past where it closed. Lending protocols built for always-on crypto assets treat every hour the same and ignore that gap risk.</p>
+      <ul class="gaps">
+        <li><strong>Overnight</strong><span>The market closes each evening. News lands before the next open.</span></li>
+        <li><strong>Weekends</strong><span>Two days with no primary-market price discovery, then one reopen.</span></li>
+        <li><strong>Holidays and halts</strong><span>Exchange holidays, trading halts and suspensions stretch the gap further.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="how-it-works" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="eyebrow">How Dawn works</p>
+      <h2 id="how-title">A risk layer on top of Morpho Blue</h2>
+      <p class="intro">Dawn does not fork the lending core. It creates isolated markets on the canonical, unmodified Morpho Blue deployment and puts its logic in the oracle, a router and offchain keepers.</p>
+
+      <div class="grid grid-3">
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </div>
+          <h3>Isolated markets on Morpho Blue</h3>
+          <p>One market per stock and loan asset. Bad debt in one market never touches another. Accounting, borrow, repay and liquidation stay in Morpho Blue, unmodified.</p>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </div>
+          <h3>Market-hours-aware pricing</h3>
+          <p>A regime registry tracks open, extended, closed, weekend or holiday, halted and corporate-action states. The oracle applies a haircut per regime, so borrowing power shrinks when the market is shut, and ramps down before the close instead of stepping.</p>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+          <h3>Conservative oracle</h3>
+          <p>Collateral is valued at the more conservative of the primary price feed and a DEX TWAP. If a source is stale or missing, an extra haircut applies. In the normal path the oracle never reverts, so liquidations keep working.</p>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+          </div>
+          <h3>Stock-specific events</h3>
+          <p>Splits via display multipliers, issuer pauses and whitelists, trading halts and reinvested dividends. Around these events new borrows pause and the price freezes to the last good value for a bounded time, so a split does not look like a crash.</p>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5"/><path d="M12 6v2M12 16v2"/></svg>
+          </div>
+          <h3>Stablecoin-only borrowing</h3>
+          <p>In v1 you post a tokenized stock and borrow stablecoins. That keeps risk one-sided: only the collateral price matters, with one oracle and one rate curve per market.</p>
+        </article>
+        <article class="card">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+          </div>
+          <h3>Liquidation</h3>
+          <p>Morpho Blue liquidation stays permissionless. Dawn plans opt-in pre-liquidation for smaller, gentler partial liquidations, and runs its own backstop bot with no special privileges.</p>
+        </article>
+      </div>
+
+      <div class="card chart-card">
+        <figure aria-labelledby="chart-caption">
+          <span class="chart-label">Illustrative only, not real data</span>
+          <h3 id="chart-title">Borrowing power across a week</h3>
+          <div class="chart-scroll" tabindex="0" role="region" aria-label="Illustrative chart of borrowing power across a week, scrollable on small screens">
+            <svg viewBox="0 0 780 260" role="img" aria-labelledby="chart-svg-title chart-svg-desc">
+              <title id="chart-svg-title">Illustrative borrowing power by market regime, Monday to Sunday</title>
+              <desc id="chart-svg-desc">A stepped line with no real values. Borrowing power is highest during each weekday's regular US session, ramps down shortly before the close, is lower in extended hours, lower again overnight, and lowest from Friday evening through the weekend until Monday's pre-market.</desc>
+              <!-- weekend shading -->
+              <rect class="c-weekend" x="543.3" y="30" width="216.7" height="180"/>
+              <!-- regular session bands (approx. 9:30-16:00 US Eastern) -->
+              <rect class="c-open" x="99.6" y="30" width="27.1" height="180"/>
+              <rect class="c-open" x="199.6" y="30" width="27.1" height="180"/>
+              <rect class="c-open" x="299.6" y="30" width="27.1" height="180"/>
+              <rect class="c-open" x="399.6" y="30" width="27.1" height="180"/>
+              <rect class="c-open" x="499.6" y="30" width="27.1" height="180"/>
+              <!-- regime gridlines -->
+              <line class="c-grid" x1="60" y1="50" x2="760" y2="50"/>
+              <line class="c-grid" x1="60" y1="95" x2="760" y2="95"/>
+              <line class="c-grid" x1="60" y1="135" x2="760" y2="135"/>
+              <line class="c-grid" x1="60" y1="190" x2="760" y2="190"/>
+              <line class="c-axis" x1="60" y1="210" x2="760" y2="210"/>
+              <line class="c-axis" x1="60" y1="30" x2="60" y2="210"/>
+              <!-- y labels -->
+              <text class="c-text" x="52" y="54" text-anchor="end">Open</text>
+              <text class="c-text" x="52" y="99" text-anchor="end">Ext.</text>
+              <text class="c-text" x="52" y="139" text-anchor="end">Closed</text>
+              <text class="c-text" x="52" y="194" text-anchor="end">Wknd</text>
+              <text class="c-text-strong" x="60" y="20">Higher borrowing power &#8593;</text>
+              <!-- line -->
+              <path class="c-line" d="M60.0 190 L76.7 190 L76.7 95 L99.6 95 L103.0 50 L122.5 50 L126.7 95 L143.3 95 L143.3 135 L160.0 135 L176.7 135 L176.7 95 L199.6 95 L203.0 50 L222.5 50 L226.7 95 L243.3 95 L243.3 135 L260.0 135 L276.7 135 L276.7 95 L299.6 95 L303.0 50 L322.5 50 L326.7 95 L343.3 95 L343.3 135 L360.0 135 L376.7 135 L376.7 95 L399.6 95 L403.0 50 L422.5 50 L426.7 95 L443.3 95 L443.3 135 L460.0 135 L476.7 135 L476.7 95 L499.6 95 L503.0 50 L522.5 50 L526.7 95 L543.3 95 L543.3 190 L760.0 190"/>
+              <!-- x labels -->
+              <text class="c-text" x="110" y="230" text-anchor="middle">Mon</text>
+              <text class="c-text" x="210" y="230" text-anchor="middle">Tue</text>
+              <text class="c-text" x="310" y="230" text-anchor="middle">Wed</text>
+              <text class="c-text" x="410" y="230" text-anchor="middle">Thu</text>
+              <text class="c-text" x="510" y="230" text-anchor="middle">Fri</text>
+              <text class="c-text" x="610" y="230" text-anchor="middle">Sat</text>
+              <text class="c-text" x="710" y="230" text-anchor="middle">Sun</text>
+              <text class="c-text" x="651" y="250" text-anchor="middle">Weekend: lowest borrowing power</text>
+            </svg>
+          </div>
+          <figcaption id="chart-caption">
+            Shape only: no real haircut values, no axis numbers. Shaded columns mark the regular US session (US Eastern time). The drop just before each close is the ramp that de-risks positions ahead of the overnight or weekend gap. Holidays and halts would follow the weekend or halted level. Actual haircuts would come from a historical gap model that has not been finalized.
+            <ul class="chips" aria-label="Status legend used in the interface">
+              <li><span class="chip chip-ok">Healthy</span></li>
+              <li><span class="chip chip-warn">Market closed: reduced borrowing power</span></li>
+              <li><span class="chip chip-risk">Liquidation risk</span></li>
+            </ul>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap" aria-labelledby="roadmap-title">
+    <div class="wrap">
+      <p class="eyebrow">Roadmap</p>
+      <h2 id="roadmap-title">Start narrow, add leverage later</h2>
+      <p class="intro">Draft plan. Nothing here is live or scheduled.</p>
+      <ol class="roadmap">
+        <li class="now">
+          <span class="stage">v1</span>
+          <span class="when">Prototype, BNB Bangkok</span>
+          <h3>Stablecoin borrowing</h3>
+          <p>Post a tokenized US stock, borrow stablecoins, with market-hours-aware limits and a conservative oracle. The hackathon demo runs on a testnet or mainnet fork.</p>
+        </li>
+        <li>
+          <span class="stage">v1.5</span>
+          <span class="when">Later</span>
+          <h3>Leverage vault</h3>
+          <p>Leveraged long positions on tokenized stocks, built on the same isolated markets and risk layer.</p>
+        </li>
+        <li>
+          <span class="stage">v2</span>
+          <span class="when">Later</span>
+          <h3>Shorting</h3>
+          <p>Borrowing the equity tokens themselves, which needs borrowable equity-token supply.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="docs" aria-labelledby="docs-title">
+    <div class="wrap">
+      <p class="eyebrow">Docs</p>
+      <h2 id="docs-title">Read the design</h2>
+      <ul class="docs">
+        <li><a href="architecture-v1.md"><strong>Architecture v1</strong><span>The design on top of unmodified Morpho Blue: oracle, regimes, splits, halts, dividends.</span></a></li>
+        <li><a href="README.md"><strong>README</strong><span>Overview of the project and its research files.</span></a></li>
+        <li><a href="idea-progression.md"><strong>Idea progression</strong><span>How the direction evolved and why each decision was made.</span></a></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="disclaimer">Draft. Prototype built for BNB Bangkok, Nov 2026. Not financial advice. Not live.</p>
+    <p class="small">Dawn Finance is a working name. Built on BNB Chain and Morpho Blue. Designs and parameters are unverified and subject to change.</p>
+  </div>
+</footer>
+</body>
+</html>
