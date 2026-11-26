@@ -1,0 +1,59 @@
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  width: 150px;
+}
+
+.brand-logo img {
+  width: 100%;
+  height: auto;
+}
+
+.brand-logo .brand-logo-dark,
+.brand-logo .brand-logo-mark,
+[data-theme="dark"] .brand-logo-light {
+  display: none;
+}
+
+[data-theme="dark"] .brand-logo-dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-logo-light {
+    display: none;
+  }
+
+  :root:not([data-theme="light"]) .brand-logo-dark {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav .brand-logo {
+    width: 32px;
+  }
+
+  .nav .brand-logo img:not(.brand-logo-mark) {
+    display: none;
+  }
+
+  .nav .brand-logo .brand-logo-mark {
+    display: block;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 800px) {
+  .app-nav .brand-logo {
+    width: 32px;
+  }
+
+  .app-nav .brand-logo img:not(.brand-logo-mark) {
+    display: none;
+  }
+
+  .app-nav .brand-logo .brand-logo-mark {
+    display: block;
+  }
+}

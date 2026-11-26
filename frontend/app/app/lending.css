@@ -759,10 +759,6 @@
 }
 
 @media (max-width: 540px) {
-  .app-brand-wide {
-    display: none;
-  }
-
   .app-nav-links a {
     font-size: 0.875rem;
   }
@@ -803,12 +799,5 @@
 
   .app-positions dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-
-@media (max-width: 360px) {
-  .app-nav .brand span {
-    display: none;
   }
 }

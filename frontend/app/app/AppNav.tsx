@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconLogo } from "../components/Icons";
+import BrandLogo from "../components/BrandLogo";
 import ThemeToggle from "../components/ThemeToggle";
 import WalletButton from "./WalletButton";
 
@@ -12,8 +12,8 @@ export default function AppNav() {
   return (
     <header className="nav">
       <nav className="wrap app-nav" aria-label="App navigation">
-        <Link className="brand" href="/" aria-label="Dawn Finance home">
-          <IconLogo /> <span>Dawn<span className="app-brand-wide"> Finance</span></span>
+        <Link className="brand" href="/" aria-label="Blue Finance home">
+          <BrandLogo />
         </Link>
         <div className="app-nav-links">
           <Link href="/app/dashboard" aria-current={path === "/app/dashboard" ? "page" : undefined}>Dashboard</Link>
