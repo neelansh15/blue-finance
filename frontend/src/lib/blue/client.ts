@@ -47,6 +47,8 @@ export type BlueClient = {
   getState(): PoolState;
   subscribe(listener: () => void): () => void;
   act(action: Action, stock: StockId, amount: number): ClientResult;
+  /** Applies a state produced by a simulated multi-step transaction (leveraged borrowing). */
+  commit(next: PoolState): void;
   demo: DemoControls;
 };
 
@@ -155,6 +157,7 @@ export function createBlueClient(initial: PoolState = initialPoolState()): BlueC
       set(result.state);
       return { ok: result.ok, message: result.message };
     },
+    commit: set,
     demo,
   };
 }

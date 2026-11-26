@@ -7,6 +7,8 @@ import { IconArrow } from "../../components/Icons";
 import TokenIcon from "../../components/TokenIcon";
 import CorpActionBanner from "../components/CorpActionBanner";
 import { useDemoAccount } from "../DemoAccount";
+import { LEVERAGE } from "../../../src/lib/blue/leverage";
+import { LeverageMarkets, LeverageSummary, LeverageTicket, type LeverageReceipt } from "./LeverageFlow";
 import { health, ltv, money, percent, quantity } from "../format";
 import {
   actionLimits, borrowLtv, CENTS_PER_USDT, executeAction, parseAmount, poolMetrics, positionMetrics,
@@ -16,16 +18,19 @@ import {
 const steps = ["Wallet", "Action", "Market", "Transaction", "Summary"] as const;
 const choices = [
   { action: "borrow", title: "Borrow", icon: "hand-coins", description: "Use one tokenized stock as collateral to borrow USDT." },
+  { action: "leverage", title: "One-click leveraged borrow", icon: "trending-up", subtitle: `Up to ${LEVERAGE.cap}× leverage`,
+    description: "Borrow USDT, buy more of the same stock and supply it as collateral." },
   { action: "lend", title: "Supply", icon: "coins", description: "Supply USDT to the shared pool for bluUSDT and earn interest." },
 ] as const;
 type Choice = (typeof choices)[number]["action"];
+type BasicChoice = Exclude<Choice, "leverage">;
 
 /** The USDT pool is the only market for suppliers. */
 const POOL = "POOL" as const;
 type Selection = StockId | typeof POOL;
 
 type Receipt = {
-  action: Choice;
+  action: BasicChoice;
   stock: StockId | null;
   amount: number;
   addedCollateral: number;
@@ -64,14 +69,17 @@ export default function SimplifiedFlow() {
   const [amount, setAmount] = useState("");
   const [collateral, setCollateral] = useState("");
   const [receipt, setReceipt] = useState<Receipt>();
+  const [leverageReceipt, setLeverageReceipt] = useState<LeverageReceipt>();
   const heading = useRef<HTMLHeadingElement>(null);
 
   const connected = isConnected && !!address;
   const active = connected ? step : 0;
-  const reached = !connected ? 0 : receipt ? 4 : market ? 3 : choice ? 2 : 1;
+  const reached = !connected ? 0 : receipt || leverageReceipt ? 4 : market ? 3 : choice ? 2 : 1;
   const account = state.account;
   const pool = poolMetrics(state);
   const borrowing = choice === "borrow";
+  const levering = choice === "leverage";
+  const basic: BasicChoice | undefined = choice === "leverage" ? undefined : choice;
   const operation = borrowing ? "Borrow" : "Supply";
 
   useEffect(() => {
@@ -85,6 +93,7 @@ export default function SimplifiedFlow() {
       setAmount("");
       setCollateral("");
       setReceipt(undefined);
+      setLeverageReceipt(undefined);
     }
     if (action === "lend") {
       setMarket(POOL);
@@ -98,6 +107,7 @@ export default function SimplifiedFlow() {
       setAmount("");
       setCollateral("");
       setReceipt(undefined);
+      setLeverageReceipt(undefined);
     }
     setStep(3);
   }
@@ -109,22 +119,22 @@ export default function SimplifiedFlow() {
   const collateralLimit = stock ? actionLimits(state, stock).deposit : { max: 0 };
   const collateralError = borrowing && collateral !== "" && (added <= 0 || added > collateralLimit.max);
   const funded = borrowing && stock && added > 0 && !collateralError ? executeAction(state, "deposit", stock, added).state : state;
-  const limit = choice ? actionLimits(funded, actionStock)[choice] : { max: 0 };
+  const limit = basic ? actionLimits(funded, actionStock)[basic] : { max: 0 };
   const maximum = limit.max;
-  const valid = !!choice && units > 0 && units <= maximum && !collateralError;
-  const projected = valid && choice ? executeAction(funded, choice, actionStock, units).state : funded;
+  const valid = !!basic && units > 0 && units <= maximum && !collateralError;
+  const projected = valid && basic ? executeAction(funded, basic, actionStock, units).state : funded;
   const after = positionMetrics(projected);
   const rate = borrowing ? pool.borrowApr : pool.supplyApr;
   const amountError = amount !== "" && (units <= 0 || units > maximum);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!connected || !address || !valid || !choice) return;
+    if (!connected || !address || !valid || !basic) return;
     const before = state;
     if (borrowing && stock && added > 0 && !client.act("deposit", stock, added).ok) return;
-    if (!client.act(choice, actionStock, units).ok) return;
+    if (!client.act(basic, actionStock, units).ok) return;
     setReceipt({
-      action: choice, stock: borrowing ? actionStock : null, amount: units, addedCollateral: borrowing ? added : 0,
+      action: basic, stock: borrowing ? actionStock : null, amount: units, addedCollateral: borrowing ? added : 0,
       before, after: client.getState(), rate, address, timestamp: new Date().toISOString(),
     });
     setAmount("");
@@ -139,7 +149,7 @@ export default function SimplifiedFlow() {
       <header className="simple-masthead">
         <div className="wrap">
           <h1>Simplified Mode</h1>
-          <p>Walk through a USDT loan or supply in the simulator.</p>
+          <p>Walk through a USDT loan, a leveraged borrow or a supply in the simulator.</p>
           <nav aria-label="Transaction steps">
             <ol className="simple-steps">
               {steps.map((label, index) => (
@@ -176,6 +186,7 @@ export default function SimplifiedFlow() {
                 <button key={item.action} type="button" className="simple-choice" onClick={() => selectChoice(item.action)}>
                   <span className="simple-icon" style={{ maskImage: `url(/assets/icons/${item.icon}.svg)` }} aria-hidden="true" />
                   <strong>{item.title}</strong>
+                  {"subtitle" in item && <em className="simple-choice-subtitle">{item.subtitle}</em>}
                   <span>{item.description}</span>
                 </button>
               ))}
@@ -220,7 +231,9 @@ export default function SimplifiedFlow() {
           </>
         )}
 
-        {active === 2 && !borrowing && (
+        {active === 2 && levering && <LeverageMarkets state={state} heading={heading} onSelect={selectMarket} />}
+
+        {active === 2 && !borrowing && !levering && (
           <>
             <h2 id="simple-heading" tabIndex={-1} ref={heading}>Supply to the USDT pool</h2>
             <table className="simple-table" aria-labelledby="simple-heading">
@@ -236,7 +249,18 @@ export default function SimplifiedFlow() {
           </>
         )}
 
-        {active === 3 && market && choice && (
+        {active === 3 && levering && stock && address && (
+          <LeverageTicket key={stock} state={state} client={client} stock={stock} address={address} heading={heading}
+            onDone={next => { setLeverageReceipt(next); setStep(4); }} />
+        )}
+
+        {active === 4 && levering && leverageReceipt && (
+          <LeverageSummary receipt={leverageReceipt} heading={heading} onRestart={() => {
+            setChoice(undefined); setMarket(undefined); setLeverageReceipt(undefined); setStep(1);
+          }} />
+        )}
+
+        {active === 3 && market && basic && (
           <div className="app-ticket simple-ticket">
             <header className="app-ticket-head">
               <div className="app-asset">
