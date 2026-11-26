@@ -33,6 +33,28 @@ contract StockBorrowControls is EIP712 {
     uint32 public immutable recovery;
     uint32 public immutable maxEligibility;
 
+    uint128 public sharedDebtCap = type(uint128).max;
+    uint16 public maxStockShareBps = 10_000;
+    event SharedLimitsSet(uint128 debtCap, uint16 stockShareBps);
+
+    /// Absolute share of the configured reserve budget, so the first borrower is not rejected at 100% utilization.
+    function setSharedLimits(uint128 debtCap, uint16 stockShareBps) external {
+        if (msg.sender != admin && msg.sender != guardian) revert Unauthorized();
+        if (stockShareBps > BPS) revert InvalidPolicy();
+        if (msg.sender == guardian && (debtCap > sharedDebtCap || stockShareBps > maxStockShareBps)) {
+            revert InvalidPolicy();
+        }
+        sharedDebtCap = debtCap;
+        maxStockShareBps = stockShareBps;
+        emit SharedLimitsSet(debtCap, stockShareBps);
+    }
+
+    function checkSharedDebt(uint256 stockDebt, uint256 reserveDebt) external view {
+        if (reserveDebt > sharedDebtCap || stockDebt > uint256(sharedDebtCap) * maxStockShareBps / BPS) {
+            revert InvalidPolicy();
+        }
+    }
+
     mapping(address stock => Policy) private _policies;
     mapping(address account => uint256) public nonces;
     mapping(address account => mapping(address stock => uint256)) public eligibleUntil;

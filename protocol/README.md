@@ -44,3 +44,7 @@ forge script script/DeployFork.s.sol:DeployFork \
 The script checks chain ID, BNB USDT code, and Anvil’s RPC before deployment. Set `BLUE_SEED_USDT` in raw 18-decimal units to seed the reserve if the local deployer already has forked USDT. Otherwise, a funded local account can approve the pool and call `supply` after deployment.
 
 For a manual borrow on the prototype, mint stock from the test deployer, then supply it and enable it as collateral. The borrower registers a signature from `BLUE_SIGNER` over `eligibilityDigest(borrower, stock, nonces(borrower), expiry)` on the controls contract. The keeper must report the stock healthy with gaps shorter than 10 minutes for the 30-minute recovery window, and keep its stock and USDT quotes fresh. Update the mock feeds and call `refresh()` on their price sources to accept new rounds. Then call the pool’s standard `borrow` with variable-rate mode `2`. Use `report(stock, false)` to simulate a halt of new risk for just that stock. The deployer can set calendar overrides through `RegimeRegistry`. The fork suite automates this setup and the halt and repayment checks.
+
+## Shared reserve risk budgets
+
+Blue now enforces an aggregate accrued USDT debt budget and a per-stock share of that configured budget, in addition to Aave native reserve caps and existing stock regime caps. Guardian changes can only tighten these limits. See [shared liquidity and supplier risk](../docs/aave-shared-risk.md) for units, advisory inputs and assumptions.

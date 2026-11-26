@@ -9,9 +9,3 @@ __pycache__/
 !.env.example
 !.env.*.example
 node_modules
-
-# Local build artifacts left by the protocol → protocol-old move.
-/protocol/lib/
-/protocol/out/
-/protocol/cache/
-/protocol/test/fixtures/generated/

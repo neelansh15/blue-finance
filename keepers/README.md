@@ -53,9 +53,3 @@ Env: RPC_URL, CHAIN_ID(56), MORPHO (default 0x01b0Bd309AA75547f7a37Ad7B1219A898E
 - Skips everything while the oracle `isFrozen()` (or the call fails) unless LIQUIDATE_WHEN_FROZEN=true. Live mode runs an eth_call simulation before every send.
 - Full repay by shares when the collateral covers it, all collateral by seized assets for bad debt, partial by seized assets when capped by MAX_REPAY or the pre-funded balance. Profit is gross (seized value at oracle price minus repay) before swap slippage and gas, so set MIN_PROFIT accordingly.
 - Interest accrued since the last market update is not simulated off-chain; a borderline position may be seen as healthy one tick late.
-
-## Managed markets and reviewed parameter plans
-
-Generated defaults come from `config/blue-risk.v1.json`. Managed assets need `token` (wrapper registry key), `statusToken` (underlying bStock), `oracle` and `permission`. Unknown sources immediately record an unhealthy permission proof even before the HALTED timeout. Poll sufficiently faster than the on-chain maximum proof gap. A successful proof is only recorded after a successful receipt.
-
-`src/riskExecution.ts` verifies a concrete deployment and a separately signed reviewer certificate before preparing calldata; it sends no transaction. `scripts/prepareRiskUpdate.ts` is the CLI, and `verifyApplied` checks execution events and receipt-block settings. See [configuration, certificate format and governance workflow](../docs/enforced-risk-parameters.md#reviewed-execution).

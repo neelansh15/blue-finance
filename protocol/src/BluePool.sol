@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {PoolInstance} from "aave/instances/PoolInstance.sol";
 import {IPoolAddressesProvider} from "aave/interfaces/IPoolAddressesProvider.sol";
 import {IReserveInterestRateStrategy} from "aave/interfaces/IReserveInterestRateStrategy.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IScaledBalanceToken} from "aave/interfaces/IScaledBalanceToken.sol";
 import {DataTypes} from "aave/protocol/libraries/types/DataTypes.sol";
 import {UserConfiguration} from "aave/protocol/libraries/configuration/UserConfiguration.sol";
@@ -69,6 +70,7 @@ contract BluePool is PoolInstance {
         debtStock[onBehalfOf] = stock;
         scaledDebtByStock[stock] += afterDebt - beforeDebt;
         if (stockDebt(stock) > cap) revert StockDebtCapExceeded();
+        CONTROLS.checkSharedDebt(stockDebt(stock), IERC20(_reserves[USDT].variableDebtTokenAddress).totalSupply());
         _checkLtv(onBehalfOf, ltv);
     }
 

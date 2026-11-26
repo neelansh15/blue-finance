@@ -1,7 +1,7 @@
 // Regime keeper: compares computed calendar + halt signals against the on-chain RegimeRegistry and
 // calls setOverride / clearOverride. DRY_RUN defaults ON: intended txs are logged, none are sent.
 import { pathToFileURL } from "node:url";
-import { parseAbi, type PublicClient, type WalletClient } from "viem";
+import type { PublicClient, WalletClient } from "viem";
 import { Regime, conservativeness, blueOracleAbi, moreConservative, regimeName, regimeRegistryAbi, type RegimeName } from "./abi.js";
 import { makeClients } from "./chain.js";
 import { loadConfig, type KeeperAsset, type KeeperConfig } from "./config.js";
@@ -115,7 +115,6 @@ export interface OracleStatus {
   price: bigint;
   frozen: boolean;
   frozenSince: number;
-  live?: boolean;
 }
 
 export interface KeeperChain {
@@ -125,7 +124,6 @@ export interface KeeperChain {
   readOracle(oracle: `0x${string}`): Promise<OracleStatus>;
   /** BlueOracle.update(), permissionless. */
   updateOracle(oracle: `0x${string}`): Promise<string>;
-  recordPermission?(permission: `0x${string}`, asset: `0x${string}`, healthy: boolean): Promise<string>;
 }
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
@@ -151,22 +149,12 @@ export function viemKeeperChain(registry: `0x${string}`, pub: PublicClient, wall
       };
     },
     async readOracle(oracle) {
-      const [price, frozen, since, live] = await Promise.all([
+      const [price, frozen, since] = await Promise.all([
         pub.readContract({ address: oracle, abi: blueOracleAbi, functionName: "price" }),
         pub.readContract({ address: oracle, abi: blueOracleAbi, functionName: "isFrozen" }),
         pub.readContract({ address: oracle, abi: blueOracleAbi, functionName: "frozenSince" }),
-        pub.readContract({ address: oracle, abi: blueOracleAbi, functionName: "liveRawPrice" }),
       ]);
-      return { price, frozen, frozenSince: Number(since), live: live[0] };
-    },
-    async recordPermission(permission, asset, healthy) {
-      if (!wallet?.account) throw new Error("no wallet configured");
-      const hash = await wallet.writeContract({ address: permission,
-        abi: parseAbi(["function record(address asset,bool healthy)"]), functionName: "record",
-        args: [asset, healthy], account: wallet.account, chain: wallet.chain });
-      const receipt = await pub.waitForTransactionReceipt({ hash });
-      if (receipt.status !== "success") throw new Error("permission proof reverted");
-      return hash;
+      return { price, frozen, frozenSince: Number(since) };
     },
     async updateOracle(oracle) {
       if (!wallet?.account) throw new Error("no wallet configured");
@@ -280,7 +268,6 @@ export async function tickAsset(d: TickDeps, asset: KeeperAsset): Promise<Planne
     }
   }
   await heartbeatOracle(d, asset);
-  await recordMonitoringPermission(d, asset, decision);
   return actions;
 }
 
@@ -360,30 +347,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error(String(e));
     process.exit(1);
   });
-}
-
-/** Unknown sources revoke exposure immediately, before the slower HALTED timeout. No local clock grants access. */
-export async function recordMonitoringPermission(d: TickDeps, asset: KeeperAsset, decision: Decision): Promise<void> {
-  if (!asset.permission) return;
-  const signals = Object.values(decision.signals);
-  let healthy = decision.state === "ok" && signals.length > 0 && signals.every(s => s.state === "ok");
-  try {
-    if (!asset.oracle) healthy = false;
-    else {
-      const oracle = await d.chain.readOracle(asset.oracle);
-      healthy = healthy && oracle.live === true && !oracle.frozen && oracle.price > 0n;
-    }
-  } catch { healthy = false; }
-  if (d.cfg.dryRun) {
-    d.log("dry_run_permission", { asset: asset.symbol, healthy });
-    return;
-  }
-  try {
-    if (!d.chain.recordPermission) throw new Error("permission writer unavailable");
-    const hash = await d.chain.recordPermission(asset.permission, asset.token, healthy);
-    d.log("permission_recorded", { asset: asset.symbol, healthy, hash });
-  } catch (e) {
-    d.log("permission_failed", { asset: asset.symbol, error: String(e) });
-    // No proof means the on-chain permission expires; never manufacture a successful renewal.
-  }
 }

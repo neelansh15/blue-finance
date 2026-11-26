@@ -7,7 +7,6 @@ from typing import Annotated
 
 from pydantic import Field, model_validator
 
-from app.declared import DECLARED, BLUE_DEFAULTS
 from app.models import Model, NonNegative, Positive, Ratio
 
 
@@ -25,26 +24,20 @@ class Policy(Model):
     max_price_divergence: Ratio = .10
     volatility_stress_z: Positive = 2.33
     execution_fee: Ratio = .003
-    execution_delay_seconds: Positive = 300
-    liquidation_gas_budget_usd: NonNegative = 25
-    liquidity_stress_multiplier: Ratio = .5
-    max_liquidation_slippage: Ratio = .05
-    minimum_liquidation_horizon_seconds: dict[str, Positive] = Field(default_factory=lambda: {
-        'OPEN': 300, 'EXTENDED': 3600, 'CLOSED': 28800, 'WEEKEND': 259200})
     min_liquidation_threshold: Positive = .30
     max_liquidation_threshold: Ratio = .77
-    market_lltv: Positive = int(DECLARED["market"]["lltv_wad"]) / 1e18
-    router_hmax: Ratio = max(BLUE_DEFAULTS["haircuts_bps"][r] for r in DECLARED["regime_order"][:4]) / 10000
-    router_margin: Annotated[float, Field(ge=0, le=.5)] = BLUE_DEFAULTS["margin_bps"] / 10000
+    market_lltv: Positive = .625
+    router_hmax: Ratio = .15
+    router_margin: Annotated[float, Field(ge=0, le=.5)] = .02
     max_ltv: Ratio = .60
     ltv_buffer: Positive = .08
-    max_supply_tokens: NonNegative = BLUE_DEFAULTS["supply_cap_tokens"]
+    max_supply_tokens: NonNegative = 100000
     max_borrow_usd: NonNegative = 5000000
     depth_participation: Ratio = .25
     volume_participation: Ratio = .05
     recovery_safety_margin: Ratio = .10
     at_risk_health_factor: Positive = 1.15
-    recommendation_ttl_seconds: int = Field(default=900, ge=1, le=604800)
+    recommendation_ttl_seconds: int = Field(default=900, ge=1, le=86400)
     immutable_threshold: bool = True
     weekend_gap: Ratio = .08
     overnight_gap: Ratio = .03
@@ -54,8 +47,6 @@ class Policy(Model):
 
     @model_validator(mode="after")
     def valid_policy(self):
-        if set(self.minimum_liquidation_horizon_seconds) != {'OPEN', 'EXTENDED', 'CLOSED', 'WEEKEND'}:
-            raise ValueError('Liquidation horizons require exactly four routine regimes')
         if self.oracle_max_age_by_regime is not None and set(self.oracle_max_age_by_regime) != {
             'OPEN', 'EXTENDED', 'CLOSED', 'WEEKEND', 'HALTED', 'CORP_ACTION'
         }:

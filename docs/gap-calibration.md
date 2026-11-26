@@ -4,7 +4,7 @@ No trusted historical dataset has been supplied. This PR implements the offline 
 
 ## Input contract
 
-Supply one UTF-8 CSV per asset with these columns (an optional `event` column is also supported):
+Supply one UTF-8 CSV per asset with exactly these columns:
 
 ```csv
 asset,regime,window_start,window_end,start_price,end_price
@@ -12,7 +12,7 @@ asset,regime,window_start,window_end,start_price,end_price
 
 Each row represents a supplier-classified stress window. `asset` must match the manifest. `regime` is one of OPEN, EXTENDED, CLOSED, WEEKEND, HALTED, CORP_ACTION or INTRADAY_BUFFER. All prices must be corporate-action adjusted and per normalized displayed token, within the parser's finite bounds of 1e-12 to 1e12. Convert raw Atlas prices using verified multiplier observations before constructing a dataset; this workflow does not infer historical split factors. Timestamps must include timezones, start before end, and contain no information beyond the declared evidence cutoff.
 
-The reproducible `scripts.build_gap_windows` adapter can construct these windows from supplied adjusted observations; see [historical construction, walk-forward diagnostics and rare-event stress assumptions](enforced-risk-parameters.md#historical-windows-and-calibration). The supplier must document window classification, price adjustments, sampling and independence assumptions in the manifest's `methodology`. The code rejects duplicate windows, mixed assets and overlapping windows within a bucket. Non-overlap does not prove independence; autocorrelation, common events across buckets, sampling bias and data-source authenticity still require independent investigation.
+The supplier must document window classification, price adjustments, sampling and independence assumptions in the manifest's `methodology`. The code rejects duplicate windows, mixed assets and overlapping windows within a bucket. Non-overlap does not prove independence; autocorrelation, common events across buckets, sampling bias and data-source authenticity still require independent investigation.
 
 Start from `ai-risk-controller/calibration-manifest.example.json`. It intentionally defaults to `simulated: true` and `corporate_action_adjusted: false`, so copying it cannot produce a candidate. Set those declarations only when they accurately describe supplied evidence. The tool does not authenticate those claims; output records `source_verification: UNVERIFIED_CALLER_DECLARATION`.
 

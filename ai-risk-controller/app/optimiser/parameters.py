@@ -37,7 +37,7 @@ class RuleBasedOptimiser:
         depth_budget = a.metrics.depth_usd * p.depth_participation
         volume_budget = a.metrics.volume_24h_usd * p.volume_participation
         supply = min(p.max_supply_tokens, min(depth_budget, volume_budget) / a.recovery.reference_price)
-        supply *= (1 - issuer_haircut)
+        supply *= session.cap_multiplier * (1 - issuer_haircut)
         reasons = [session.reason, f"Recovery constraint: {recovery_limit:.4f} before session buffer",
                    f"Configured BlueRouter ceiling: {p.router_target_ltv:.5f}; deployment parameters must be verified",
                    f"Volatility constraint: {volatility_limit:.4f}",
@@ -50,11 +50,7 @@ class RuleBasedOptimiser:
         if blocked:
             ltv, supply = 0, 0
             reasons.append("Stop new collateral/borrowing: issuer uncertainty/restriction, stale data, or insufficient recovery")
-        regime = a.session.protocol_regime
-        budget = a.liquidation_budgets_usd.get(regime, 0)
-        borrow = min(p.max_borrow_usd, supply * a.recovery.reference_price * ltv, budget)
-        reasons.append(f'Shared token-book liquidation budget in {regime}: USD {budget:.2f}; '
-                       'includes price/liquidity stress, fees, incentive, gas and execution delay')
+        borrow = min(p.max_borrow_usd, supply * a.recovery.reference_price * ltv)
         params = Parameters(ltv=ltv, liquidation_threshold=threshold, supply_cap=supply,
                             borrow_cap=borrow, liquidation_incentive=incentive, collateral_accepted=not blocked)
         validate_bounds(params, p)

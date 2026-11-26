@@ -217,7 +217,6 @@ class Assessment(Model):
     metrics: Metrics
     score: RiskScore
     recovery: Recovery
-    liquidation_budgets_usd: dict[str, NonNegative] = Field(default_factory=dict)
     events: list[RiskEvent]
     sources: list[Source]
     evidence_hash: str

@@ -1,4 +1,4 @@
-import { BLUE_PARAMS } from "./params";
+import { ILLUSTRATIVE_HAIRCUT } from "../../../app/components/regimes";
 import {
   derivePosition, liquidationOutcome, numberToWad, validateBorrow, wadToNumber,
   type BlueSnapshot, type Regime,
@@ -33,7 +33,19 @@ function startingSnapshot(): BlueSnapshot {
   return {
     symbol: "NVDAb",
     loanSymbol: "USDT",
-    params: structuredClone(BLUE_PARAMS),
+    params: {
+      lltv: 0.625,
+      margin: 0.02,
+      haircut: {
+        OPEN: ILLUSTRATIVE_HAIRCUT.open,
+        EXTENDED: ILLUSTRATIVE_HAIRCUT.extended,
+        CLOSED: ILLUSTRATIVE_HAIRCUT.closed,
+        WEEKEND: ILLUSTRATIVE_HAIRCUT.weekend,
+        HALTED: ILLUSTRATIVE_HAIRCUT.weekend,
+        CORP_ACTION: ILLUSTRATIVE_HAIRCUT.weekend,
+      },
+      continuityBand: 0.05,
+    },
     regime: "OPEN",
     feedPricePerUI: 200,
     collateralRaw: numberToWad(10),

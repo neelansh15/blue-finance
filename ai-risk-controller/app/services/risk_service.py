@@ -15,7 +15,6 @@ from app.optimiser.parameters import RuleBasedOptimiser
 from app.risk.issuer import issuer_risk
 from app.risk.liquidity import bid_ask_spread, deterioration, execute_bids, market_depth, price_divergence
 from app.risk.recoverable_value import recoverable_value
-from app.risk.budgets import liquidation_budgets
 from app.risk.scoring import score_risk
 from app.risk.volatility import historical_volatility, maximum_drawdown, momentum
 from app.services.store import AuditStore
@@ -126,8 +125,6 @@ class RiskService:
         assessment = Assessment(assessment_id=str(uuid4()), asset=snapshot.asset, as_of=m.as_of,
                                 simulated=any(s.simulated for s in sources), session=session, oracle=oracle_health,
                                 metrics=metrics, score=score, recovery=recovery, events=events, sources=sources,
-                                liquidation_budgets_usd=liquidation_budgets(m, reference, vol, session,
-                                    issuer_haircut, oracle_health.haircut, p),
                                 evidence_hash=evidence_hash(evidence), configuration_version=p.fingerprint,
                                 model_version=p.model_version)
         self.store.put("assessment", snapshot.asset, m.as_of.isoformat(),

@@ -91,8 +91,6 @@ contract Deploy is Script, BlueDeploy {
         k.serialize("mockBStock", address(d.bStock));
         k.serialize("blueOracle", address(d.oracle));
         k.serialize("blueRouter", address(d.router));
-        k.serialize("managedCollateral", address(d.managedCollateral));
-        k.serialize("borrowPermission", address(d.permission));
         k.serialize("marketId", Id.unwrap(d.marketId));
         k.serialize("keeper", p.keeper);
         k.serialize("eligibilitySigner", p.signer);

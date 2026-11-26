@@ -12,8 +12,6 @@ export interface AssetRef {
   ticker: string;
   /** bStock token on BNB Chain (the registry asset key) */
   token: `0x${string}`;
-  /** Underlying bStock identity for issuer status when token is a managed receipt. */
-  statusToken?: `0x${string}`;
   /** Binance Spot symbol, e.g. TSLABUSDT. Defaults to `${symbol}USDT`. */
   spotSymbol?: string;
 }

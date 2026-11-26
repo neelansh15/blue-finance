@@ -28,7 +28,7 @@ export function isRegime(value: string): value is Regime {
 const WAD = 10n ** 18n;
 export const wadToNumber = (wad: bigint) => Number(wad) / Number(WAD);
 export const numberToWad = (value: number) => BigInt(Math.round(value * Number(WAD)));
-export const hMax = (params: Params) => Math.max(...REGIMES.slice(0, 4).map(r => params.haircut[r]));
+export const hMax = (params: Params) => Math.max(...Object.values(params.haircut));
 
 export const naivePricePerRaw = (feedPricePerUI: number) => feedPricePerUI;
 export const collateralValue = (raw: bigint, pricePerRaw: number, haircut: number) =>

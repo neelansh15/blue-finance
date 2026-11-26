@@ -11,17 +11,10 @@ from app.routing.engine import route_markets
 from app.routing.models import RoutingDecision, RoutingRequest
 from app.simulation.portfolio import default_scenarios, simulate
 from app.blue import BlueProposal, propose_blue
-from app.simulation.morpho import MorphoReplay, replay
+
+from app.aave import SharedReserveRequest, assess_shared_reserve
 
 router = APIRouter(prefix="/risk", tags=["Risk controller"])
-
-
-@router.post('/replay', summary='Replay explicit Morpho integer state, interest and partial liquidation')
-def replay_contract(body: MorphoReplay):
-    try:
-        return replay(body)
-    except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
 
 
 class ScoreResponse(Model):
@@ -96,8 +89,7 @@ def advisory(asset: str, request: Request, body: SimulateRequest):
     recommendation = svc.recommend_assessed(assessment, snapshot, body)
     scenarios = body.scenarios if body.scenarios is not None else default_scenarios()
     results = [simulate(assessment, snapshot, body.borrowers, s, svc.policy) for s in scenarios]
-    proposal = propose_blue(assessment, recommendation, svc.policy, request.app.state.blue_config,
-                            borrowers=body.borrowers, snapshot=snapshot)
+    proposal = propose_blue(assessment, recommendation, svc.policy, request.app.state.blue_config)
     svc.store.put('blue_proposal', assessment.asset, assessment.as_of.isoformat(), proposal.model_dump(mode='json'))
     return AdvisoryResponse(assessment=assessment, recommendation=recommendation, simulations=results, blue_proposal=proposal)
 
@@ -147,3 +139,8 @@ def market_status(asset: str, request: Request):
             'detail': 'Live market status unavailable; upstream 200/201 and valid fresh data required',
             'failures': failures, 'observations': [s.model_dump(mode='json') for s in observations]})
     return observations
+
+
+@router.post("/aave/shared-reserve", summary="Joint Aave V3 shared-USDT reserve stress; advisory only")
+def aave_shared_reserve(body: SharedReserveRequest):
+    return assess_shared_reserve(body)

@@ -3,5 +3,3 @@ out/
 cache/
 broadcast/
 *.log
-
-/test/fixtures/generated/
