@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -21,7 +23,17 @@ from app.services.store import AuditStore
 from app.simulation.portfolio import default_scenarios, simulate
 
 logger = logging.getLogger(__name__)
-ASSETS = {"NVDA": "BNB_STOCK_NVDA", "NVDAB": "BNB_STOCK_NVDA", "BNB_STOCK_NVDA": "BNB_STOCK_NVDA"}
+ASSETS = {
+    alias: canonical
+    for canonical, aliases in {
+        "BNB_STOCK_NVDA": ("NVDA", "NVDAB", "BNB_STOCK_NVDA"),
+        "BNB_STOCK_QQQ": ("QQQ", "QQQB", "BNB_STOCK_QQQ"),
+        "BNB_STOCK_SPCX": ("SPACEX", "SPCX", "SPCXB", "BNB_STOCK_SPCX"),
+        "BNB_STOCK_TSLA": ("TSLA", "TSLAB", "TESLA", "BNB_STOCK_TSLA"),
+        "BNB_STOCK_GOOGL": ("GOOGL", "GOOGLB", "ALPHABET", "BNB_STOCK_GOOGL"),
+    }.items()
+    for alias in aliases
+}
 
 
 class UnsupportedAsset(ValueError):
@@ -38,6 +50,50 @@ class RiskService:
         self.provider, self.agent = provider or MockProviders(), agent or IssuerAgent()
         self.signer, self.chain_id, self.market_id = signer, chain_id, market_id
         self.optimiser = RuleBasedOptimiser(policy)
+        self._overview_lock = threading.Lock()
+        self._overview_cached = None
+        self._overview_cached_at = float('-inf')
+
+    def overview(self) -> dict:
+        """Share one baseline assessment per asset every five seconds across dashboard viewers."""
+        with self._overview_lock:
+            if self._overview_cached is not None and time.monotonic() - self._overview_cached_at < 5:
+                return self._overview_cached
+            started_at = time.monotonic()
+            rows = []
+            explanations = {
+                "volatility": "Price swings can reduce collateral value before a position can be closed.",
+                "liquidity": "Thin bids, wider spreads or slippage can make collateral harder to sell.",
+                "issuer": "Issuer restrictions or changes to backing can affect redemption and token value.",
+                "oracle": "Stale or divergent oracle prices can misstate collateral value.",
+                "concentration": "Concentrated holdings can amplify losses when large holders sell.",
+            }
+            for asset in dict.fromkeys(self.assets.values()):
+                aliases = [key for key, value in self.assets.items() if value == asset]
+                try:
+                    assessment, _ = self.assess(aliases[0], AssessRequest())
+                    score = assessment.score
+                    rows.append({
+                        "asset": asset, "aliases": aliases, "status": "available",
+                        "as_of": assessment.as_of, "simulated": assessment.simulated,
+                        "health_score": round(100 - score.overall, 1),
+                        "risk_score": score.overall, "category": score.category,
+                        "confidence": score.confidence, "data_quality": score.data_quality,
+                        "factors": [{"name": key, "score": value,
+                                     "description": explanations.get(key, "Model risk factor.")}
+                                    for key, value in score.factors.items()],
+                        "description": " ".join(explanations.get(key, key) for key in score.key_contributors[:2])
+                            + (" SpaceX uses a hypothetical exchange calendar, token backing and oracle; this is a demo assessment."
+                               if asset == "BNB_STOCK_SPCX" and assessment.simulated else ""),
+                    })
+                except Exception:
+                    logger.exception("Dashboard assessment unavailable for %s", asset)
+                    rows.append({"asset": asset, "aliases": aliases, "status": "unavailable",
+                                 "description": "The backend could not assess this asset. Retry on the next refresh."})
+            self._overview_cached = {"generated_at": datetime.now(timezone.utc),
+                                     "refresh_after_seconds": 5, "assets": rows}
+            self._overview_cached_at = started_at
+            return self._overview_cached
 
     def asset_id(self, asset: str) -> str:
         if asset.upper() not in self.assets:
@@ -137,18 +193,25 @@ class RiskService:
         rows = self.store.history("assessment", self.asset_id(asset), 1)
         return Assessment.model_validate(rows[0]["assessment"]) if rows else None
 
+    def require_position_support(self, asset: str) -> None:
+        if self.asset_id(asset) != "BNB_STOCK_NVDA":
+            raise UnsupportedAsset("Stock health is supported; position advisory requires an asset-specific lending policy, currently configured for NVDAb only")
+
     def simulate(self, asset: str, request: SimulateRequest) -> tuple[Assessment, list[SimulationResult]]:
+        self.require_position_support(asset)
         assessment, snapshot = self.assess(asset, request)
         borrowers = request.borrowers if request.borrowers is not None else synthetic_borrowers()
         scenarios = request.scenarios if request.scenarios is not None else default_scenarios()
         return assessment, [simulate(assessment, snapshot, borrowers, s, self.policy) for s in scenarios]
 
     def recommend(self, asset: str, request: SimulateRequest) -> Recommendation:
+        self.require_position_support(asset)
         assessment, snapshot = self.assess(asset, request)
         return self.recommend_assessed(assessment, snapshot, request)
 
     def recommend_assessed(self, assessment: Assessment, snapshot: Snapshot, request: SimulateRequest) -> Recommendation:
         """Reuse one evidence snapshot for the frontend summary and stress results."""
+        self.require_position_support(assessment.asset)
         parameters, reasons = self.optimiser.recommend(assessment)
         borrowers = request.borrowers if request.borrowers is not None else synthetic_borrowers()
         impact = simulate(assessment, snapshot, borrowers, Scenario(name="proposed_router_policy",

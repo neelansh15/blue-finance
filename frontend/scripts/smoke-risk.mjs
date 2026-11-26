@@ -23,6 +23,27 @@ async function advisory(scenario, borrowers) {
   return data;
 }
 
+const overviewResponse = await fetch(new URL("/api/risk/overview", origin), { signal: AbortSignal.timeout(60_000) });
+assert.equal(overviewResponse.status, 200);
+assert.equal(overviewResponse.headers.get("cache-control"), "no-store");
+const overview = await overviewResponse.json();
+assert.equal(overview.refresh_after_seconds, 5);
+const nvda = overview.assets.find(row => row.aliases.includes("NVDAB"));
+assert.equal(nvda.status, "available");
+assert.equal(nvda.simulated, true);
+assert.ok(Math.abs(nvda.health_score - (100 - nvda.risk_score)) <= .051);
+assert.equal(nvda.factors.length, 5);
+for (const alias of ["NVDAB", "QQQB", "SPCXB", "TSLAB", "GOOGLB"]) {
+  const row = overview.assets.find(row => row.aliases.includes(alias));
+  assert.equal(row.status, "available", `${alias} coverage missing`);
+  assert.equal(row.simulated, true);
+  assert.equal(row.factors.length, 5);
+  assert.ok(Math.abs(row.health_score - (100 - row.risk_score)) <= .051);
+}
+assert.ok(nvda.description.length > 0);
+assert.deepEqual(await (await fetch(new URL("/api/risk/overview", origin))).json(), overview);
+console.log("PASS stock overview: health, five explained factors, simulated provenance and shared five-second cache");
+
 const borrowers = [{ borrower_id: "demo-position", collateral_quantity: 10, debt_usd: 350, liquidation_threshold: .625 }];
 for (const scenario of ["baseline", "friday", "saturday"]) {
   const data = await advisory(scenario, borrowers);

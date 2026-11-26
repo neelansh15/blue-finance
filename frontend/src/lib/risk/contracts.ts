@@ -122,3 +122,24 @@ export function parseRiskRequest(value: unknown): RiskRequest {
 
 export function isExpired(expiresAt: string, now = Date.now()) { return Date.parse(expiresAt) <= now; }
 export function statusFresh(at: string, now = Date.now()) { const age = now - Date.parse(at); return age >= 0 && age <= 300_000; }
+
+export function parseOverview(value: unknown) {
+  const root = object(value);
+  const assets = list(root.assets, item => {
+    const row = object(item);
+    const base = { asset: text(row.asset), aliases: list(row.aliases, text), description: text(row.description) };
+    if (row.status === "unavailable") return { ...base, status: "unavailable" as const };
+    if (row.status !== "available" || !["LOW", "MODERATE", "ELEVATED", "HIGH", "CRITICAL"].includes(text(row.category))) return invalid();
+    const risk = number(row.risk_score, 100), health = number(row.health_score, 100);
+    if (Math.abs(health - (100 - risk)) > .051) return invalid();
+    return { ...base, status: "available" as const, as_of: date(row.as_of), simulated: boolean(row.simulated),
+      health_score: health, risk_score: risk, category: text(row.category), confidence: number(row.confidence, 1),
+      data_quality: list(row.data_quality, text), factors: list(row.factors, item => {
+        const factor = object(item);
+        return { name: text(factor.name), score: number(factor.score, 100), description: text(factor.description) };
+      }) };
+  });
+  if (new Set(assets.map(a => a.asset)).size !== assets.length) return invalid();
+  return { generated_at: date(root.generated_at), refresh_after_seconds: number(root.refresh_after_seconds, 3600), assets };
+}
+export type RiskOverview = ReturnType<typeof parseOverview>;
