@@ -36,7 +36,7 @@ export const articles: DocArticle[] = [
   {
     slug: "",
     title: "Blue Finance docs",
-    summary: "Blue is a lending prototype for tokenized US stocks on BNB Chain. It runs one Aave V3 pool with a shared USDT reserve and uses the US market calendar to limit new borrowing against each stock.",
+    summary: "Blue is a lending protocol for tokenized US stocks on BNB Chain. One Aave V3 pool shares USDT liquidity across five bStocks. New borrowing follows the limits for each stock and US market session.",
     sections: [
       {
         id: "why-blue",
@@ -47,17 +47,17 @@ export const articles: DocArticle[] = [
         id: "protocol-at-a-glance",
         title: "Protocol at a glance",
         body: <Table columns={["Component", "Responsibility"]} rows={[
-          [<Link href="/docs/markets">BluePool</Link>, "One Aave V3.6 pool on BNB Chain. A shared USDT reserve plus five collateral-only bStock reserves: TSLAB, NVDAB, QQQB, SPCXB and GOOGLB."],
+          [<Link href="/docs/markets">BluePool</Link>, "One Aave V3.6 pool with a shared USDT reserve and five collateral-only bStock reserves."],
           [<Link href="/docs/borrowing-rules">StockBorrowControls</Link>, "Signed eligibility, keeper heartbeat, guardian hold and per-stock debt caps that gate new borrowing."],
           [<Link href="/docs/oracle">StockPriceSource</Link>, "Prices each stock from Atlas with separate standards for liquidation and new borrowing. USDT is priced by Chainlink."],
           [<Link href="/docs/market-status">MarketCalendar</Link>, "Gives each stock a market status from the US Eastern calendar, with bounded keeper and admin overrides."],
-          [<Link href="/docs/liquidation">Liquidation</Link>, "Aave’s standard liquidationCall at a fixed 62.5% threshold."],
+          [<Link href="/docs/liquidation">Liquidation</Link>, "Aave’s liquidation mechanism uses a threshold independent of the market calendar."],
         ]} />,
       },
       {
         id: "prototype-scope",
-        title: "What you can try",
-        body: <p>The <Link href="/app/dashboard">app</Link> uses simulated positions and balances. No real transactions are sent. The contracts deploy to a local Anvil fork of BNB Chain with the real bStocks, Atlas feeds and USDT. Read the <Link href="/docs/development">fork and testing guide</Link> to reproduce the contract scenarios, or <Link href="/docs/roadmap">see what still needs verification</Link> before a live deployment. The earlier Morpho Blue prototype is archived in <code>protocol-old/</code>.</p>,
+        title: "BNB Chain launch",
+        body: <p>The roadmap calls for a capped BNB Chain mainnet launch. The <Link href="/docs/markets">pool guide</Link> covers supported collateral and the shared USDT reserve. See <Link href="/docs/roadmap#verification">launch preparations</Link> for eligibility, monitoring and risk calibration.</p>,
       },
     ],
     sources: [
@@ -69,7 +69,7 @@ export const articles: DocArticle[] = [
   {
     slug: "markets",
     title: "Pool model and accounting",
-    summary: "Blue runs one Aave V3 pool with a single USDT reserve. Lenders and borrowers share the same liquidity, and each account borrows against one collateral stock.",
+    summary: "Blue’s Aave V3 pool uses a single USDT reserve. Lenders supply USDT once, and each borrowing account uses one bStock as collateral.",
     sections: [
       {
         id: "reserves",
@@ -77,7 +77,7 @@ export const articles: DocArticle[] = [
         body: <><p>BluePool is built on Aave V3 Origin 3.6.0. It has six reserves.</p><Table columns={["Reserve", "Role"]} rows={[
           [<code>USDT</code>, "The only borrowable asset. Lenders supply it and borrowers draw it from the same shared liquidity."],
           [<code>TSLAB, NVDAB, QQQB, SPCXB, GOOGLB</code>, "Real bStock tokens on BNB Chain. Collateral only. Each account uses one collateral stock."],
-        ]} /><p>Lenders receive <strong>bluUSDT</strong>, Blue’s name for the Aave aToken. Borrower debt is recorded as <strong>bluDebtUSDT</strong>, an Aave variable debt token. Withdrawals depend on how much USDT is available. Flash loans are disabled in the prototype.</p></>,
+        ]} /><p>Lenders receive <strong>bluUSDT</strong>, Blue’s name for the Aave aToken. Borrower debt is recorded as <strong>bluDebtUSDT</strong>, an Aave variable debt token. USDT withdrawals depend on available liquidity. Flash loans are disabled.</p></>,
       },
       {
         id: "supplier-and-borrower-flows",
@@ -91,13 +91,13 @@ export const articles: DocArticle[] = [
           ["Base LTV", "50% for every stock"],
           ["Liquidation threshold", "62.5% for every stock"],
           ["Liquidation bonus", "5%"],
-        ]} /><p>These are prototype values and need calibration against gap history and executable liquidation depth before launch.</p></>,
+        ]} /><p>These values come from the deployment script. Mainnet parameters are subject to calibration against historical price gaps and executable liquidation depth.</p></>,
       },
       {
         id: "health",
         title: "Position health",
         body: <><pre><code>{`Collateral value = collateral × stock price
-Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health factor below 1 makes the position liquidatable. The threshold does not depend on market status, so a calendar change alone leaves the health factor unchanged when prices and debt are fixed.</p></>,
+Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>Below 1, liquidation can proceed when the pool has usable prices and collateral transfers are permitted. With prices and debt fixed, a calendar change leaves the health factor unchanged.</p></>,
       },
     ],
     sources: [
@@ -113,15 +113,15 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health f
     sections: [
       {
         id: "calendar",
-        title: "Status and borrowing discount",
-        body: <><Table columns={["Status", "When it applies (ET)", "Borrowing discount"]} rows={[
-          [<code>OPEN</code>, "Regular session, 9:30am to 4:00pm.", "0%"],
-          [<code>EXTENDED</code>, "Pre-market and after-hours.", "4%"],
-          [<code>CLOSED</code>, "Weekday overnight.", "10%"],
-          [<code>WEEKEND</code>, "Weekends and exchange holidays.", "15%"],
-          [<code>HALTED</code>, "Trading halt set by the keeper or admin.", "New borrowing blocked"],
-          [<code>CORP_ACTION</code>, "Split or other corporate action in progress.", "New borrowing blocked"],
-        ]} /><p>The discount lowers borrowing power only. For example, $1,000 of collateral at the 50% base LTV supports $500 in regular hours and $425 with the 15% weekend discount. The health factor and liquidation use the 62.5% threshold and do not change with the calendar. These figures are illustrative.</p></>,
+        title: "Borrowing limits by market status",
+        body: <><p>The table shows the values configured in the deployment script. The debt cap applies to accrued USDT debt across all borrowers using the same stock.</p><Table columns={["Status", "When it applies (ET)", "Effective LTV", "Debt cap per stock"]} rows={[
+          [<code>OPEN</code>, "Regular session, 9:30 a.m. to 4 p.m.", "50%", "400 USDT"],
+          [<code>EXTENDED</code>, "Pre-market and after-hours.", "48%", "300 USDT"],
+          [<code>CLOSED</code>, "Overnight before a trading day.", "45%", "200 USDT"],
+          [<code>WEEKEND</code>, "Friday 8 p.m. to Sunday 8 p.m. and exchange holidays.", "42.5%", "100 USDT"],
+          [<code>HALTED</code>, "Trading halt set by a keeper or admin.", "Borrowing blocked", "Not applicable"],
+          [<code>CORP_ACTION</code>, "Split or other corporate action in progress.", "Borrowing blocked", "Not applicable"],
+        ]} /><p>With $1,000 in collateral, the weekend LTV sets a $425 collateral-based limit. The stock’s 100 USDT cap limits total debt against that stock. A new loan depends on the remaining room under that cap and the available USDT in the pool.</p><p>The current LTV also applies to withdrawals while debt is outstanding. Liquidation uses a separate threshold, so a session change alone leaves health unchanged when prices and debt are fixed.</p></>,
       },
       {
         id: "overrides",
@@ -131,13 +131,13 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health f
       {
         id: "halts",
         title: "Halts and corporate actions",
-        body: <p><code>HALTED</code> and <code>CORP_ACTION</code> block new borrowing for that stock only. Other stocks continue drawing USDT from the shared reserve, and repayment always works. Set <code>CORP_ACTION</code> before a known split. Otherwise a feed that updates before the multiplier looks like a crash and can trigger liquidations.</p>,
+        body: <p>A stock-specific <code>HALTED</code> or <code>CORP_ACTION</code> override blocks new borrowing against that stock and withdrawals of collateral backing outstanding debt. Repayment remains available. Other eligible stocks can draw from the shared reserve while USDT is available. Set <code>CORP_ACTION</code> before a known split. A feed that updates before the multiplier can otherwise trigger liquidation.</p>,
       },
     ],
     sources: [
       { path: "protocol/src/MarketCalendar.sol", title: "MarketCalendar" },
       { path: "protocol/src/libraries/EasternCalendar.sol", title: "EasternCalendar" },
-      { path: "keepers/README.md", title: "Keeper behavior and configuration" },
+      { path: "protocol/script/BlueV3Deployment.sol", title: "Configured limits and caps" },
     ],
   },
   {
@@ -153,17 +153,17 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health f
           <li>The price is inside a fixed price band for the stock.</li>
           <li>The multiplier matches the one from the last accepted price.</li>
           <li>The stock is not in <code>CORP_ACTION</code>.</li>
-        </ul><p>A large move is accepted for valuation, so a genuine crash reaches liquidators immediately without waiting for review. Atlas bStock feeds quote per raw token and have 8 decimals.</p></>,
+        </ul><p>A large move within the permitted price band can affect valuation as soon as it appears in the feed. Atlas bStock feeds quote per raw token and have 8 decimals.</p></>,
       },
       {
         id: "borrow-price",
         title: "Price for new borrowing",
-        body: <p>New borrowing also needs the keeper to have accepted a round under 2 hours old. A move of more than 20% stops new loans until the admin calls <code>acceptReference()</code>. Anyone can call <code>refresh()</code> on the price source to accept new feed rounds that pass the checks.</p>,
+        body: <p>New borrowing requires the latest stock feed price and timestamp to match the accepted values. The round can be at most 2 hours old. The configured reporter or admin can call <code>refresh()</code> to accept a new round that passes the checks. A move greater than 20% from the accepted price requires the admin to accept a fresh reference with <code>acceptReference()</code>.</p>,
       },
       {
         id: "usdt-and-second-source",
         title: "USDT and a second source",
-        body: <><p>USDT is priced from Chainlink’s USDT/USD feed. A round over an hour old stops new borrowing, and valuation accepts rounds up to 24 hours old.</p><p><strong>The demo prices every stock with Atlas alone.</strong> StockPriceSource supports an optional second feed that must agree with Atlas before new borrowing, never for liquidation. <code>AproCrossCheck.sol</code> holds an APRO setup for TSLAB, NVDAB, QQQB and SPCXB. It is not used in the demo, because APRO feeds only answer contracts APRO has whitelisted.</p></>,
+        body: <><p>Chainlink’s USDT/USD feed prices USDT. A round over an hour old stops new borrowing. Valuation accepts valid rounds up to 24 hours old.</p><p>The BNB Chain configuration uses Atlas for all five bStocks. An optional second feed can cross-check Atlas for new loans. Liquidations use the primary feed. The APRO module for TSLAB, NVDAB, QQQB and SPCXB requires APRO to allowlist Blue’s contracts.</p></>,
       },
       {
         id: "splits",
@@ -181,17 +181,17 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health f
   {
     slug: "borrowing-rules",
     title: "Borrowing rules and eligibility",
-    summary: "StockBorrowControls gates every new loan with eligibility, a keeper heartbeat, a guardian hold and per-stock debt caps. Repayment is never blocked.",
+    summary: "New loans require wallet eligibility, current keeper permission and usable prices. The pool enforces borrowing limits and caps. These stock-specific controls leave USDT repayment available.",
     sections: [
       {
         id: "borrow-checks",
         title: "Checks on a new borrow",
         body: <><p>The pool checks the debt owner’s signed eligibility, the stock’s current borrow permission, the LTV for the stock’s current market status, and USDT caps. Borrowing is blocked for a stock when:</p><ul>
           <li>its status is <code>HALTED</code> or <code>CORP_ACTION</code>;</li>
-          <li>the keeper heartbeat has lapsed and the 30-minute recovery window has not completed;</li>
+          <li>the keeper heartbeat has lapsed or the 30-minute recovery window is still in progress;</li>
           <li>a guardian hold is set;</li>
           <li>the price is too old or needs admin review for new borrowing.</li>
-        </ul><p>Other stocks keep borrowing, and repayment always works.</p></>,
+        </ul><p>A stock-specific restriction leaves other eligible stocks able to borrow while USDT is available. The pool continues to accept repayment during these restrictions.</p></>,
       },
       {
         id: "caps",
@@ -201,12 +201,12 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health f
       {
         id: "withdrawals",
         title: "Withdrawals with debt",
-        body: <p>A missed heartbeat alone still lets borrowers withdraw collateral within the current limit when the price is valid, as on Zona Lend. A halt, corporate action or guardian hold blocks withdrawals while the account has debt.</p>,
+        body: <p>A missed heartbeat or a price that is too old for new borrowing still permits withdrawals of debt-backed collateral within the current LTV when valuation remains usable. A halt, corporate action or guardian hold blocks those withdrawals. Transfers of the collateral’s bluToken follow the same rule for the sender.</p>,
       },
       {
         id: "eligibility-and-admin",
         title: "Eligibility and admin controls",
-        body: <p>A configured signer signs an eligibility for each borrower and stock. The borrower registers it on the controls contract against <code>eligibilityDigest(borrower, stock, nonces(borrower), expiry)</code>. The keeper reports each stock’s health and renews borrow permission. The guardian can hold borrowing or lower caps, and the admin can release a hold or raise caps.</p>,
+        body: <p>A configured signer issues an approval for a borrowing wallet and stock. The borrower registers it on the controls contract against <code>eligibilityDigest(borrower, stock, nonces(borrower), expiry)</code>. The keeper reports each stock’s health and renews borrow permission. The guardian can place a hold or lower caps. The admin can release a hold or raise caps.</p>,
       },
     ],
     sources: [
@@ -218,22 +218,22 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health f
   {
     slug: "liquidation",
     title: "Liquidation and risk",
-    summary: "Blue uses Aave’s standard liquidationCall. A position is liquidatable when its health factor falls below 1 at the fixed 62.5% threshold.",
+    summary: "Blue uses Aave’s liquidation mechanism. Liquidation requires a health factor below 1, usable prices and a permitted collateral transfer.",
     sections: [
       {
         id: "how-liquidation-works",
         title: "Liquidation flow",
         body: <ol>
           <li>Aave computes the health factor: collateral value × 62.5% ÷ debt.</li>
-          <li>Below 1, any liquidator can call <code>liquidationCall</code>, repay part of the debt in USDT and receive collateral with a 5% bonus.</li>
-          <li>The price comes from the live Atlas round under the valuation rules above, so a genuine crash reaches liquidators immediately.</li>
+          <li>Below 1, a liquidator can call <code>liquidationCall</code>, repay eligible debt in USDT and receive collateral with the configured 5% bonus.</li>
+          <li>The pool values collateral using the latest Atlas round that meets the <Link href="/docs/oracle#price">valuation rules</Link>.</li>
           <li>If collateral cannot cover the debt, Aave’s deficit accounting records the bad debt.</li>
         </ol>,
       },
       {
         id: "risk-boundaries",
         title: "Where the buffer stops",
-        body: <><p>The borrowing discount and base LTV leave room below the 62.5% threshold for ordinary session changes. A genuine price gap, accrued interest or a halt can still make a position liquidatable.</p><p>The bStock issuer can pause a token or change its compliance rules, which would block supply, withdrawal and liquidation transfers. A shortfall is shared across the USDT reserve, so USDT suppliers carry exposure to every listed stock. Liquidation stops for a stock while its valuation is unusable, for example during <code>CORP_ACTION</code>.</p></>,
+        body: <><p>The borrowing discount applies to borrowing and withdrawals with debt. A drop in collateral value or an increase in debt can push the health factor below 1.</p><p>The bStock issuer can pause a token or change its compliance rules, which can block supply, withdrawal and liquidation transfers. A shortfall is shared across the USDT reserve, so USDT suppliers carry exposure to every listed stock. Liquidation stops for a stock while its valuation is unusable, including during <code>CORP_ACTION</code>.</p></>,
       },
     ],
     sources: [
@@ -263,17 +263,17 @@ forge test`}</code></pre><p>Test tokens and test feeds live in <code>test/utils/
           [<code>BluePoolTest</code>, "Offline scenarios with test bStocks, test feeds and test USDT, so halts, splits and price gaps can be scripted."],
           [<code>BluePoolBnbForkTest</code>, "The same scenarios with real USDT in a local BNB mainnet fork."],
           [<code>BscMainnetForkTest</code>, "The real listing: all five bStocks, their Atlas feeds and Chainlink USDT/USD. A TSLAB loan goes through supply, borrow, repay and withdraw."],
-          [<code>AproCrossCheckForkTest</code>, "The optional APRO module against live feeds. It agrees with Atlas once whitelisting is simulated, and refuses contracts APRO has not whitelisted."],
+          [<code>AproCrossCheckForkTest</code>, "The optional APRO module against live feeds, with checks for both allowlisted and unauthorized callers."],
         ]} />,
       },
       {
         id: "fork-deployment",
         title: "Local fork deployment",
-        body: <><p><code>DeployBsc.s.sol</code> deploys the real listing. Start an Anvil fork, set <code>BLUE_KEEPER</code>, <code>BLUE_GUARDIAN</code> and <code>BLUE_SIGNER</code> (the guardian must differ from the deployer), then run the script against the local RPC.</p><pre><code>{`anvil --fork-url "$BSC_RPC_URL" --chain-id 56
+        body: <><p><code>DeployBsc.s.sol</code> configures the pool with the BNB Chain assets and feeds. Start an Anvil fork, set <code>BLUE_KEEPER</code>, <code>BLUE_GUARDIAN</code> and <code>BLUE_SIGNER</code>, then dry-run the script against the local RPC. Use a guardian address different from the deployer.</p><pre><code>{`anvil --fork-url "$BSC_RPC_URL" --chain-id 56
 
 forge script script/DeployBsc.s.sol:DeployBsc \
   --rpc-url http://127.0.0.1:8545 \
-  --account <local-keystore> --sender <local-deployer>`}</code></pre><p>The script checks the chain ID and USDT code, and refuses a non-Anvil RPC unless <code>BLUE_ALLOW_MAINNET=true</code>. A mainnet broadcast needs explicit owner approval. Set <code>BLUE_SEED_USDT</code> to seed the reserve.</p></>,
+  --account <local-keystore> --sender <local-deployer>`}</code></pre><p>To deploy on the local fork, repeat the <code>forge script</code> command with <code>--broadcast</code> against the same local RPC. Set <code>BLUE_SEED_USDT</code> in raw 18-decimal units to seed the reserve from a funded deployer account.</p><p>The script checks the chain ID and USDT code. A mainnet broadcast requires <code>BLUE_ALLOW_MAINNET=true</code> and explicit owner approval.</p></>,
       },
       {
         id: "listing",
@@ -306,11 +306,11 @@ forge script script/DeployBsc.s.sol:DeployBsc \
       },
       {
         id: "verification",
-        title: "Before launch",
+        title: "Mainnet launch preparations",
         body: <ul>
           <li>Calibrate the risk parameters in <code>BlueV3Deployment.sol</code> against price-gap history and executable liquidation depth.</li>
           <li>Confirm with Atlas which feed instances Blue should use, and decide on a second price source.</li>
-          <li>Seed the holiday calendar and integrate the keepers and halt signals.</li>
+          <li>Connect the app and keepers to the Aave pool. Set up the signer service, halt monitoring and holiday calendar.</li>
           <li>Confirm issuer transfer permissions for bStocks and how shared-reserve deficits are handled.</li>
           <li>Complete a security review and confirm license eligibility for production use.</li>
         </ul>,

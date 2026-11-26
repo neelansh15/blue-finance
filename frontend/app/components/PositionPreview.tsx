@@ -51,7 +51,7 @@ export default function PositionPreview({
       </header>
 
       <dl className="position-ceiling">
-        <dt>Borrow limit</dt>
+        <dt>Collateral-based limit</dt>
         <dd className="num" aria-live="polite">
           <AnimatedValue value={actual.limit}>{visual.limit}</AnimatedValue>
         </dd>
@@ -72,7 +72,7 @@ export default function PositionPreview({
           <dd className="num">{DEBT.toLocaleString("en-US")} USDT</dd>
         </div>
         <div>
-          <dt>Can still borrow</dt>
+          <dt>Room under the LTV limit</dt>
           <dd className="num"><AnimatedValue value={actual.headroom}>{visual.headroom}</AnimatedValue></dd>
         </div>
         <div>
@@ -81,8 +81,7 @@ export default function PositionPreview({
         </div>
       </dl>
       <p className="position-note">
-        The market status discount lowers borrowing power only. Health factor and liquidation use the
-        {" "}{LIQUIDATION_THRESHOLD * 100}% liquidation threshold whatever the status.
+        This example holds prices and debt fixed. New loans also depend on the stock’s remaining debt cap and available USDT.
       </p>
     </div>
   );

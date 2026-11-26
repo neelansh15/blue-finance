@@ -7,7 +7,7 @@ import { IconArrow } from "./Icons";
 import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [
-  { href: "#market-status", label: "Simulator" },
+  { href: "#market-status", label: "Market hours" },
   { href: "#how", label: "How it works" },
   { href: "#risk", label: "Risk design" },
   { href: "#roadmap", label: "Roadmap" },
@@ -33,7 +33,6 @@ export default function SiteNav({ docs = false }: { docs?: boolean }) {
           ))}
         </ul>
         <div className="nav-actions">
-          <span className="nav-status"><span className="nav-status-prefix">Prototype · </span>Not live</span>
           <ThemeToggle />
           <details
             className="mobile-nav"
@@ -58,7 +57,7 @@ export default function SiteNav({ docs = false }: { docs?: boolean }) {
               ))}
             </ul>
           </details>
-          <Link className="btn launch-app" href="/app/dashboard">Launch App <IconArrow /></Link>
+          <Link className="btn launch-app" href="/app/dashboard">Open app <IconArrow /></Link>
         </div>
       </nav>
     </header>

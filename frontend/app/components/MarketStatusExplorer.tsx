@@ -115,7 +115,7 @@ export default function MarketStatusExplorer() {
               <desc id={`${id}-d`}>
                 Borrow LTV is 50% in the regular session, 48% in extended hours, 45% overnight (including Sunday from
                 8pm), and 42.5% from Friday 8pm until Sunday 8pm. The liquidation threshold stays at 62.5% throughout.
-                Prototype parameters.
+                Values are illustrative.
               </desc>
               <defs>
                 <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">

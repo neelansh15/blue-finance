@@ -21,7 +21,7 @@ const REPO = "https://github.com/neelansh15/blue-finance/blob/main";
 const STEPS = [
   {
     title: "Check eligibility",
-    body: "The fork demo uses a test signature. The planned eligibility service will check whether your wallet can borrow.",
+    body: "To borrow, your wallet needs a valid approval for the bStock you want to use as collateral.",
   },
   {
     title: "Supply a bStock",
@@ -29,24 +29,24 @@ const STEPS = [
   },
   {
     title: "Borrow USDT",
-    body: "Your loan limit starts at a 50% base LTV and shrinks with a borrowing discount when the stock’s market is closed. All borrowers draw from the same USDT reserve, and your debt is recorded as bluDebtUSDT.",
+    body: "Your borrowing limit depends on your collateral value, the stock’s market status, the remaining debt cap for that stock and the USDT available in the pool.",
   },
   {
     title: "Monitor your position",
-    body: "Liquidation uses a 62.5% threshold that does not change with the calendar. Compare your loan’s distance from liquidation during regular hours and over the weekend.",
+    body: "Track your health factor as prices and debt change. A position can be liquidated when its health factor falls below 1 and the pool can value and transfer the collateral.",
   },
 ];
 
 const FEATURES = [
   {
     icon: <IconMarketStatus />,
-    title: "Borrowing discounts for market hours",
-    body: "Each stock has a market status from the US Eastern calendar: OPEN, EXTENDED, CLOSED or WEEKEND. The borrowing discount is 0%, 4%, 10% and 15%. It lowers how much you can newly borrow only. The health factor and liquidation threshold stay the same.",
+    title: "Lower borrowing limits outside regular hours",
+    body: "Blue lowers each stock’s loan-to-value limit after the regular session. That limit also applies if you withdraw collateral while you still owe USDT. With prices and debt held fixed, a session change leaves your health factor the same.",
   },
   {
     icon: <IconOracle />,
-    title: "Separate prices for borrowing and liquidation",
-    body: "Liquidation reads the live Atlas price when it is under 24 hours old, inside a fixed price band and not in a corporate action, so a real crash reaches liquidators immediately. New borrowing also needs a keeper-accepted price under 2 hours old, and a move over 20% needs admin review. USDT is priced by Chainlink.",
+    title: "Stricter price checks for new loans",
+    body: "Atlas supplies bStock prices and Chainlink prices USDT. A valid price gap can affect an existing loan’s health as soon as it appears in the feed. A large gap pauses new borrowing against the stock until an admin accepts a fresh price.",
   },
   {
     icon: <IconSplit />,
@@ -56,39 +56,39 @@ const FEATURES = [
   {
     icon: <IconHalt />,
     title: "Trading halts, per stock",
-    body: "HALTED and CORP_ACTION block new borrowing against that stock only. Other stocks keep lending from the shared USDT reserve, and repayment always works. Per-stock debt caps tighten as the market status gets more conservative.",
+    body: "When Tesla is halted, Blue blocks new Tesla-backed loans and withdrawals of Tesla collateral that still backs a loan. Borrowers can repay in USDT. Other eligible stocks can still draw from the shared reserve when USDT is available.",
   },
   {
     icon: <IconShield />,
     title: "Eligibility and keeper checks",
-    body: "StockBorrowControls checks a signed eligibility for each account and stock, and a keeper heartbeat with a 30-minute recovery window. A guardian can hold borrowing. If monitoring lapses, borrowers can still withdraw collateral within their limit, as on Zona Lend.",
+    body: "Blue requires a valid approval for the borrowing wallet and stock. If monitoring lapses, new loans pause. Borrowers with debt can still withdraw within the current loan-to-value limit if the pool has valid prices and no active halt, corporate action or guardian hold applies.",
   },
   {
     icon: <IconSteps />,
     title: "Liquidation with Aave",
-    body: "Anyone can call Aave’s standard liquidationCall when collateral value × 62.5% ÷ debt falls below 1. The liquidation bonus is 5%. If collateral cannot cover the debt, Aave’s deficit accounting records the bad debt.",
+    body: "Aave uses collateral value and accrued debt to calculate your health factor. Below 1, a liquidator can repay debt and take collateral when price and transfer checks pass. Any shortfall affects the shared USDT reserve.",
   },
 ];
 
 const ROADMAP = [
   {
-    tag: "Now",
-    title: "Prototype",
+    tag: "Pool design",
+    title: "Shared USDT liquidity",
     items: [
-      "One Aave V3 pool with a shared USDT reserve and five bStock collateral reserves, deployed on a local BNB Chain fork",
-      "Market-status borrowing discounts, per-stock debt caps and Atlas pricing",
+      "One Aave V3 pool with five bStock collateral reserves",
+      "Atlas stock pricing and borrowing limits for each stock and session",
     ],
     now: true,
   },
   {
-    tag: "Phase 2",
-    title: "Production controls",
-    items: ["Eligibility service and production halt monitoring", "A second price source (APRO) once APRO whitelists Blue"],
+    tag: "Launch preparation",
+    title: "Eligibility and monitoring",
+    items: ["Connect the app and keepers to the pool", "Set up wallet eligibility, halt monitoring and the holiday calendar"],
   },
   {
-    tag: "Phase 3",
-    title: "Calibration and review",
-    items: ["Historical gap analysis and risk parameters", "Holiday calendar, keeper integration and a security review"],
+    tag: "Mainnet",
+    title: "Capped BNB Chain launch",
+    items: ["Calibrate launch limits against price gaps and liquidation depth", "Complete security review and confirm production license eligibility"],
   },
   {
     tag: "Exploratory",
@@ -99,7 +99,7 @@ const ROADMAP = [
 
 const DOCS = [
   { file: "architecture-v3.md", title: "Protocol architecture", body: "Aave V3 pool, stock borrow controls, pricing and liquidation." },
-  { file: "protocol/README.md", title: "Contracts and deployment", body: "Aave V3 contracts, BNB Chain listing, tests and fork deployment." },
+  { file: "protocol/README.md", title: "Contracts and deployment", body: "Aave V3 contracts, BNB Chain asset configuration and deployment instructions." },
   { file: "README.md", title: "Project overview", body: "Blue’s scope and research files." },
   { file: "idea-progression.md", title: "Design decisions", body: "How the project direction evolved." },
 ];
@@ -119,10 +119,10 @@ export default function Home() {
                 <span>Borrow against tokenized stocks.</span> <em>Keep your stock exposure.</em>
               </h1>
               <p className="lead">
-                Blue is building USDT loans backed by real tokenized US stocks on BNB Chain, from one Aave V3 pool with shared USDT liquidity. When a stock’s market closes, Blue lowers how much you can newly borrow against it to account for price gaps at the next open.
+                Blue brings USDT loans backed by Binance bStocks into one Aave V3 pool on BNB Chain. Borrowing limits are set per stock and tighten outside regular US market hours.
               </p>
               <div className="ctas">
-                <Link className="btn" href="/app/simplified">Try in Simplified Mode <IconArrow /></Link>
+                <Link className="btn" href="/app/simplified">Explore the app <IconArrow /></Link>
                 <Link className="text-link" href="/docs/markets">Read the architecture <IconArrow /></Link>
               </div>
             </div>
@@ -155,8 +155,8 @@ export default function Home() {
         <section className="wrap market-demo" id="market-status" aria-labelledby="market-status-title" tabIndex={-1}>
           <div className="demo-heading">
             <div>
-              <h2 id="market-status-title">How a weekend changes your loan</h2>
-              <p>Pick a session or drag the timeline to see how the borrowing ceiling and liquidation health change for the same position.</p>
+              <h2 id="market-status-title">How market hours change your borrowing limit</h2>
+              <p>Pick a session or drag the timeline to see how much your collateral can support. With price and debt held fixed, the health factor stays the same.</p>
             </div>
             <span className="demo-caption">Illustrative · US Eastern</span>
           </div>
@@ -232,7 +232,7 @@ export default function Home() {
         <div className="wrap project-layout">
           <section id="roadmap" aria-labelledby="roadmap-title" tabIndex={-1}>
             <p className="eyebrow">Roadmap</p>
-            <h2 id="roadmap-title">One pool for the prototype</h2>
+            <h2 id="roadmap-title">The path to BNB Chain mainnet</h2>
             <ol className="roadmap">
               {ROADMAP.map((stage) => (
                 <li className={stage.now ? "stage-now" : undefined} key={stage.tag}>
@@ -253,7 +253,7 @@ export default function Home() {
               <li>
                 <Link href="/docs">
                   <IconDoc />
-                  <span><strong>Protocol docs</strong><small>How Blue’s Aave V3 pool, borrowing rules and fork deployment work.</small></span>
+                  <span><strong>Protocol docs</strong><small>How Blue’s Aave V3 pool, borrowing rules and liquidation work.</small></span>
                   <IconArrow />
                 </Link>
               </li>
@@ -277,7 +277,6 @@ export default function Home() {
             <BrandLogo />
           </a>
           <p>Built on BNB Chain and Aave V3</p>
-          <p>BNB Bangkok prototype · Not live</p>
         </div>
       </footer>
     </>
