@@ -5,12 +5,12 @@ import {
   derivePosition,
   hMax,
   validateBorrow,
-  type BlueClient,
-  type BlueSnapshot,
-} from "../../../src/lib/blue/client";
+  type DawnClient,
+  type DawnSnapshot,
+} from "../../../src/lib/dawn/client";
 import { hf, pct } from "./format";
 
-export default function BorrowForm({ s, client }: { s: BlueSnapshot; client: BlueClient }) {
+export default function BorrowForm({ s, client }: { s: DawnSnapshot; client: DawnClient }) {
   const id = useId();
   const [text, setText] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);

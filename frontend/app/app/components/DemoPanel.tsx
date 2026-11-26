@@ -11,13 +11,13 @@ import {
   healthFactor,
   numberToWad,
   wadToNumber,
-  type BlueSnapshot,
+  type DawnSnapshot,
   type DemoControls,
-} from "../../../src/lib/blue/client";
+} from "../../../src/lib/dawn/client";
 import { hf, usd } from "./format";
 
 /** Hidden developer panel. Mock only. Drives the four WS8 scenarios. */
-export default function DemoPanel({ s, demo }: { s: BlueSnapshot; demo: DemoControls }) {
+export default function DemoPanel({ s, demo }: { s: DawnSnapshot; demo: DemoControls }) {
   const [log, setLog] = useState<string>("");
   const [mText, setMText] = useState("2");
   const [priceText, setPriceText] = useState("");
@@ -76,7 +76,7 @@ export default function DemoPanel({ s, demo }: { s: BlueSnapshot; demo: DemoCont
         </div>
         <dl className="dapp-compare num">
           <div>
-            <dt>Blue oracle, per raw</dt>
+            <dt>Dawn oracle, per raw</dt>
             <dd>
               {usd(p.oracle.pricePerRaw)} {p.oracle.frozen ? "(frozen)" : ""} / health {hf(p.healthNow)}
             </dd>
@@ -103,7 +103,7 @@ export default function DemoPanel({ s, demo }: { s: BlueSnapshot; demo: DemoCont
             Set multiplier (m = {wadToNumber(s.uiMultiplier)})
           </button>
         </div>
-        <p className="dapp-hint">Scenario 3: a, b (Blue freezes, naive overvalues), c, d. Naive compares the ignore-m reading.</p>
+        <p className="dapp-hint">Scenario 3: a, b (Dawn freezes, naive overvalues), c, d. Naive compares the ignore-m reading.</p>
       </div>
 
       <div className="dapp-dev-group">
