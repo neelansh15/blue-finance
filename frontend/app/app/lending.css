@@ -394,12 +394,9 @@
   margin-top: 12px;
 }
 
-.app-market-ledger {
-  border: 1px solid light-dark(#132544, #b9caec);
-}
-
+.app-market-ledger,
 .app-positions li {
-  border: 1px solid light-dark(#132544, #b9caec);
+  border: 1px solid var(--rule-strong);
 }
 
 .app-market-ledger {
