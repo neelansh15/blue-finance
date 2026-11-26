@@ -8,7 +8,7 @@
 ![Morpho Blue](https://img.shields.io/badge/built%20on-Morpho%20Blue%20(unmodified)-2470FF)
 ![Solidity](https://img.shields.io/badge/solidity-0.8.28-363636?logo=solidity&logoColor=white)
 ![Foundry](https://img.shields.io/badge/tests-Foundry-orange)
-![Forge tests](https://img.shields.io/badge/forge%20tests-102%20passing-brightgreen)
+![Forge tests](https://img.shields.io/badge/forge%20tests-132%20passing-brightgreen)
 ![Next.js](https://img.shields.io/badge/frontend-Next.js-000000?logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/keepers-TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Status](https://img.shields.io/badge/status-hackathon%20demo-yellow)
@@ -30,6 +30,7 @@
 - [Repository layout](#repository-layout)
 - [Getting started](#getting-started)
 - [Testing](#testing)
+- [Enforced risk parameters](docs/enforced-risk-parameters.md)
 - [Design choices and limits](#design-choices-and-limits)
 - [Documentation](#documentation)
 - [Roadmap](#roadmap)
@@ -128,7 +129,7 @@ frontend/   Next.js landing page and /app demo                (see frontend/READ
 ```sh
 # contracts
 cd protocol-old
-forge install foundry-rs/forge-std@v1.9.7 --no-git
+bash ../scripts/bootstrap_protocol.sh
 forge build
 
 # keepers (dry-run by default)
@@ -146,15 +147,15 @@ Deploying to a local BNB fork: see [Morpho protocol README](protocol-old/README.
 
 ```sh
 cd protocol-old
-forge test                                  # 102 tests, fork tests use the public BSC RPC
+forge test                                  # fork tests use the public BSC RPC
 forge test --no-match-path 'test/fork/*'    # offline only
 ```
 
-Last run Nov 26, 2026: 116 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, BlueOracle, BlueRouter, LiquidatorCallback, Morpho BNB fork, and the scenarios.
+Last full contract run Nov 27, 2026: 132 passed, 0 failed, 0 skipped (including BNB fork tests). Suites: RegimeRegistry, BlueOracle, BlueRouter, LiquidatorCallback, Morpho BNB fork, and the scenarios.
 
 ## Parameters that need manual tuning
 
-Every value below is a **placeholder** until it is calibrated. Source: `protocol-old/script/BlueDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/blue/params.ts`.
+Every value below is a **placeholder** until it is calibrated. The declared source is `config/blue-risk.v1.json`; generated consumers feed `BlueDeploy`, the backend, keepers and frontend. Deployed settings must be read from contracts. See [enforcement, calibration and reviewed updates](docs/enforced-risk-parameters.md).
 
 ### What `targetLTV` is
 
@@ -191,7 +192,8 @@ Everything Blue adds around Morpho: the oracle, the regime registry, the router 
 | Haircut OPEN / EXTENDED / CLOSED / WEEKEND | 0 / 4 / 10 / 15 % | oracle (immutable per market) | Price cut applied in each regime | Gap-risk model: quantile of the stock's open-to-open gap for each closure type |
 | Haircut HALTED | 25% | oracle | Price cut during a halt | Historical post-halt move distribution. Currently above hMax, see limits |
 | Haircut CORP_ACTION | 10% | oracle | Price cut while a split or dividend settles | Typical feed lag around multiplier changes |
-| Margin | 2% | router, adjustable by admin (max 50%) | Extra buffer under `LLTV x (1 - hMax)` | Intraday volatility on top of the gap |
+| Margin | 2% | router; guardian can only raise, governance can adjust (max 50%) | Extra buffer under `LLTV x (1 - hMax)` | Intraday volatility on top of the gap |
+| Managed collateral supply cap | 100,000 raw tokens in the demo | managed wrapper, adjustable through router | Outstanding wrapped raw collateral; lowering only blocks additional wrapping | Verified token liquidity; convert normalized advice using the live multiplier |
 | Total borrow cap | set at deploy | router | Max market `totalBorrowAssets` | Liquidity depth, liquidator capacity |
 | Per-regime caps | set at deploy | router (guardian can only lower) | Max borrow per regime (0 disables) | Tighter in `CLOSED` and `WEEKEND` |
 | Eligibility attestation TTL | 15 min (hard max 1 h) | router | How long a signed approval lives | Compliance service latency |
@@ -206,10 +208,12 @@ Everything Blue adds around Morpho: the oracle, the regime registry, the router 
 | Override duration and refresh margin | 1 h / 10 min | keepers | Length of a halt override and when to renew | Poll period |
 | Unknown-source timeout | 10 min | keepers | How long an unreachable source is tolerated before `HALTED` | Source reliability |
 | Poll interval | 30 s (Nasdaq 60 s) | keepers | Halt monitor frequency | API rate limits |
+| Managed borrowing permission | 5 min TTL, 30 min recovery, 90 s maximum proof gap | permission contract and keepers | New exposure requires continuous healthy evidence; override expiry cannot reopen it | Source availability and reviewed recovery policy |
+| Governance relaxation delay | 24 h | optional risk executor | Delay reviewed margin and cap changes; immediate one-way guardian tightening | Governance response and proposal validity |
 
 ## Design choices and limits
 
-- **Unmodified Morpho Blue.** Blue adds an oracle, a registry and a router around the canonical singleton instead of forking it. The cost: the router is bypassable, because anyone can borrow on Morpho directly. A wrapper token is the planned fix.
+- **Unmodified Morpho Blue.** Legacy router markets remain bypassable. New managed markets combine restricted collateral deposits, router-controlled position accounts and expiring monitoring permission. Both position control and receipt restrictions are necessary; existing positions are not migrated automatically. The new contracts require independent security review.
 - **Haircut gap.** The `HALTED` haircut (25%) exceeds the `targetLTV` hMax (15%), so a position at the limit can become liquidatable in a halt. This is documented by a test.
 - **Jump breaker.** The oracle's upward-jump freeze is new and needs a security review.
 - **Atlas adapter.** The real Atlas feeds on BSC revert on `latestTimestamp()`, so `BlueOracle` reads them through `latestRoundData()`. The oracle change needs an Opus-level security review.
@@ -220,6 +224,7 @@ Everything Blue adds around Morpho: the oracle, the regime registry, the router 
 
 - [Architecture v3](architecture-v3.md) covers the planned Aave V3 pool with shared USDT liquidity and stock-specific borrowing controls.
 - [Architecture v2](architecture-v2.md) records the earlier Aave V4 hub and spoke proposal.
+- [docs/enforced-risk-parameters.md](docs/enforced-risk-parameters.md): generated parameters, managed markets, calibration, integer replay and reviewed execution
 - [architecture-v1.md](architecture-v1.md): architecture on unmodified Morpho Blue
 - [implementation-plan.md](implementation-plan.md): workstreams, build order, risks
 - [morpho-blue.md](morpho-blue.md): Morpho Blue research
@@ -229,13 +234,15 @@ Everything Blue adds around Morpho: the oracle, the regime registry, the router 
 
 ## Roadmap
 
-- Wrapper token to close the router bypass
+- Independent audit and production validation of the managed collateral/position path
 - Real eligibility service
-- Calibrated haircuts from a gap-quantile pipeline
+- Trusted adjusted history and independent validation of the implemented gap-quantile/walk-forward pipeline
 - Dividend ex-date handling
 - Production keepers, SEC suspension feed, sentinel bot for cap cuts
 - Vault V2 and PreLiquidation onboarding
 - Audit
+
+The risk backend remains advisory. Separate, signed-review planning can prepare calldata for the risk executor, and rejects the default simulated/uncalibrated evidence. No historical performance advantage is claimed.
 
 ## Naming
 

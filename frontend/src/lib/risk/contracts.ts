@@ -50,7 +50,7 @@ export function parseAdvisory(value: unknown) {
       proposal.asset !== a.asset || proposal.evidence_hash !== a.evidence_hash ||
       proposal.recommendation_id !== r.recommendation_id || proposal.expires_at !== r.expires_at ||
       proposal.chain_id !== r.chain_id || proposal.market_id !== r.market_id ||
-      proposal.executable !== false || proposal.approval_required !== true ||
+      proposal.executable !== false || proposal.approval_required !== true || proposal.deployment_verification !== "DECLARED_ONLY" ||
       proposal.approval_status !== "PENDING_REVIEW" || proposal.signing_status !== "UNSIGNED") return invalid();
   const ltv = number(p.ltv, 1), threshold = number(p.liquidation_threshold, 1);
   if (ltv >= threshold || threshold !== .625 || proposal.market_lltv !== threshold ||
@@ -81,6 +81,18 @@ export function parseAdvisory(value: unknown) {
     },
     simulations: list(root.simulations, simulation),
     proposal: {
+      deployment_verification: text(proposal.deployment_verification),
+      current_target_ltv: number(proposal.current_router_target_ltv, threshold),
+      current_total_cap_usd: number(proposal.current_total_borrow_cap_usd),
+      liquidation_budgets: BLUE_REGIMES.map(regime => ({regime,cap:number(object(proposal.liquidation_budgets_usd)[regime])})),
+      position_impacts: list(proposal.position_policy_impacts,item => {
+        const impact=object(item);
+        return {borrower_id:text(impact.borrower_id),current_limit:number(impact.current_ltv_ceiling_usd),
+          proposed_limit:number(impact.proposed_ltv_ceiling_usd),
+          current_headroom:number(impact.current_headroom_before_market_caps_usd),
+          proposed_headroom:number(impact.proposed_headroom_before_market_caps_usd),
+          newly_over_target:boolean(impact.newly_over_target),blocked:boolean(impact.new_borrowing_blocked)};
+      }),
       margin_bps: number(router.margin_bps, 5000), target_ltv: number(router.target_ltv, threshold),
       total_cap_usd: totalCap, regime_caps: regimeCaps, proposal_hash: text(proposal.proposal_hash),
     },

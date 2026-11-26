@@ -11,8 +11,17 @@ from app.routing.engine import route_markets
 from app.routing.models import RoutingDecision, RoutingRequest
 from app.simulation.portfolio import default_scenarios, simulate
 from app.blue import BlueProposal, propose_blue
+from app.simulation.morpho import MorphoReplay, replay
 
 router = APIRouter(prefix="/risk", tags=["Risk controller"])
+
+
+@router.post('/replay', summary='Replay explicit Morpho integer state, interest and partial liquidation')
+def replay_contract(body: MorphoReplay):
+    try:
+        return replay(body)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 class ScoreResponse(Model):
@@ -87,7 +96,8 @@ def advisory(asset: str, request: Request, body: SimulateRequest):
     recommendation = svc.recommend_assessed(assessment, snapshot, body)
     scenarios = body.scenarios if body.scenarios is not None else default_scenarios()
     results = [simulate(assessment, snapshot, body.borrowers, s, svc.policy) for s in scenarios]
-    proposal = propose_blue(assessment, recommendation, svc.policy, request.app.state.blue_config)
+    proposal = propose_blue(assessment, recommendation, svc.policy, request.app.state.blue_config,
+                            borrowers=body.borrowers, snapshot=snapshot)
     svc.store.put('blue_proposal', assessment.asset, assessment.as_of.isoformat(), proposal.model_dump(mode='json'))
     return AdvisoryResponse(assessment=assessment, recommendation=recommendation, simulations=results, blue_proposal=proposal)
 

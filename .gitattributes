@@ -1,0 +1,5 @@
+frontend/src/lib/blue/abi.generated.ts linguist-generated=true
+frontend/src/lib/blue/generated.ts linguist-generated=true
+keepers/src/generated/* linguist-generated=true
+protocol-old/src/generated/* linguist-generated=true
+ai-risk-controller/app/generated/* linguist-generated=true

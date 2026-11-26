@@ -1,6 +1,9 @@
+import { RISK_PARAMETERS } from "./generated/riskParameters.js";
 import type { AssetRef } from "./halt/types.js";
 
 export interface KeeperAsset extends AssetRef {
+  /** Expiring new-exposure permission, used only by managed markets. */
+  permission?: `0x${string}`;
   /** Atlas (or mock) feed address used for the continuity check. */
   feed?: `0x${string}`;
   /** BlueOracle for this asset; when set the keeper calls its permissionless update() as a heartbeat. */
@@ -51,6 +54,8 @@ export function parseAssets(json: string): KeeperAsset[] {
     if (typeof a.symbol !== "string" || typeof a.ticker !== "string") throw new Error(`ASSETS[${i}] needs symbol and ticker`);
     if (a.feed !== undefined && !isAddr(a.feed)) throw new Error(`ASSETS[${i}].feed invalid`);
     if (a.oracle !== undefined && !isAddr(a.oracle)) throw new Error(`ASSETS[${i}].oracle invalid`);
+    if (a.permission !== undefined && (!isAddr(a.permission) || !isAddr(a.oracle) || !isAddr(a.statusToken))) throw new Error(`ASSETS[${i}].permission requires permission, oracle and underlying statusToken`);
+    if (a.statusToken !== undefined && !isAddr(a.statusToken)) throw new Error(`ASSETS[${i}].statusToken invalid`);
     return {
       symbol: a.symbol,
       ticker: a.ticker,
@@ -58,6 +63,8 @@ export function parseAssets(json: string): KeeperAsset[] {
       spotSymbol: typeof a.spotSymbol === "string" ? a.spotSymbol : undefined,
       feed: a.feed as `0x${string}` | undefined,
       oracle: a.oracle as `0x${string}` | undefined,
+      permission: a.permission as `0x${string}` | undefined,
+      statusToken: a.statusToken as `0x${string}` | undefined,
     };
   });
 }
@@ -77,11 +84,11 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     assets: parseAssets(need(env, "ASSETS")),
     privateKey: pk as `0x${string}` | undefined,
     dryRun,
-    pollIntervalMs: num(env, "POLL_INTERVAL_MS", 30_000),
-    overrideDurationS: num(env, "OVERRIDE_DURATION_S", 3600),
-    overrideRefreshMarginS: num(env, "OVERRIDE_REFRESH_MARGIN_S", 600),
-    unknownTimeoutMs: num(env, "UNKNOWN_TIMEOUT_MS", 10 * 60_000),
-    continuityBandBps: num(env, "CONTINUITY_BAND_BPS", 500),
+    pollIntervalMs: num(env, "POLL_INTERVAL_MS", RISK_PARAMETERS.blue.poll_seconds * 1000),
+    overrideDurationS: num(env, "OVERRIDE_DURATION_S", RISK_PARAMETERS.blue.override_duration_seconds),
+    overrideRefreshMarginS: num(env, "OVERRIDE_REFRESH_MARGIN_S", RISK_PARAMETERS.blue.refresh_margin_seconds),
+    unknownTimeoutMs: num(env, "UNKNOWN_TIMEOUT_MS", RISK_PARAMETERS.blue.unknown_timeout_seconds * 1000),
+    continuityBandBps: num(env, "CONTINUITY_BAND_BPS", RISK_PARAMETERS.blue.continuity_band_bps),
     continuityMaxAgeMs: num(env, "CONTINUITY_MAX_AGE_MS", 15 * 60_000),
     calendarGraceMs: num(env, "CALENDAR_GRACE_MS", 90_000),
     feedQuotesPerUi: env.FEED_QUOTES_PER_UI !== "false",

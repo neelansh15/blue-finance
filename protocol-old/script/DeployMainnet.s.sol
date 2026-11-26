@@ -35,6 +35,10 @@ contract DeployMainnet is Script, BlueDeploy {
     uint256 internal constant CAP_CLOSED = 250e18;
     uint256 internal constant CAP_WEEKEND = 250e18;
 
+    function _managedMarket() internal pure override returns (bool) {
+        return true;
+    }
+
     function _totalCap() internal pure override returns (uint256) {
         return CAP_TOTAL;
     }
@@ -80,6 +84,8 @@ contract DeployMainnet is Script, BlueDeploy {
         console2.log("RegimeRegistry", address(d.registry));
         console2.log("BlueOracle    ", address(d.oracle));
         console2.log("BlueRouter    ", address(d.router));
+        console2.log("Managed collateral", address(d.managedCollateral));
+        console2.log("Borrow permission", address(d.permission));
         console2.log("MarketId");
         console2.logBytes32(Id.unwrap(d.marketId));
         console2.log("admin (deployer)", deployer);

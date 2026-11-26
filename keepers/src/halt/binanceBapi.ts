@@ -67,7 +67,7 @@ export class BinanceBapiSource implements HaltSource {
 
   async check(asset: AssetRef): Promise<Signal> {
     try {
-      return mapBapiStatus(await fetchBapiAssetStatus(this.fetchFn, asset.token, this.chainId));
+      return mapBapiStatus(await fetchBapiAssetStatus(this.fetchFn, asset.statusToken ?? asset.token, this.chainId));
     } catch (e) {
       return unknown(`bapi fetch failed: ${errMsg(e)}`);
     }

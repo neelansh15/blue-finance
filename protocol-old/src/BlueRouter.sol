@@ -4,6 +4,9 @@ pragma solidity 0.8.28;
 import {IMorpho, Id, MarketParams, MarketParamsLib} from "./interfaces/IMorpho.sol";
 import {IBlueOracle} from "./interfaces/IBlueOracle.sol";
 import {IRegimeRegistry, RegimeLib} from "./interfaces/IRegimeRegistry.sol";
+import {BluePosition} from "./BluePosition.sol";
+import {BlueManagedCollateral, IERC20Balance} from "./BlueManagedCollateral.sol";
+import {BlueBorrowPermission} from "./BlueBorrowPermission.sol";
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
 /// @title BlueRouter
@@ -26,9 +29,9 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 ///
 /// @dev    BYPASSABLE. Morpho Blue is permissionless: anyone can call MORPHO.borrow / withdrawCollateral directly on
 ///         the same market and ignore every rule here (eligibility, targetLTV, caps, regime blocks). Only the oracle
-///         and Morpho's LLTV bind such users. Making the router binding needs a collateral wrapper that only the
-///         router can deposit, which is out of scope for the demo. Treat the router as UX and policy for honest
-///         users, not as a security boundary for the market.
+///         and Morpho's LLTV bind such users in LEGACY markets. New listManagedMarket markets combine restricted
+///         collateral deposits with router-owned BluePosition accounts and expiring monitoring permission.
+///         Both restrictions are required. Existing positions are never migrated implicitly.
 contract BlueRouter {
     using MarketParamsLib for MarketParams;
     using RegimeLib for IRegimeRegistry.Regime;
@@ -36,6 +39,8 @@ contract BlueRouter {
 
     struct MarketConfig {
         bool listed;
+        bool managed;
+        address permission;
         uint16 marginBps;
         uint16 hMaxBps; // max oracle haircut over the routine regimes, cached at listing (oracle haircuts are immutable)
         uint256 targetLtvWad; // LLTV x (1 - hMax) - margin, 1e18 scale
@@ -78,13 +83,20 @@ contract BlueRouter {
     bool public paused;
 
     mapping(Id => MarketConfig) internal _markets;
+    mapping(Id => uint64) public configVersion;
+    mapping(Id => mapping(address => address)) public positionOf;
     mapping(address => Id) public marketOfCollateral;
     mapping(address => mapping(uint256 => bool)) public nonceUsed;
 
     uint256 internal _lock = 1;
     address internal _payer; // set only during repay()
 
-    event MarketListed(Id indexed id, address indexed collateral, uint256 targetLtvWad, uint16 hMaxBps, uint16 marginBps);
+    event PositionCreated(Id indexed id, address indexed owner, address indexed position);
+    event ManagedMarketListed(Id indexed id, address indexed permission);
+    event SupplyCapSet(Id indexed id, uint256 assets);
+    event MarketListed(
+        Id indexed id, address indexed collateral, uint256 targetLtvWad, uint16 hMaxBps, uint16 marginBps
+    );
     event MarginSet(Id indexed id, uint16 marginBps, uint256 targetLtvWad);
     event CapsSet(Id indexed id, uint256 totalCap, uint256[6] regimeCaps);
     event SignerSet(address indexed signer);
@@ -94,7 +106,9 @@ contract BlueRouter {
     event AdminTransferStarted(address indexed current, address indexed pending);
     event AdminTransferred(address indexed previous, address indexed current);
     event AttestationUsed(address indexed account, uint256 nonce);
-    event Borrowed(Id indexed id, address indexed account, uint256 collateralIn, uint256 assets, IRegimeRegistry.Regime regime);
+    event Borrowed(
+        Id indexed id, address indexed account, uint256 collateralIn, uint256 assets, IRegimeRegistry.Regime regime
+    );
     event CollateralWithdrawn(Id indexed id, address indexed account, uint256 assets);
     event Repaid(Id indexed id, address indexed payer, address indexed onBehalf, uint256 assets, uint256 shares);
 
@@ -118,6 +132,8 @@ contract BlueRouter {
     error NoSigner();
     error NotRepaying();
     error CapRaise();
+    error PermissionExpired();
+    error MarginRelaxation();
 
     modifier nonReentrant() {
         if (_lock != 1) revert Reentrancy();
@@ -160,11 +176,23 @@ contract BlueRouter {
     ) external nonReentrant {
         Id id = mp.id();
         MarketConfig storage cfg = _listed(id, mp);
+        address account = _account(id, msg.sender, cfg, true);
 
         if (collateralAssets != 0) {
-            mp.collateralToken.safeTransferFrom(msg.sender, address(this), collateralAssets);
+            if (cfg.managed) {
+                address underlying = BlueManagedCollateral(mp.collateralToken).UNDERLYING();
+                uint256 beforeBalance = IERC20Balance(underlying).balanceOf(address(this));
+                underlying.safeTransferFrom(msg.sender, address(this), collateralAssets);
+                if (IERC20Balance(underlying).balanceOf(address(this)) - beforeBalance != collateralAssets) {
+                    revert InvalidConfig();
+                }
+                underlying.forceApprove(mp.collateralToken, collateralAssets);
+                BlueManagedCollateral(mp.collateralToken).wrap(collateralAssets);
+            } else {
+                mp.collateralToken.safeTransferFrom(msg.sender, address(this), collateralAssets);
+            }
             mp.collateralToken.forceApprove(address(MORPHO), collateralAssets);
-            MORPHO.supplyCollateral(mp, collateralAssets, msg.sender, "");
+            MORPHO.supplyCollateral(mp, collateralAssets, account, "");
         }
         if (borrowAssets == 0) return;
 
@@ -173,10 +201,10 @@ contract BlueRouter {
         IRegimeRegistry.Regime r = _checkRiskIncreasingAllowed(mp);
 
         // Reverts inside Morpho if msg.sender has not authorized this router.
-        MORPHO.borrow(mp, borrowAssets, 0, msg.sender, receiver);
+        MORPHO.borrow(mp, borrowAssets, 0, account, receiver);
 
         (uint256 totalBorrowAssets, uint256 totalBorrowShares) = _borrowTotals(id); // post-accrual
-        _checkTargetLtv(cfg, mp, id, msg.sender, totalBorrowAssets, totalBorrowShares);
+        _checkTargetLtv(cfg, mp, id, account, totalBorrowAssets, totalBorrowShares);
         if (totalBorrowAssets > cfg.totalCap) revert CapExceeded(totalBorrowAssets, cfg.totalCap);
         uint256 rc = cfg.regimeCaps[uint8(r)];
         if (totalBorrowAssets > rc) revert CapExceeded(totalBorrowAssets, rc);
@@ -190,18 +218,20 @@ contract BlueRouter {
         if (receiver == address(0)) revert ZeroAddress();
         Id id = mp.id();
         MarketConfig storage cfg = _listed(id, mp);
+        address account = _account(id, msg.sender, cfg, false);
 
         // Borrow shares never change through interest accrual, so the gate can run before Morpho's own health check
         // (otherwise Morpho's "insufficient collateral" would mask the regime block).
-        (, uint128 borrowShares,) = MORPHO.position(id, msg.sender);
+        (, uint128 borrowShares,) = MORPHO.position(id, account);
         bool hasDebt = borrowShares != 0;
         if (hasDebt) _checkRiskIncreasingAllowed(mp);
 
-        MORPHO.withdrawCollateral(mp, assets, msg.sender, receiver); // accrues interest
+        MORPHO.withdrawCollateral(mp, assets, account, cfg.managed ? address(this) : receiver);
+        if (cfg.managed) BlueManagedCollateral(mp.collateralToken).redeem(assets, receiver);
 
         if (hasDebt) {
             (uint256 tba, uint256 tbs) = _borrowTotals(id);
-            _checkTargetLtv(cfg, mp, id, msg.sender, tba, tbs);
+            _checkTargetLtv(cfg, mp, id, account, tba, tbs);
         }
         emit CollateralWithdrawn(id, msg.sender, assets);
     }
@@ -215,9 +245,10 @@ contract BlueRouter {
         returns (uint256 assetsRepaid, uint256 sharesRepaid)
     {
         Id id = mp.id();
-        _listed(id, mp);
+        MarketConfig storage cfg = _listed(id, mp);
+        address account = _account(id, onBehalf, cfg, false);
         _payer = msg.sender;
-        (assetsRepaid, sharesRepaid) = MORPHO.repay(mp, assets, shares, onBehalf, abi.encode(mp.loanToken));
+        (assetsRepaid, sharesRepaid) = MORPHO.repay(mp, assets, shares, account, abi.encode(mp.loanToken));
         _payer = address(0);
         emit Repaid(id, msg.sender, onBehalf, assetsRepaid, sharesRepaid);
     }
@@ -247,9 +278,18 @@ contract BlueRouter {
     function borrowLimit(Id id, address account) external view returns (uint256) {
         MarketConfig storage cfg = _markets[id];
         if (!cfg.listed) return 0;
+        if (paused) return 0;
         (address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) =
             MORPHO.idToMarketParams(id);
         MarketParams memory mp = MarketParams(loanToken, collateralToken, oracle, irm, lltv);
+        if (cfg.managed && !BlueBorrowPermission(cfg.permission).allowed(collateralToken)) return 0;
+        if (IBlueOracle(oracle).isFrozen()) return 0;
+        (bool live,,) = IBlueOracle(oracle).liveRawPrice();
+        if (!live) return 0;
+        if (cfg.managed) {
+            account = positionOf[id][account];
+            if (account == address(0)) return 0;
+        }
         (,, uint128 collateral) = MORPHO.position(id, account);
         return _limit(collateral, IBlueOracle(mp.oracle).price(), targetLtv(id, _regime(mp)));
     }
@@ -271,6 +311,34 @@ contract BlueRouter {
         external
         onlyAdmin
     {
+        _listMarket(mp, marginBps, totalCap, regimeCaps, address(0));
+    }
+
+    /// New managed markets only: receipts cannot be deposited by anyone except this router, and end users
+    /// never acquire Morpho authorization over their BluePosition. Liquidation and receipt redemption stay public.
+    function listManagedMarket(
+        MarketParams calldata mp,
+        uint16 marginBps,
+        uint256 totalCap,
+        uint256[6] calldata regimeCaps,
+        BlueBorrowPermission permission
+    ) external onlyAdmin {
+        BlueManagedCollateral receipt = BlueManagedCollateral(mp.collateralToken);
+        if (
+            receipt.ROUTER() != address(this) || receipt.MORPHO() != address(MORPHO)
+                || address(permission.REGISTRY()) != address(REGISTRY)
+        ) revert MarketMismatch();
+        _listMarket(mp, marginBps, totalCap, regimeCaps, address(permission));
+        emit ManagedMarketListed(mp.id(), address(permission));
+    }
+
+    function _listMarket(
+        MarketParams calldata mp,
+        uint16 marginBps,
+        uint256 totalCap,
+        uint256[6] calldata regimeCaps,
+        address permission
+    ) internal {
         Id id = mp.id();
         if (_markets[id].listed) revert MarketAlreadyListed();
         if (Id.unwrap(marketOfCollateral[mp.collateralToken]) != bytes32(0)) revert MarketAlreadyListed();
@@ -285,6 +353,8 @@ contract BlueRouter {
         }
         MarketConfig storage cfg = _markets[id];
         cfg.listed = true;
+        cfg.managed = permission != address(0);
+        cfg.permission = permission;
         cfg.hMaxBps = hMax;
         marketOfCollateral[mp.collateralToken] = id;
         _setMargin(cfg, id, mp.lltv, marginBps);
@@ -297,10 +367,36 @@ contract BlueRouter {
         _setMargin(_listed(id, mp), id, mp.lltv, marginBps);
     }
 
+    /// Guardian can increase the buffer, never relax it. Raising margin affects new exposure, not Morpho LLTV.
+    function raiseMargin(MarketParams calldata mp, uint16 marginBps) external {
+        if (msg.sender != guardian && msg.sender != admin) revert Unauthorized();
+        MarketConfig storage cfg = _listed(mp.id(), mp);
+        if (marginBps < cfg.marginBps) revert MarginRelaxation();
+        _setMargin(cfg, mp.id(), mp.lltv, marginBps);
+    }
+
     function setCaps(Id id, uint256 totalCap, uint256[6] calldata regimeCaps) external onlyAdmin {
         MarketConfig storage cfg = _markets[id];
         if (!cfg.listed) revert MarketNotListed();
         _setCaps(cfg, id, totalCap, regimeCaps);
+    }
+
+    function setSupplyCap(MarketParams calldata mp, uint256 assets) external onlyAdmin {
+        _setSupplyCap(mp, assets);
+    }
+
+    function lowerSupplyCap(MarketParams calldata mp, uint256 assets) external {
+        if (msg.sender != guardian && msg.sender != admin) revert Unauthorized();
+        if (assets > BlueManagedCollateral(mp.collateralToken).supplyCap()) revert CapRaise();
+        _setSupplyCap(mp, assets);
+    }
+
+    function _setSupplyCap(MarketParams calldata mp, uint256 assets) internal {
+        Id id = mp.id();
+        if (!_listed(id, mp).managed) revert InvalidConfig();
+        BlueManagedCollateral(mp.collateralToken).setSupplyCap(assets);
+        ++configVersion[id];
+        emit SupplyCapSet(id, assets);
     }
 
     /// Guardian (or admin) may only lower caps.
@@ -350,6 +446,17 @@ contract BlueRouter {
 
     // ================================================================ internals
 
+    function _account(Id id, address owner, MarketConfig storage cfg, bool create) internal returns (address account) {
+        if (!cfg.managed) return owner;
+        account = positionOf[id][owner];
+        if (account == address(0)) {
+            if (!create) revert MarketNotListed();
+            account = address(new BluePosition(MORPHO));
+            positionOf[id][owner] = account;
+            emit PositionCreated(id, owner, account);
+        }
+    }
+
     function _listed(Id id, MarketParams calldata mp) internal view returns (MarketConfig storage cfg) {
         cfg = _markets[id];
         if (!cfg.listed) revert MarketNotListed();
@@ -372,14 +479,17 @@ contract BlueRouter {
         if (m >= base) revert InvalidConfig();
         cfg.marginBps = marginBps;
         cfg.targetLtvWad = base - m;
+        ++configVersion[id];
         emit MarginSet(id, marginBps, cfg.targetLtvWad);
     }
 
     function _setCaps(MarketConfig storage cfg, Id id, uint256 totalCap, uint256[6] calldata regimeCaps) internal {
         cfg.totalCap = totalCap;
         for (uint256 i; i < 6; ++i) {
+            if (i >= 4 && regimeCaps[i] != 0) revert InvalidConfig();
             cfg.regimeCaps[i] = regimeCaps[i];
         }
+        ++configVersion[id];
         emit CapsSet(id, totalCap, regimeCaps);
     }
 
@@ -390,6 +500,10 @@ contract BlueRouter {
     /// Gates shared by borrow and withdraw-with-debt. Refreshes the oracle first.
     function _checkRiskIncreasingAllowed(MarketParams calldata mp) internal returns (IRegimeRegistry.Regime r) {
         if (paused) revert IsPaused();
+        MarketConfig storage cfg = _markets[mp.id()];
+        if (cfg.managed && !BlueBorrowPermission(cfg.permission).allowed(mp.collateralToken)) {
+            revert PermissionExpired();
+        }
         r = _regime(mp);
         if (r.isFreezeRegime()) revert RegimeBlocked(r);
         IBlueOracle o = IBlueOracle(mp.oracle);

@@ -2,6 +2,9 @@
 pragma solidity 0.8.28;
 
 import {IMorpho, Id, MarketParams, MarketParamsLib} from "../src/interfaces/IMorpho.sol";
+import {BlueRiskParameters as Risk} from "../src/generated/BlueRiskParameters.sol";
+import {BlueManagedCollateral} from "../src/BlueManagedCollateral.sol";
+import {BlueBorrowPermission} from "../src/BlueBorrowPermission.sol";
 import {BlueOracle} from "../src/BlueOracle.sol";
 import {BlueRouter} from "../src/BlueRouter.sol";
 import {RegimeRegistry} from "../src/RegimeRegistry.sol";
@@ -27,24 +30,24 @@ abstract contract BlueDeploy {
     address internal constant MORPHO = 0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a;
     address internal constant IRM = 0x7112D95cB5f6b13bF5F5B94a373bB3b2B381F979; // AdaptiveCurveIrm
     address internal constant USDT = 0x55d398326f99059fF775485246999027B3197955; // BSC-USD, 18 decimals
-    uint256 internal constant LLTV = 0.625e18;
+    uint256 internal constant LLTV = Risk.LLTV;
 
     // PLACEHOLDER haircuts (bps), index = Regime: OPEN, EXTENDED, CLOSED, WEEKEND, HALTED, CORP_ACTION.
     // Same values as frontend params.ts: 0, 4%, 10%, 15%, 25%, 10%.
-    uint16 internal constant H_OPEN = 0;
-    uint16 internal constant H_EXTENDED = 400;
-    uint16 internal constant H_CLOSED = 1000;
-    uint16 internal constant H_WEEKEND = 1500;
-    uint16 internal constant H_HALTED = 2500;
-    uint16 internal constant H_CORP_ACTION = 1000;
-    uint16 internal constant MARGIN_BPS = 200; // PLACEHOLDER 2%, frontend params.ts
-    uint16 internal constant CONTINUITY_BAND_BPS = 500; // PLACEHOLDER 5%, frontend params.ts
+    uint16 internal constant H_OPEN = Risk.H_OPEN;
+    uint16 internal constant H_EXTENDED = Risk.H_EXTENDED;
+    uint16 internal constant H_CLOSED = Risk.H_CLOSED;
+    uint16 internal constant H_WEEKEND = Risk.H_WEEKEND;
+    uint16 internal constant H_HALTED = Risk.H_HALTED;
+    uint16 internal constant H_CORP_ACTION = Risk.H_CORP_ACTION;
+    uint16 internal constant MARGIN_BPS = Risk.MARGIN_BPS; // PLACEHOLDER 2%, frontend params.ts
+    uint16 internal constant CONTINUITY_BAND_BPS = Risk.CONTINUITY_BAND_BPS; // PLACEHOLDER 5%, frontend params.ts
     // PLACEHOLDERS not in the frontend: staleness, freeze bounds, jump band.
-    uint32 internal constant JUMP_BAND_BPS = 3000; // upward jumps above +30% are held
-    uint64 internal constant MAX_FREEZE = 12 hours;
-    uint16 internal constant EXPIRED_FREEZE_HAIRCUT_BPS = 1000;
-    uint64 internal constant MAX_OVERRIDE = 3 days;
-    uint256 internal constant MAX_ATTESTATION_TTL = 15 minutes;
+    uint32 internal constant JUMP_BAND_BPS = Risk.JUMP_BAND_BPS; // upward jumps above +30% are held
+    uint64 internal constant MAX_FREEZE = Risk.MAX_FREEZE;
+    uint16 internal constant EXPIRED_FREEZE_HAIRCUT_BPS = Risk.EXPIRED_FREEZE_HAIRCUT_BPS;
+    uint64 internal constant MAX_OVERRIDE = Risk.MAX_OVERRIDE;
+    uint256 internal constant MAX_ATTESTATION_TTL = Risk.MAX_ATTESTATION_TTL;
 
     /// Public demo signer key. NOT A SECRET: anyone can sign eligibility attestations with it. Demo only.
     uint256 internal constant DEMO_SIGNER_KEY = uint256(keccak256("blue.demo.eligibility.signer"));
@@ -72,6 +75,8 @@ abstract contract BlueDeploy {
         MockBStock bStock;
         BlueOracle oracle;
         BlueRouter router;
+        BlueManagedCollateral managedCollateral;
+        BlueBorrowPermission permission;
         MarketParams marketParams;
         Id marketId;
     }
@@ -91,21 +96,33 @@ abstract contract BlueDeploy {
             d.feed = new MockAtlasFeed(8, p.initialPrice);
             feedAddr = address(d.feed);
         }
-        BlueOracle.Config memory c = _oracleConfig(feedAddr, address(d.registry), address(d.bStock));
+        d.router = new BlueRouter(MORPHO, address(d.registry), p.deployer, p.signer, MAX_ATTESTATION_TTL);
+        address collateral = address(d.bStock);
+        if (_managedMarket()) {
+            d.managedCollateral = new BlueManagedCollateral(collateral, address(d.router), MORPHO, Risk.SUPPLY_CAP);
+            collateral = address(d.managedCollateral);
+            d.permission = new BlueBorrowPermission(
+                d.registry, Risk.PERMISSION_TTL_SECONDS, Risk.RECOVERY_SECONDS, Risk.MAX_PROOF_GAP_SECONDS
+            );
+        }
+        BlueOracle.Config memory c = _oracleConfig(feedAddr, address(d.registry), collateral);
         if (realAtlasFeed != address(0)) {
             c.feedPerUIShare = false;
-            c.stalenessSec = [uint32(2 hours), 2 hours, 4 hours, 6 hours, 1 hours, 1 hours];
+            c.stalenessSec = Risk.atlasStaleness();
         }
         d.oracle = new BlueOracle(c);
 
         d.marketParams = MarketParams({
-            loanToken: USDT, collateralToken: address(d.bStock), oracle: address(d.oracle), irm: IRM, lltv: LLTV
+            loanToken: USDT, collateralToken: collateral, oracle: address(d.oracle), irm: IRM, lltv: LLTV
         });
         d.marketId = d.marketParams.id();
         IMorpho(MORPHO).createMarket(d.marketParams);
 
-        d.router = new BlueRouter(MORPHO, address(d.registry), p.deployer, p.signer, MAX_ATTESTATION_TTL);
-        d.router.listMarket(d.marketParams, MARGIN_BPS, _totalCap(), _regimeCaps());
+        if (_managedMarket()) {
+            d.router.listManagedMarket(d.marketParams, MARGIN_BPS, _totalCap(), _regimeCaps(), d.permission);
+        } else {
+            d.router.listMarket(d.marketParams, MARGIN_BPS, _totalCap(), _regimeCaps());
+        }
         if (p.guardian != address(0)) d.router.setGuardian(p.guardian);
 
         if (p.seedSupply != 0) {
@@ -126,21 +143,25 @@ abstract contract BlueDeploy {
         c.collateralDecimals = 18;
         c.feedDecimals = 8;
         c.feedPerUIShare = true; // mock default is per UI share; real Atlas feeds are per raw token (see _deployBlue)
-        c.haircutsBps = [H_OPEN, H_EXTENDED, H_CLOSED, H_WEEKEND, H_HALTED, H_CORP_ACTION];
-        c.stalenessSec = [uint32(1 hours), 1 hours, 4 hours, 6 hours, 1 hours, 1 hours]; // PLACEHOLDER
+        c.haircutsBps = Risk.haircuts();
+        c.stalenessSec = Risk.mockStaleness(); // PLACEHOLDER
         c.maxFreeze = MAX_FREEZE;
         c.continuityBandBps = CONTINUITY_BAND_BPS;
         c.expiredFreezeHaircutBps = EXPIRED_FREEZE_HAIRCUT_BPS;
         c.jumpBandBps = JUMP_BAND_BPS;
     }
 
+    function _managedMarket() internal pure virtual returns (bool) {
+        return false;
+    }
+
     /// PLACEHOLDER caps on market totalBorrowAssets (USDT, 18 decimals). HALTED/CORP_ACTION are blocked anyway.
     function _totalCap() internal pure virtual returns (uint256) {
-        return 1_000_000e18;
+        return Risk.TOTAL_CAP;
     }
 
     function _regimeCaps() internal pure virtual returns (uint256[6] memory) {
-        return [uint256(1_000_000e18), 500_000e18, 250_000e18, 250_000e18, 0, 0];
+        return Risk.regimeCaps();
     }
 
     /// NYSE full-day closures 2026-2027, from https://www.nyse.com/markets/hours-calendars (fetched 2026-11-26).

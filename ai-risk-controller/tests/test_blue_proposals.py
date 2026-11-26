@@ -112,7 +112,7 @@ def test_explicit_per_regime_freshness_preserves_strict_default(service):
 
 def test_declared_haircuts_and_margin_match_deployment_defaults():
     root = Path(__file__).resolve().parents[2]
-    deployment = (root / 'protocol-old/script/BlueDeploy.sol').read_text()
+    deployment = (root / 'protocol-old/src/generated/BlueRiskParameters.sol').read_text()
     config = BlueConfig()
     # Detect backend/Solidity configuration drift without depending on frontend code.
     for regime in REGIMES:

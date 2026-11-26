@@ -73,7 +73,7 @@ export class MultiplierWatcherSource implements HaltSource {
       let from = s.cursor ?? (head > this.lookback ? head - this.lookback : 0n);
       while (from <= head) {
         const to = from + this.chunk - 1n > head ? head : from + this.chunk - 1n;
-        for (const ev of await this.reader.getEvents(asset.token, from, to)) {
+        for (const ev of await this.reader.getEvents(asset.statusToken ?? asset.token, from, to)) {
           // Event fires at schedule time; effectiveAt may be days ahead (or already past on a lookback).
           const until = Number(ev.effectiveAt) * 1000 + this.hold;
           if (until > s.activeUntil) {
@@ -86,7 +86,7 @@ export class MultiplierWatcherSource implements HaltSource {
       s.cursor = head + 1n;
 
       // Safety net for missed logs: effective multiplier changed since our last read.
-      const m = await this.reader.uiMultiplier(asset.token);
+      const m = await this.reader.uiMultiplier(asset.statusToken ?? asset.token);
       if (s.lastMultiplier !== null && m !== s.lastMultiplier) {
         s.activeUntil = Math.max(s.activeUntil, nowMs + this.hold);
         s.detail = `uiMultiplier() changed ${s.lastMultiplier}->${m}`;

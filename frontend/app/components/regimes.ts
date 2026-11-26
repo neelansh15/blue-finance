@@ -1,3 +1,5 @@
+import { RISK_PARAMETERS } from "../../src/lib/blue/generated";
+
 // Illustrative regime model used by the landing-page mock UI.
 // None of these haircuts are protocol parameters. Real values would come from
 // the gap-quantile pipeline described in architecture-v1.md, section 11.
@@ -20,10 +22,10 @@ export const REGIME_NOTE: Record<Regime, string> = {
 
 /** Illustrative haircut per regime (fraction of collateral value). */
 export const ILLUSTRATIVE_HAIRCUT: Record<Regime, number> = {
-  open: 0,
-  extended: 0.04,
-  closed: 0.1,
-  weekend: 0.15,
+  open: RISK_PARAMETERS.blue.haircuts_bps.OPEN / 10000,
+  extended: RISK_PARAMETERS.blue.haircuts_bps.EXTENDED / 10000,
+  closed: RISK_PARAMETERS.blue.haircuts_bps.CLOSED / 10000,
+  weekend: RISK_PARAMETERS.blue.haircuts_bps.WEEKEND / 10000,
 };
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;

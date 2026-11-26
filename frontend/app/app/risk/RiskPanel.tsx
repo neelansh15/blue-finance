@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { requestForPosition, type RiskPosition } from "../../../src/lib/risk/adapter";
 import { isExpired, parseAdvisory, parseMarketStatus, SCENARIOS, statusFresh,
   type Advisory, type MarketStatus, type Scenario } from "../../../src/lib/risk/contracts";
+import DeployedPolicy from './DeployedPolicy';
 
 const usd = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
 const percent = (value: number) => `${(value * 100).toFixed(2)}%`;
@@ -76,6 +77,7 @@ export default function RiskPanel({ position }: { position: RiskPosition }) {
     <section className="risk-panel" aria-labelledby={`${id}-title`}>
       <div className="app-section-heading"><h2 id={`${id}-title`}>Advisory risk analysis</h2><span className="app-demo-label">Review required</span></div>
       <p className="risk-intro">Assess your demo collateral and debt using the backend’s synthetic market scenarios. Recommendations require review; this analysis sends no transactions.</p>
+      <DeployedPolicy />
       {position.unsupported ? <p className="app-message" role="status">{position.unsupported}</p> : <>
         <dl className="risk-account">
           <div><dt>Demo collateral</dt><dd>{position.quantity.toLocaleString()} NVDAb</dd></div>
@@ -111,10 +113,20 @@ export default function RiskPanel({ position }: { position: RiskPosition }) {
           {result.assessment.score.data_quality.length > 0 && <p className="app-message">Data quality: {result.assessment.score.data_quality.join("; ")}</p>}
           <p className="risk-note">Caps are total market policy targets, not your remaining borrowing allowance. Configured router limits are checked by the model; deployed contract limits must be verified separately.</p>
           <details><summary>Blue router proposal · review required</summary>
+            <p>Declared current target: {percent(result.proposal.current_target_ltv)} → proposed target: {percent(result.proposal.target_ltv)}.
+              Total cap: {usd(result.proposal.current_total_cap_usd)} → {usd(result.proposal.total_cap_usd)}.
+              Deployment verification: {label(result.proposal.deployment_verification)}.</p>
             <p>Proposed margin: {result.proposal.margin_bps} bps. Router target: {percent(result.proposal.target_ltv)}. Total borrow cap: {usd(result.proposal.total_cap_usd)}.</p>
             <dl className="risk-metrics">{result.proposal.regime_caps.map(({ regime, cap }) =>
               <div key={regime}><dt>{label(regime)} borrow cap</dt><dd>{usd(cap)}</dd></div>)}</dl>
             <p className="risk-note">Unsigned and uncalibrated. This proposal requires review and cannot execute a transaction. Zero caps hold new exposure.</p>
+            {result.proposal.position_impacts.map(impact => <div key={impact.borrower_id}>
+              <p>Position LTV ceiling: {usd(impact.current_limit)} → {usd(impact.proposed_limit)}.
+                Headroom before market caps: {usd(impact.current_headroom)} → {usd(impact.proposed_headroom)}.</p>
+              {impact.newly_over_target && <p className="app-message">This position exceeds the proposed borrowing target. Its liquidation threshold stays unchanged.</p>}
+              {impact.blocked && <p>New borrowing would be held. Existing debt is not automatically repaid.</p>}
+            </div>)}
+            <p className="risk-note">Regime caps now use one shared stressed token order book, execution costs and liquidation incentives. The assumptions still require calibration.</p>
           </details>
           <h3>Borrower stress scenarios</h3>
           {result.recommendation.simulation.total_positions === 0 ? <p>No collateral position to stress-test. Your empty account was sent explicitly.</p> :

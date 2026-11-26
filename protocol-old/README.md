@@ -7,6 +7,12 @@ Blue Finance smart-contract core: lending against tokenized US stocks (bStocks) 
 
 Router, deploy script and fork scenarios are included (see below). All risk parameters are labelled PLACEHOLDERS, not calibrated.
 
+## Managed risk reference
+
+This archived Morpho implementation includes a managed-market reference with restricted wrapped collateral, router-controlled position accounts, expiring healthy monitoring permission, supply caps and a delayed governance executor. Legacy demo markets remain bypassable. These additions are unaudited and do not calibrate the placeholder values. They are not an implementation of the planned Aave V3 pool in `../protocol/`. See [the workflow and boundaries](../docs/enforced-risk-parameters.md).
+
+Run `bash ../scripts/bootstrap_protocol.sh` from this directory before the suite. `DeployManaged.s.sol` is the managed local-fork reference; its mainnet script is unbroadcast and still uses placeholder values.
+
 ## Layout
 
 ```
