@@ -4,9 +4,7 @@
 **Tracks:** AI / RWA / Trading
 **Judging:** Design and Usability, Scalability, Innovation, Open Source, Integration
 
-BNB research is in [liquidity-protocol-ideas.md](liquidity-protocol-ideas.md). Direction (Nov 13): pegged RWA Bin pool, and prop AMMs on EVM. Hook-specific work parked.
-
-Chosen direction since Nov 25: lending for tokenized equities, see [architecture-v0.md](architecture-v0.md). The ideas below are the earlier shortlist.
+BNB research is in [liquidity-protocol-ideas.md](liquidity-protocol-ideas.md). Current product direction: lending for tokenized equities, see [architecture-v0.md](architecture-v0.md). The ideas below are the earlier shortlist.
 
 ## Shortlist
 
@@ -47,14 +45,14 @@ Chosen direction since Nov 25: lending for tokenized equities, see [architecture
 Bloomberg-style terminal for onchain markets on BNB Chain venues (PancakeSwap, prop AMMs).
 
 * Panes: watchlist, chart, order ticket, depth and liquidity, news
-* Charts from our WebGPU library (ChartGPU 0.2.0)
+* WebGPU charts
 * Cmd+K commands: `WETH/USDC <chart>`, `BUY 1 ETH`
 * Tokenized stocks and RWAs if liquidity exists, else crypto majors
 * Pairs well with #1 or #2: the pool is the engine, the terminal is the demo
 
 Open: which tokenized-stock pairs have real BNB liquidity (LunarBase already targets them), read-only vs trading.
 
-## Hook ideas (parked)
+## Hook ideas
 
 PancakeSwap Infinity hooks (Vault, CL, Bin pool managers):
 
@@ -65,12 +63,6 @@ PancakeSwap Infinity hooks (Vault, CL, Bin pool managers):
 
 Open: can Pancake hooks override pricing or only fees? Docs returned 404 on Nov 13.
 
-## Reusable assets
-
-* ChartGPU (WebGPU charts, indicators, drawings)
-* CL LP bot plan (concentrated-liquidity logic, markout metric)
-* AI Trading Agent and AI Data Pipeline scopes
-
 ## Rules of thumb
 
 * Two or three integrations at most; more thins the demo.
@@ -79,5 +71,5 @@ Open: can Pancake hooks override pricing or only fees? Docs returned 404 on Nov 
 
 ## Open questions
 
-* Sponsor bounties (Luma lists Flap.sh, Four.meme, AWS, Atlas Oracle). Challenges should be in the approval email.
+* Sponsor bounties (Luma lists Flap.sh, Four.meme, AWS, Atlas Oracle). Challenges to be shared by the organizers.
 * Which BNB venues can route to a new prop AMM; Pyth, RedStone or Chainlink low-latency feed access.
