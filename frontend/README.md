@@ -18,3 +18,5 @@ npm test        # vitest
 ```
 
 Haircuts, margin and the continuity band are illustrative placeholders.
+
+ConnectKit connects browser wallets on BNB Smart Chain. Set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` before building to enable WalletConnect QR codes and mobile wallet linking. Connecting a wallet leaves the simulated balances and actions independent of that wallet.

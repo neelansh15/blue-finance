@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconLogo } from "../components/Icons";
 import ThemeToggle from "../components/ThemeToggle";
+import WalletButton from "./WalletButton";
 
 export default function AppNav() {
   const path = usePathname();
@@ -22,6 +23,7 @@ export default function AppNav() {
         <div className="app-nav-actions">
           <span className="app-demo-label app-nav-simulation">Simulation</span>
           <ThemeToggle />
+          <WalletButton />
         </div>
       </nav>
     </header>

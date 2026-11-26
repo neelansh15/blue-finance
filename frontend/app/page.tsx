@@ -1,3 +1,4 @@
+import Link from "next/link";
 import PositionPreview from "./components/PositionPreview";
 import RegimeExplorer from "./components/RegimeExplorer";
 import Reveal from "./components/Reveal";
@@ -119,7 +120,7 @@ export default function Home() {
       </a>
 
       <header className="nav">
-        <nav className="wrap nav-inner" aria-label="Primary">
+        <nav className="wrap nav-inner landing-nav" aria-label="Primary">
           <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
             <IconLogo />
             <span>Dawn</span>
@@ -142,6 +143,9 @@ export default function Home() {
             <span className="status-dot" aria-hidden="true" />
             Draft, not live
           </span>
+          <Link className="btn landing-launch" href="/app/dashboard">
+            Launch App <IconArrow />
+          </Link>
         </nav>
       </header>
 

@@ -1,3 +1,75 @@
+:root {
+  --dawn-app-paper: #fff;
+  --dawn-app-sheet: #f3f6fd;
+  --dawn-app-ink: #132544;
+  --dawn-app-muted: #425779;
+  --dawn-app-blue: #2040bf;
+}
+
+:root[data-theme="dark"] {
+  --dawn-app-paper: #0b1530;
+  --dawn-app-sheet: #111f42;
+  --dawn-app-ink: #f3f6ff;
+  --dawn-app-muted: #b9caec;
+  --dawn-app-blue: #a6beff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --dawn-app-paper: #0b1530;
+    --dawn-app-sheet: #111f42;
+    --dawn-app-ink: #f3f6ff;
+    --dawn-app-muted: #b9caec;
+    --dawn-app-blue: #a6beff;
+  }
+}
+
+.lending-app {
+  color-scheme: light dark;
+  --paper: var(--dawn-app-paper);
+  --sheet: var(--dawn-app-sheet);
+  --ink: var(--dawn-app-ink);
+  --secondary: var(--dawn-app-muted);
+  --blue: var(--dawn-app-blue);
+  --on-blue: light-dark(#fff, #0b1530);
+  --rule: light-dark(#cbd8ef, #304776);
+  --rule-strong: light-dark(#8ca3d1, #6882b4);
+  --grid: light-dark(rgb(38 77 169 / 8.5%), rgb(151 180 249 / 11%));
+  --plot: light-dark(#1836a8, #142c80);
+  --plot-ink: #fff;
+  --plot-muted: #e0e8ff;
+  --plot-grid: rgb(196 211 255 / 25%);
+  --bg: var(--paper);
+  --surface: var(--sheet);
+  --surface-raised: var(--sheet);
+  --surface-sunken: var(--sheet);
+  --border: var(--rule);
+  --border-strong: var(--rule-strong);
+  --text: var(--ink);
+  --text-muted: var(--secondary);
+  --text-faint: var(--secondary);
+  --accent: var(--blue);
+  --accent-ink: var(--on-blue);
+  --accent-text: var(--blue);
+  --accent-hover: color-mix(in srgb, var(--blue), var(--paper) 14%);
+  --focus: var(--blue);
+  --r-sm: 0px;
+  --r-md: 0px;
+  --r-lg: 0px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-instrument-sans), system-ui, sans-serif;
+  min-height: 100svh;
+}
+
+[data-theme="light"] .lending-app {
+  color-scheme: light;
+}
+
+[data-theme="dark"] .lending-app {
+  color-scheme: dark;
+}
+
 .app-nav,
 .app-nav-actions,
 .app-heading,
@@ -20,6 +92,58 @@
 .app-asset,
 .app-unit {
   gap: 10px;
+}
+
+.app-wallet-button,
+.app-nav .theme-toggle {
+  min-height: 44px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.app-wallet-control {
+  min-width: 8.25rem;
+  min-height: 44px;
+}
+
+.app-wallet-button {
+  width: 100%;
+  padding-inline: 12px;
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--on-blue);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.app-wallet-button:hover {
+  background: var(--accent-hover);
+}
+
+.app-nav .theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.app-nav .theme-toggle:hover {
+  background: var(--sheet);
+  color: var(--blue);
+}
+
+.app-nav .theme-sun,
+[data-theme="dark"] .app-nav .theme-moon {
+  display: none;
+}
+
+[data-theme="dark"] .app-nav .theme-sun {
+  display: block;
 }
 
 .app-nav-links {
@@ -605,6 +729,21 @@
 @media (max-width: 680px) {
   .app-nav-simulation {
     display: none;
+  }
+
+  .app-nav {
+    flex-wrap: wrap;
+    padding-block: 8px 2px;
+    row-gap: 4px;
+  }
+
+  .app-nav-actions {
+    margin-inline-start: auto;
+  }
+
+  .app-nav-links {
+    order: 1;
+    width: 100%;
   }
 
   .app-mobile-status {
