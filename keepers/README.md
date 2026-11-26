@@ -9,7 +9,7 @@ Off-chain keepers: session calendar, halt monitor, regime keeper (plus oracle he
     pnpm demo regime set <asset> WEEKEND --duration 600
 
 ## Layout
-- `src/abi.ts` - the only place with ABI fragments (synced with protocol/src/*.sol) plus the Regime enum and conservativeness order.
+- `src/abi.ts` - the only place with ABI fragments (synced with protocol-old/src/*.sol) plus the Regime enum and conservativeness order.
 - `src/session.ts` - pure `sessionRegime(ts)` (America/New_York via Intl), holiday and early-close tables 2026-2027.
 - `src/halt/` - sources (`nasdaq`, `binanceBapi`, `binanceSpot`, `multiplierWatcher`), `continuity`, and `combiner`.
 - `src/liquidationBot.ts` - Morpho Blue liquidation bot (see below).
@@ -48,7 +48,7 @@ Off-chain keepers: session calendar, halt monitor, regime keeper (plus oracle he
 - The multiplier watcher does not use the BSC `pendingMultiplier` views (return shapes not verified on the real token).
 
 ## Liquidation bot
-Env: RPC_URL, CHAIN_ID(56), MORPHO (default 0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a), MARKET_PARAMS (JSON loanToken, collateralToken, oracle, irm, lltv), LIQUIDATOR (deployed `protocol/src/LiquidatorCallback.sol`, owned by the bot key), SWAPPER + SWAP_DATA (optional; absent = repay from loan token pre-funded in the callback contract), SEED_BORROWERS, FROM_BLOCK / LOOKBACK_BLOCKS / LOG_CHUNK, DRY_RUN (default true), LIQUIDATOR_PRIVATE_KEY or KEEPER_PRIVATE_KEY, MIN_PROFIT, DUST_BORROW, MAX_REPAY (raw loan units), LIQUIDATE_WHEN_FROZEN (default false), POLL_INTERVAL_MS.
+Env: RPC_URL, CHAIN_ID(56), MORPHO (default 0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a), MARKET_PARAMS (JSON loanToken, collateralToken, oracle, irm, lltv), LIQUIDATOR (deployed `protocol-old/src/LiquidatorCallback.sol`, owned by the bot key), SWAPPER + SWAP_DATA (optional; absent = repay from loan token pre-funded in the callback contract), SEED_BORROWERS, FROM_BLOCK / LOOKBACK_BLOCKS / LOG_CHUNK, DRY_RUN (default true), LIQUIDATOR_PRIVATE_KEY or KEEPER_PRIVATE_KEY, MIN_PROFIT, DUST_BORROW, MAX_REPAY (raw loan units), LIQUIDATE_WHEN_FROZEN (default false), POLL_INTERVAL_MS.
 - Borrowers come from Borrow events for the market id plus the seed list. Health uses Morpho's rounding and the oracle `price()`; positions with no debt are dropped until a new Borrow event.
 - Skips everything while the oracle `isFrozen()` (or the call fails) unless LIQUIDATE_WHEN_FROZEN=true. Live mode runs an eth_call simulation before every send.
 - Full repay by shares when the collateral covers it, all collateral by seized assets for bad debt, partial by seized assets when capped by MAX_REPAY or the pre-funded balance. Profit is gross (seized value at oracle price minus repay) before swap slippage and gas, so set MIN_PROFIT accordingly.

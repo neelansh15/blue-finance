@@ -70,7 +70,7 @@ const nextDate = (date: string): string => {
   return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
 };
 
-/** Mirror of RegimeRegistry.calendarRegimeAt (protocol/src/RegimeRegistry.sol):
+/** Mirror of RegimeRegistry.calendarRegimeAt (protocol-old/src/RegimeRegistry.sol):
  *  Sat WEEKEND; Sun WEEKEND until 20:00, then CLOSED (WEEKEND if Monday is a holiday); holiday WEEKEND until 20:00;
  *  weekday 00:00-04:00 CLOSED, 04:00-09:30 EXTENDED, 09:30-16:00 OPEN, 16:00-20:00 EXTENDED (early close: 13:00 / 17:00);
  *  after postEnd (and after a holiday's 20:00): WEEKEND if Friday or the next day is a holiday, else CLOSED.

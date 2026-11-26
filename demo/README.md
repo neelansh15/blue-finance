@@ -14,7 +14,7 @@ Logs: `demo/logs/` (anvil.log, deploy.log, bot.log, check.out).
 
     source demo/config.env
     demo/start.sh            # idempotent: kills old anvil, forks, deploys, writes:
-                             #   protocol/deployments/56.json
+                             #   protocol-old/deployments/56.json
                              #   frontend/.env.local  (NEXT_PUBLIC_BLUE_MODE=real + addresses)
                              #   keepers/.env.anvil   (keeper + bot config; bash-source it)
     cd frontend && npm run dev          # http://localhost:3000/app  (real client, demo user key)

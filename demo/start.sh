@@ -10,7 +10,7 @@ if pgrep -f "anvil .*--port ${ANVIL_PORT}" >/dev/null; then
   pkill -f "anvil .*--port ${ANVIL_PORT}" || true
   for _ in $(seq 20); do pgrep -f "anvil .*--port ${ANVIL_PORT}" >/dev/null || break; sleep 0.5; done
 fi
-rm -f "$R/protocol/deployments/56.json"
+rm -f "$R/protocol-old/deployments/56.json"
 
 nohup anvil --fork-url "$FORK_URL" --port "$ANVIL_PORT" --host 127.0.0.1 --chain-id "$CHAIN_ID" \
   --retries 10 --timeout 60000 > "$D/logs/anvil.log" 2>&1 &
@@ -22,7 +22,7 @@ done
 echo "anvil up (pid $(cat "$D/anvil.pid")), chain $(cast chain-id --rpc-url "$RPC_URL")"
 FORK_BLOCK=$(cast block-number --rpc-url "$RPC_URL")
 
-cd "$R/protocol"
+cd "$R/protocol-old"
 [ -d lib/forge-std ] || forge install foundry-rs/forge-std@v1.9.7 --no-git
 PRIVATE_KEY=$DEPLOYER_KEY KEEPER=$(cast wallet address $KEEPER_KEY) SEED_SUPPLY=$SEED_SUPPLY \
   INITIAL_PRICE=$INITIAL_PRICE ANVIL_FUND_USDT=true \
@@ -101,4 +101,4 @@ if [ -n "${WARP_TO:-}" ]; then
 fi
 echo "liquidator callback: $LIQC"
 echo "deployed: registry=$REG oracle=$ORACLE router=$ROUTER token=$TOKEN market=$MID"
-echo "wrote protocol/deployments/56.json frontend/.env.local keepers/.env.anvil"
+echo "wrote protocol-old/deployments/56.json frontend/.env.local keepers/.env.anvil"

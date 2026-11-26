@@ -116,7 +116,8 @@ Each is a Foundry fork test and a demo script.
 ## Repository layout
 
 ```
-protocol/   Solidity contracts, Foundry tests, deploy script  (see protocol/README.md)
+protocol/       Aave V3 rebuild (see protocol/README.md)
+protocol-old/   Morpho contracts, Foundry tests, and deploy scripts
 keepers/    TypeScript keepers and liquidation bot            (see keepers/README.md)
 frontend/   Next.js landing page and /app demo                (see frontend/README.md)
 *.md        research, architecture and plan
@@ -126,7 +127,7 @@ frontend/   Next.js landing page and /app demo                (see frontend/READ
 
 ```sh
 # contracts
-cd protocol
+cd protocol-old
 forge install foundry-rs/forge-std@v1.9.7 --no-git
 forge build
 
@@ -139,12 +140,12 @@ cd ../frontend && npm install && npm run dev      # http://localhost:3000, demo 
 
 The `/app/risk` workspace connects the frontend to the Python advisory backend. See [local development and optional API registration](docs/local-development.md) to run both services. Default analysis is simulated and needs no keys; advice never executes a transaction.
 
-Deploying to a local BNB fork: see [protocol/README.md](protocol/README.md).
+Deploying to a local BNB fork: see [Morpho protocol README](protocol-old/README.md).
 
 ## Testing
 
 ```sh
-cd protocol
+cd protocol-old
 forge test                                  # 102 tests, fork tests use the public BSC RPC
 forge test --no-match-path 'test/fork/*'    # offline only
 ```
@@ -153,7 +154,7 @@ Last run Nov 26, 2026: 116 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, 
 
 ## Parameters that need manual tuning
 
-Every value below is a **placeholder** until it is calibrated. Source: `protocol/script/BlueDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/blue/params.ts`.
+Every value below is a **placeholder** until it is calibrated. Source: `protocol-old/script/BlueDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/blue/params.ts`.
 
 ### What `targetLTV` is
 
@@ -224,7 +225,7 @@ Everything Blue adds around Morpho: the oracle, the regime registry, the router 
 - [morpho-blue.md](morpho-blue.md): Morpho Blue research
 - [reference-lista-zona.md](reference-lista-zona.md): notes on Lista and Zona
 - [idea-progression.md](idea-progression.md) and [architecture-v0.md](architecture-v0.md): earlier drafts
-- [protocol/INTERFACES.md](protocol/INTERFACES.md): shared contract names
+- [Morpho contract interfaces](protocol-old/INTERFACES.md): shared contract names
 
 ## Roadmap
 

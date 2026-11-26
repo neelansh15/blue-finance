@@ -6,6 +6,8 @@ Blue will operate **one Aave V3 pool with one shared USDT reserve**. Lenders sup
 
 V3 supersedes the [V4 hub and spoke proposal](architecture-v2.md). The [Morpho architecture](architecture-v1.md) describes the current implementation. This is a design for a separate deployment.
 
+Build the Aave V3 contracts in [`protocol/`](protocol/README.md). The Morpho implementation and its demo contracts live in [`protocol-old/`](protocol-old/README.md).
+
 ## 1. How borrowing works
 
 ```mermaid
@@ -47,7 +49,7 @@ The borrow restriction leaves debt-free withdrawal and collateral top-ups availa
 
 ## 3. Pricing and liquidations
 
-- **Price stock and USDT in a common base currency.** Verify the Atlas feed mapping, read access, decimals, and whether the feed quotes a raw token or displayed unit for each bStock. Read `latestRoundData()` inside the validating adapter and expose the interface required by the selected V3 oracle. A raw-token price already incorporating the multiplier needs no second adjustment. Configure a USDT/USD source and test a depeg. Review the pool oracle’s fallback configuration so a rejected price cannot fall through to an unvalidated source. [Current Atlas findings](protocol/README.md#atlas-feed-findings-bsc-mainnet-probed-2026-11-26-1359-1405-utc-public-rpc) · [V3.6.0 oracle](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/src/contracts/misc/AaveOracle.sol)
+- **Price stock and USDT in a common base currency.** Verify the Atlas feed mapping, read access, decimals, and whether the feed quotes a raw token or displayed unit for each bStock. Read `latestRoundData()` inside the validating adapter and expose the interface required by the selected V3 oracle. A raw-token price already incorporating the multiplier needs no second adjustment. Configure a USDT/USD source and test a depeg. Review the pool oracle’s fallback configuration so a rejected price cannot fall through to an unvalidated source. [Current Atlas findings](protocol-old/README.md#atlas-feed-findings-bsc-mainnet-probed-2026-11-26-1359-1405-utc-public-rpc) · [V3.6.0 oracle](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/src/contracts/misc/AaveOracle.sol)
 - **Use separate freshness limits.** Borrowing requires a fresh price and a live stock permission. Liquidation may use the last validated price within a bounded window while it remains compatible with the issuer state and multiplier. Once the valuation is unusable, stop liquidation for the affected stock until it recovers. A schedule change alone leaves the valuation intact. Test feed-first and multiplier-first corporate actions, plus a genuine reopening gap. [Zona liquidation behavior](https://docs.zona.finance/lending/health-factor)
 - **Use Aave’s liquidation accounting.** Replace the Morpho callback with Aave’s `liquidationCall` and read accrued debt and health from the pool. Start with a pre-funded liquidator and validate repayment sizing, collateral delivery, close factors, bonuses, and deficit handling against the pinned release. Exercise issuer permissions on actual bStock transfers separately from mock-token scenarios. [V3.6.0 Pool entry points](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/src/contracts/protocol/pool/Pool.sol)
 
@@ -68,7 +70,20 @@ The borrow restriction leaves debt-free withdrawal and collateral top-ups availa
 - **V3 Origin 3.6.0 and 3.7.0.** Their BUSL 1.1 terms include a conditional production grant, with conditions around migration of Aave users or funds, prior competing forks, and harm to Aave. The licenses specify an MIT change date of March 6, 2027 or an earlier designated date. Review the exact tag and Blue’s eligibility for any production use before that change. [V3.6.0 license](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/LICENSE) · [V3.7.0 license](https://github.com/aave-dao/aave-v3-origin/blob/v3.7.0/LICENSE)
 - **Original V3 Core.** Its license converted to MIT by January 27, 2023. It is an older baseline and would need a review of fixes and capabilities added in later releases. [Original V3 Core license](https://github.com/aave/aave-v3-core/blob/master/LICENSE.md)
 
-## 6. Local acceptance checks
+## 6. Leveraged borrowing in Simplified Mode
+
+**Step 2. Choose an action.** Add a **One-click leveraged borrow** card alongside **Borrow**. Use **Up to N× leverage** as the subtitle once a product-wide cap is configured. Check the connected wallet’s atomic batching capability for BNB Chain only when the user selects the leverage card. If the wallet or network changes, check again before offering one-click execution. Treat unsupported, unavailable, or rejected batching as a reason to offer the guided flow in Step 4. Ordinary Borrow proceeds without a batching check. [EIP-5792 wallet capabilities](https://eips.ethereum.org/EIPS/eip-5792)
+
+**Step 4. Preview and execute.** After the user chooses a stock, show the leverage available for that stock and session, estimated swap output, resulting debt, health factor, and estimated liquidation price. Apply the pool’s borrowing rules, the product cap, available USDT, and the swap quote. Opening or increasing a leveraged long borrows USDT, swaps it for more of the same stock, and supplies that stock as collateral. Preview reducing or closing the position too. During a halt, withdrawals with debt may be blocked and repayment may require wallet USDT.
+
+| Path | Simulator behavior |
+|---|---|
+| Wallet supports atomic batching | Simulate the calls as one action from the account that owns the position. Apply the position change only if every step succeeds. |
+| Batching is unavailable or declined | Guide the user through borrow, swap, and redeposit. Update the simulated balances after each step. If the swap fails after borrowing, show the outstanding debt and the option to repay with the borrowed USDT. |
+
+For live one-click execution, require atomic batching and recheck the account, chain, stock permission, quote expiry, and slippage bound before submitting. Every borrow still passes the pool’s stock controls. A batch of ordinary calls can use the same lending interfaces when each borrow is within the limit at that point in the sequence. A helper contract or flash-loan path can be evaluated separately for targets that the ordinary calls cannot reach in one pass. [Zona guided leverage](https://docs.zona.finance/trade/positions)
+
+## 7. Local acceptance checks
 
 | Scenario | Expected result |
 |---|---|
@@ -78,5 +93,6 @@ The borrow restriction leaves debt-free withdrawal and collateral top-ups availa
 | Switch to `WEEKEND` or receive a stale report | Borrowing capacity falls or new borrowing stops according to policy. Existing liquidation health stays the same when prices and debt are held fixed. A fresh report leaves a guardian hold in place. |
 | Exercise both split update orders and a genuine price gap | Block borrowing on inconsistent prices. Prevent liquidation using a split-invalid valuation. A validated price drop updates health and allows liquidation when transfers work. |
 | Repay, liquidate, and resolve a shortfall | Verify stock debt accounting across partial repay, full repay and withdrawal, liquidation, and the selected release’s deficit path. Check that repayment works even when a collateral price is unavailable. |
+| Simulate both leverage paths | Ordinary Borrow makes no capability request. The leverage card checks BNB Chain support. An atomic failure leaves the simulated position intact. An unsupported wallet gets the guided path, where completed steps remain visible after a later failure. |
 
 Before launch, confirm the production license and release, live Atlas and halt sources, issuer transfer permissions, and shared-reserve deficit handling. Calibrate parameters and review the pool modifications before using real assets. Any live Morpho position would need a borrower-approved migration that repays the original debt, withdraws collateral, and opens a new position. Mainnet broadcast requires explicit owner approval.

@@ -13,7 +13,7 @@ Plan to build the design in [architecture-v1.md](architecture-v1.md): lending fo
 ## 2. Repo layout
 
 ```
-protocol/
+protocol-old/
   src/        BlueOracle, RegimeRegistry, BlueRouter, mocks (MockAtlasFeed, MockBStock)
   test/       Foundry tests and fork tests
   script/     deploy and market creation
@@ -26,7 +26,7 @@ Toolchain: Foundry (Solidity), viem for scripts, Next.js for the UI.
 ## 3. Workstreams and tasks
 
 ### WS1. Environment and fork
-1. Foundry project in `protocol/`, pinned solc version, remappings for the Morpho Blue interfaces.
+1. Foundry project in `protocol-old/`, pinned solc version, remappings for the Morpho Blue interfaces.
 2. Fork BNB mainnet. Morpho Blue singleton `0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a`, AdaptiveCurveIrm `0x7112D95cB5f6b13bF5F5B94a373bB3b2B381F979`.
 3. Check `isLltvEnabled(0.625e18)` and `isIrmEnabled` on the fork. **[U]** If 62.5% is not enabled on BNB, fall back to an enabled LLTV, or deploy a local Morpho on testnet for the demo.
 

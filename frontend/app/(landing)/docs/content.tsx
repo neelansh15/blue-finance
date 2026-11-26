@@ -63,7 +63,7 @@ export const articles: DocArticle[] = [
     sources: [
       { path: "architecture-v1.md", title: "Architecture v1" },
       { path: "implementation-plan.md", title: "Implementation plan" },
-      { path: "protocol/README.md", title: "Protocol README" },
+      { path: "protocol-old/README.md", title: "Protocol README" },
     ],
   },
   {
@@ -95,8 +95,8 @@ Health factor    = collateral value × LLTV ÷ accrued debt`}</code></pre><p>Wit
       },
     ],
     sources: [
-      { path: "protocol/src/interfaces/IMorpho.sol", title: "Morpho interface and market ID" },
-      { path: "protocol/test/fork/MorphoBnbFork.t.sol", title: "BNB fork market tests" },
+      { path: "protocol-old/src/interfaces/IMorpho.sol", title: "Morpho interface and market ID" },
+      { path: "protocol-old/test/fork/MorphoBnbFork.t.sol", title: "BNB fork market tests" },
       { path: "morpho-blue.md", title: "Morpho Blue research notes" },
     ],
   },
@@ -129,8 +129,8 @@ Health factor    = collateral value × LLTV ÷ accrued debt`}</code></pre><p>Wit
       },
     ],
     sources: [
-      { path: "protocol/src/RegimeRegistry.sol", title: "RegimeRegistry" },
-      { path: "protocol/src/libraries/EasternCalendar.sol", title: "EasternCalendar" },
+      { path: "protocol-old/src/RegimeRegistry.sol", title: "RegimeRegistry" },
+      { path: "protocol-old/src/libraries/EasternCalendar.sol", title: "EasternCalendar" },
       { path: "keepers/README.md", title: "Keeper behavior and configuration" },
     ],
   },
@@ -156,10 +156,10 @@ Health factor    = collateral value × LLTV ÷ accrued debt`}</code></pre><p>Wit
       },
     ],
     sources: [
-      { path: "protocol/src/BlueOracle.sol", title: "BlueOracle" },
-      { path: "protocol/src/interfaces/IBStockLike.sol", title: "bStock interface" },
-      { path: "protocol/src/mocks/MockBStock.sol", title: "MockBStock" },
-      { path: "protocol/test/BlueOracle.t.sol", title: "Oracle tests" },
+      { path: "protocol-old/src/BlueOracle.sol", title: "BlueOracle" },
+      { path: "protocol-old/src/interfaces/IBStockLike.sol", title: "bStock interface" },
+      { path: "protocol-old/src/mocks/MockBStock.sol", title: "MockBStock" },
+      { path: "protocol-old/test/BlueOracle.t.sol", title: "Oracle tests" },
     ],
   },
   {
@@ -189,8 +189,8 @@ Debt limit = haircut-adjusted collateral value × target LTV`}</code></pre><p>Th
       },
     ],
     sources: [
-      { path: "protocol/src/BlueRouter.sol", title: "BlueRouter" },
-      { path: "protocol/test/BlueRouter.t.sol", title: "Router tests" },
+      { path: "protocol-old/src/BlueRouter.sol", title: "BlueRouter" },
+      { path: "protocol-old/test/BlueRouter.t.sol", title: "Router tests" },
       { path: "architecture-v1.md#2-trust-assumptions-keys-and-roles", title: "Architecture and trust roles" },
     ],
   },
@@ -216,21 +216,21 @@ Debt limit = haircut-adjusted collateral value × target LTV`}</code></pre><p>Th
       },
     ],
     sources: [
-      { path: "protocol/src/LiquidatorCallback.sol", title: "LiquidatorCallback" },
-      { path: "protocol/test/LiquidatorCallback.t.sol", title: "Callback tests" },
-      { path: "protocol/test/scenarios/Scenarios.t.sol", title: "Fork scenario tests" },
+      { path: "protocol-old/src/LiquidatorCallback.sol", title: "LiquidatorCallback" },
+      { path: "protocol-old/test/LiquidatorCallback.t.sol", title: "Callback tests" },
+      { path: "protocol-old/test/scenarios/Scenarios.t.sol", title: "Fork scenario tests" },
       { path: "keepers/README.md#liquidation-bot", title: "Liquidation bot" },
     ],
   },
   {
     slug: "development",
     title: "Build, fork and test",
-    summary: "The Solidity project lives in protocol/ and uses Foundry. The deploy script and fork tests share market creation and configuration code.",
+    summary: "The Solidity project lives in protocol-old/ and uses Foundry. The deploy script and fork tests share market creation and configuration code.",
     sections: [
       {
         id: "setup",
         title: "Build locally",
-        body: <><p>The project pins Solidity 0.8.28 and Shanghai EVM. Install the pinned forge-std dependency before building.</p><pre><code>{`cd protocol
+        body: <><p>The project pins Solidity 0.8.28 and Shanghai EVM. Install the pinned forge-std dependency before building.</p><pre><code>{`cd protocol-old
 forge install foundry-rs/forge-std@v1.9.7 --no-git
 forge build
 forge test`}</code></pre><p>Fork suites use <code>BSC_RPC_URL</code> or the repository’s default BNB endpoint. Unavailable RPCs can cause fork tests to skip. Check the test output for skips when validating fork behavior.</p></>,
@@ -258,10 +258,10 @@ forge test`}</code></pre><p>Fork suites use <code>BSC_RPC_URL</code> or the repo
       },
     ],
     sources: [
-      { path: "protocol/README.md", title: "Foundry setup and deployment instructions" },
-      { path: "protocol/INTERFACES.md", title: "Shared contract interfaces" },
-      { path: "protocol/script/BlueDeploy.sol", title: "Fork defaults and deployment" },
-      { path: "protocol/test/scenarios/Scenarios.t.sol", title: "Scenario suite" },
+      { path: "protocol-old/README.md", title: "Foundry setup and deployment instructions" },
+      { path: "protocol-old/INTERFACES.md", title: "Shared contract interfaces" },
+      { path: "protocol-old/script/BlueDeploy.sol", title: "Fork defaults and deployment" },
+      { path: "protocol-old/test/scenarios/Scenarios.t.sol", title: "Scenario suite" },
     ],
   },
   {

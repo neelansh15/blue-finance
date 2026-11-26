@@ -1,4 +1,4 @@
-// All contract ABI fragments live here. Source of truth: protocol/src/*.sol (synced Nov 26 2026).
+// All contract ABI fragments live here. Source of truth: protocol-old/src/*.sol (synced Nov 26 2026).
 import { parseAbi } from "viem";
 
 /** Regime enum, order matters (matches the Solidity enum). */
@@ -111,7 +111,7 @@ export const morphoAbi = parseAbi([
   "event Borrow(bytes32 indexed id, address caller, address indexed onBehalf, address indexed receiver, uint256 assets, uint256 shares)",
 ]);
 
-// protocol/src/LiquidatorCallback.sol (owner-only entry point; Morpho calls back into onMorphoLiquidate).
+// protocol-old/src/LiquidatorCallback.sol (owner-only entry point; Morpho calls back into onMorphoLiquidate).
 export const liquidatorCallbackAbi = parseAbi([
   "function liquidate((address loanToken, address collateralToken, address oracle, address irm, uint256 lltv) params, address borrower, uint256 seizedAssets, uint256 repaidShares, address swapper, bytes swapData) returns (uint256 seized, uint256 repaid)",
   "function owner() view returns (address)",

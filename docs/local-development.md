@@ -88,4 +88,4 @@ npm run test:integration
 npm run test:integration -- --live-status
 ```
 
-The integration smoke calls the real frontend proxy and backend for current/Friday/Saturday evidence, eight stress scenarios, an explicit empty account and unsupported markets. `FRONTEND_URL` can select another local or deployed frontend origin. Backend tests: `cd ai-risk-controller && .venv/bin/python -m pytest -q`. Keeper tests/typecheck: `cd keepers && pnpm test && pnpm typecheck`. Contract setup and tests are documented in [protocol/README.md](../protocol/README.md).
+The integration smoke calls the real frontend proxy and backend for current/Friday/Saturday evidence, eight stress scenarios, an explicit empty account and unsupported markets. `FRONTEND_URL` can select another local or deployed frontend origin. Backend tests: `cd ai-risk-controller && .venv/bin/python -m pytest -q`. Keeper tests/typecheck: `cd keepers && pnpm test && pnpm typecheck`. Contract setup and tests are documented in [Morpho protocol README](../protocol-old/README.md).

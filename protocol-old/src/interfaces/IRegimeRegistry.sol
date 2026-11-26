@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// Shared interface, see protocol/INTERFACES.md. Enum order is part of the ABI: do not reorder.
+/// Shared interface, see protocol-old/INTERFACES.md. Enum order is part of the ABI: do not reorder.
 interface IRegimeRegistry {
     enum Regime {
         OPEN,
