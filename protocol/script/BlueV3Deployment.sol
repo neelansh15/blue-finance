@@ -94,7 +94,6 @@ abstract contract BlueV3Deployment {
             RECOVERY,
             1 days
         );
-        d.controls.setSharedLimits(uint128(USDT_CAP * 1 ether), 6_000); // shared reserve budget; at most 60% per stock
         uint16[4] memory discounts = [uint16(0), 400, 1_000, 1_500];
         uint128[4] memory caps = [uint128(400 ether), 300 ether, 200 ether, 100 ether];
         for (uint256 i; i < STOCK_COUNT; ++i) {

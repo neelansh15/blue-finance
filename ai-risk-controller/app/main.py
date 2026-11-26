@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from app.integrations.market_status import LiveMarketStatusProvider
 from app.agents.issuer_agent import IssuerAgent, OpenAICompatibleProvider
 from app.api.risk import router
+from app.api.research import router as research_router
 from app.config import load_policy
 from app.blue import load_blue_config
 from app.models import Model, SimulateRequest
@@ -86,6 +87,7 @@ def create_app(injected_service: RiskService | None = None, status_provider: Liv
     app = FastAPI(title="Blue AI Risk Controller", version="0.1.0", lifespan=lifespan,
                   description="Advisory NVDA collateral risk. Default market, oracle, issuer and borrower inputs are SIMULATED. No transaction execution or private keys.")
     app.include_router(router)
+    app.include_router(research_router)
     origins = [origin.strip().rstrip('/') for origin in os.getenv('RISK_ALLOWED_ORIGINS', '').split(',') if origin.strip()]
     for origin in origins:
         parsed = urlsplit(origin)

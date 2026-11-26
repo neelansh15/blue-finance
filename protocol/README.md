@@ -66,8 +66,3 @@ For a manual borrow on the prototype, mint stock from the test deployer, then su
 ## License
 
 `BluePool` and the deployment scripts build on Aave V3 Origin 3.6.0, which is licensed under the [Business Source License 1.1](LICENSE-AAVE-V3). The license’s additional use grant permits use subject to its conditions. **On March 6, 2027, or an earlier date the Aave DAO records on `v36.aavelicense.eth`, Aave V3.6 becomes available under the MIT license.** Blue’s own contracts (`StockBorrowControls`, `StockPriceSource`, `MarketCalendar`, and the mocks) are MIT.
-
-## Shared reserve risk budgets
-
-Blue now enforces an aggregate accrued USDT debt budget and a per-stock share of that configured budget, in addition to Aave native reserve caps and existing stock regime caps. Guardian changes can only tighten these limits. See [shared liquidity and supplier risk](../docs/aave-shared-risk.md) for units, advisory inputs and assumptions.
-

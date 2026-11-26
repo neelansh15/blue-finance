@@ -74,8 +74,8 @@ export default function RiskPanel({ position }: { position: RiskPosition }) {
   const expired = result && now !== null && isExpired(result.recommendation.expires_at, now);
   return (
     <section className="risk-panel" aria-labelledby={`${id}-title`}>
-      <div className="app-section-heading"><h2 id={`${id}-title`}>Legacy Morpho advisory</h2><span className="app-demo-label">Review required</span></div>
-      <p className="risk-intro">For Aave V3 shared-reserve analysis, open /app/risk. This legacy panel assesses demo collateral and debt using the backend’s synthetic market scenarios. Recommendations require review; this analysis sends no transactions.</p>
+      <div className="app-section-heading"><h2 id={`${id}-title`}>Advisory risk analysis</h2><span className="app-demo-label">Review required</span></div>
+      <p className="risk-intro">Assess your demo collateral and debt using the backend’s synthetic market scenarios. Recommendations require review; this analysis sends no transactions.</p>
       {position.unsupported ? <p className="app-message" role="status">{position.unsupported}</p> : <>
         <dl className="risk-account">
           <div><dt>Demo collateral</dt><dd>{position.quantity.toLocaleString()} NVDAb</dd></div>

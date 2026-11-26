@@ -245,4 +245,4 @@ The project started under the name "Dawn" and was renamed to "Blue" during devel
 
 <div align="center">Built for BNB Bangkok, November 2026.</div>
 
-The active Aave V3 shared-reserve risk workspace and aggregate/concentration controls are documented in [shared liquidity and supplier risk](docs/aave-shared-risk.md). Stock ceilings do not isolate losses: all collateral draws on, and can expose lenders in, the same USDT reserve.
+Research demo: [Joint stress analysis](docs/joint-stress-analysis.md) estimates simultaneous stock-loss exposure for shared USDT suppliers. Run it separately at `/app/research/joint-stress`; it does not change lending policy.

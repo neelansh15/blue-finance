@@ -12,8 +12,6 @@ from app.routing.models import RoutingDecision, RoutingRequest
 from app.simulation.portfolio import default_scenarios, simulate
 from app.blue import BlueProposal, propose_blue
 
-from app.aave import SharedReserveRequest, assess_shared_reserve
-
 router = APIRouter(prefix="/risk", tags=["Risk controller"])
 
 
@@ -139,8 +137,3 @@ def market_status(asset: str, request: Request):
             'detail': 'Live market status unavailable; upstream 200/201 and valid fresh data required',
             'failures': failures, 'observations': [s.model_dump(mode='json') for s in observations]})
     return observations
-
-
-@router.post("/aave/shared-reserve", summary="Joint Aave V3 shared-USDT reserve stress; advisory only")
-def aave_shared_reserve(body: SharedReserveRequest):
-    return assess_shared_reserve(body)

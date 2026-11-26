@@ -56,30 +56,6 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
         _eligibility(NVIDIA_BORROWER, address(d.stocks[NVIDIA].token));
     }
 
-    function testSharedBudgetBindsAggregateDebtAcrossStocks() external {
-        d.controls.setSharedLimits(100 ether, 10_000);
-        _borrow(TESLA_BORROWER, 70 ether);
-        vm.expectRevert(StockBorrowControls.InvalidPolicy.selector);
-        _borrow(NVIDIA_BORROWER, 31 ether);
-        _borrow(NVIDIA_BORROWER, 30 ether);
-    }
-
-    function testStockConcentrationUsesConfiguredBudgetAndGuardianOnlyTightens() external {
-        d.controls.setSharedLimits(100 ether, 6_000);
-        _borrow(TESLA_BORROWER, 60 ether);
-        vm.expectRevert(StockBorrowControls.InvalidPolicy.selector);
-        _borrow(TESLA_BORROWER, 1 ether);
-        _borrow(NVIDIA_BORROWER, 30 ether);
-        vm.startPrank(GUARDIAN);
-        d.controls.setSharedLimits(90 ether, 5_000);
-        vm.expectRevert(StockBorrowControls.InvalidPolicy.selector);
-        d.controls.setSharedLimits(100 ether, 5_000);
-        vm.expectRevert(StockBorrowControls.InvalidPolicy.selector);
-        d.controls.setSharedLimits(90 ether, 6_000);
-        vm.stopPrank();
-        assertGt(d.pool.stockDebt(address(d.stocks[TESLA].token)), 0);
-    }
-
     function testAllMockStocksDrawFromOneReserve() external {
         assertEq(d.pool.getReservesCount(), STOCK_COUNT + 1);
         address aUsdt = d.pool.getReserveAToken(address(usdt));
