@@ -12,7 +12,7 @@ export default function AppNav() {
   return (
     <header className="nav">
       <nav className="wrap app-nav" aria-label="App navigation">
-        <Link className="brand" href="/" aria-label="Blue Finance home">
+        <Link className="brand" href="/#top" aria-label="Blue Finance home">
           <BrandLogo />
         </Link>
         <div className="app-nav-links">

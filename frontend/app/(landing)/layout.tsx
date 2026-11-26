@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta id="blue-theme-color" name="theme-color" content={THEME_COLORS.light} suppressHydrationWarning />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body>{children}</body>
+      <body id="top">{children}</body>
     </html>
   );
 }

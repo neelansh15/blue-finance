@@ -111,7 +111,7 @@ export default function Home() {
       <SiteNav />
 
       <main id="main" tabIndex={-1}>
-        <section className="hero" id="top" aria-labelledby="hero-title">
+        <section className="hero" aria-labelledby="hero-title">
           <div className="wrap hero-sheet">
             <div className="hero-copy">
               <p className="eyebrow">Tokenized stock lending on BNB Chain</p>
