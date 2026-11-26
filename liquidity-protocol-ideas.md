@@ -1,9 +1,8 @@
 # Liquidity Protocol Ideas: Hooks and Prop AMMs (BNB Bangkok)
 
-**Saved:** Nov 13, 2026
-**Direction (Nov 13):** I like the **pegged RWA Bin pool**. Also interested in **prop AMMs on EVM**. Hook-specific work is parked for now.
+Research compiled Nov 13, 2026.
 
-## Picks
+## Candidate directions
 
 1. **Pegged-RWA Bin pool** (Pancake Infinity Bin pool with a hook). Tight bins around an oracle NAV, fees that widen on depeg.
 2. **Prop AMM angle on EVM.** Prop AMMs are no longer small on BNB Chain, but there are gaps (see below).
@@ -36,7 +35,7 @@
 * **LunarBase:** $56M to $86M over 30 days depending on source; already targets tokenized stocks. https://lunarbase.gg/
 * Also Elfomo, Hanji, FluxPool (small or no numbers).
 * Base ETH/USDC prop AMM volume went from $9.5M to $29.6M a day (Sept 2026 arXiv paper).
-* Sources disagree on volumes and I could not reconcile them (LunarBase's own site, KuCoin and DeFiLlama differ).
+* Sources disagree on volumes and not reconciled (LunarBase's own site, KuCoin and DeFiLlama differ).
 
 **Why EVM is still smaller than Solana**
 
@@ -45,7 +44,7 @@
 * Spoofing: 0x found Base makers quoting well then repricing next block, 5-10 bps extra cost to traders (https://0x.org/post/propamm-shenanigans, Mar 2026). May be outdated: Base moved to 200ms blocks on Nov 5, 2026.
 * BNB Chain has run 0.45s blocks since Jan 2026 (Fermi fork), which shrinks the staleness window.
 
-**Gaps (my inference)**
+**Gaps (inference)**
 
 * No open, verifiable guarantee that a quote is executable at the price shown.
 * No open-source prop AMM template found.
@@ -53,7 +52,7 @@
 
 ## Project ideas for BNB Bangkok
 
-These are my ideas, not from sources.
+Analysis, not from sources.
 
 1. **QuoteGuard: spoof-proof prop AMM wrapper.** Block-stamped quotes that revert if stale. Stack: Solidity, EIP-712, Foundry. Demo: split screen of a naive prop AMM being sniped next to the guarded one.
 2. **RWA prop AMM for tokenized stocks on BSC.** Spreads that widen when the market is closed. Stack: Solidity pool, Pyth or CEX feed, update bot. Closest to the pegged-RWA Bin pool. Demo: live swap with spread vs market-hours chart.
