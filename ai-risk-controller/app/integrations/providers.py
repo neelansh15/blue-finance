@@ -5,7 +5,7 @@ from typing import Protocol
 
 import numpy as np
 
-from app.market_sessions.calendar import last_regular_close, schedule_around
+from app.market_sessions.calendar import exchange_schedule, last_regular_close, schedule_around
 from app.models import (BidLevel, Borrower, IssuerDocument, MarketData, OracleMode,
                         OracleObservation, PricePoint, Snapshot, Source)
 
@@ -67,8 +67,7 @@ class MockProviders:
         prices = profile.price * np.exp(np.concatenate(([0], np.cumsum(returns))))
         prices *= profile.price / prices[-1]
         # Synthetic daily closes; business-session timestamps, no future samples.
-        import pandas_market_calendars as mcal
-        closes = mcal.get_calendar("NASDAQ").schedule(at.date() - timedelta(days=200), at.date())
+        closes = exchange_schedule(at.date() - timedelta(days=200), at.date())
         closes = closes[closes.market_close < at].market_close.iloc[-90:]
         history = [PricePoint(at=t.to_pydatetime(), price=float(p)) for t, p in zip(closes, prices)]
         multiplier = .55 if scenario == "saturday" else .85 if scenario == "friday" else 1

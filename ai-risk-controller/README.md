@@ -196,3 +196,9 @@ Haircuts, staleness, continuity/jump bands, max freeze and expired-freeze haircu
 `GET /risk/overview` assesses NVIDIA, QQQ, SpaceX, Tesla and Alphabet with a shared 5-second cache per service process. Each has a separate seeded synthetic profile for price history, spread, depth, volume and concentration; these are arbitrary demo inputs, not observed or calibrated asset statistics. Default scores and issuer reports remain simulated. SpaceX is a hypothetical collateral scenario: US-exchange calendar, token backing, redemption and oracle assumptions do not establish an actual listing, tradeable token or price feed. No live status mapping, token address or routing approval is added for QQQ, SpaceX, Tesla or Alphabet.
 
 `POST /risk/assess/{asset}`, `GET /risk/score/{asset}` and `GET /risk/events/{asset}` also support these assets. Latest scores/events require an assessment first. Lending-policy endpoints remain NVIDIA-only until separate asset-specific policies and market identities are configured.
+
+### Overview calculation performance
+
+The controller shares a bounded cache of exchange-calendar schedules by date range across assets and requests. Each caller receives a separate frame, preventing one calculation from modifying another's calendar. This avoids rebuilding the same holiday/session rules for every stock. Market history is still filtered against the exact assessment time, and risk scores, oracle freshness, evidence timestamps and audit entries are recalculated normally; the overview response cache remains five seconds. Calendar ranges roll forward with their input dates.
+
+This optimization reduces computation after a request reaches the backend. Render Free services can still sleep after inactivity and require startup time; consistently fast first visits require running the frontend and backend on services that stay awake.
