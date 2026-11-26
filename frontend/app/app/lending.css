@@ -893,3 +893,45 @@
   .risk-controls .btn { align-self: flex-start; }
   .risk-table { min-width: 520px; }
 }
+
+/* Stock-level intelligence sits above the position-specific advisory. */
+.stock-risk { margin-bottom: 40px; border: 1px solid var(--rule); background: var(--blue-app-paper); }
+.stock-risk-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 28px; }
+.stock-risk-heading h2 { margin: 8px 0 12px; font-size: clamp(1.35rem, 2vw, 1.8rem); font-weight: 500; letter-spacing: -.03em; }
+.stock-risk-heading p { margin: 0; color: var(--blue-app-muted); line-height: 1.6; }
+.stock-refresh { flex-shrink: 0; padding: 12px 18px; border: 1px solid var(--rule-strong); background: var(--blue-app-paper); color: var(--blue-app-blue); font: inherit; font-size: .85rem; cursor: pointer; }
+.stock-refresh:disabled { opacity: .65; cursor: wait; }
+.stock-risk-strip { display: flex; flex-wrap: wrap; gap: 12px 32px; padding: 16px 28px; background: var(--blue-app-sheet); border-block: 1px solid var(--rule); font-size: .8rem; color: var(--blue-app-muted); }
+.stock-risk-strip strong { color: var(--blue-app-ink); font-weight: 600; }
+.stock-risk > .app-message { margin: 16px 28px; }
+.stock-risk-table { min-width: 950px; }
+.stock-risk-table th, .stock-risk-table td { padding: 24px 16px; vertical-align: top; }
+.stock-risk-table th:first-child, .stock-risk-table td:first-child { padding-left: 28px; }
+.stock-risk-table thead { color: var(--blue-app-muted); font-size: .75rem; }
+.stock-risk-table tbody tr:hover { background: var(--blue-app-sheet); }
+.stock-risk-table caption { padding: 18px 28px; }
+.stock-identity { display: block; font-weight: 600; font-size: 1rem; }
+.stock-detail { display: block; color: var(--blue-app-muted); font-size: .75rem; margin-top: 6px; line-height: 1.5; font-weight: 400; }
+.stock-health { display: grid; gap: 10px; min-width: 90px; }
+.stock-health strong { font-size: 1.5rem; font-weight: 500; color: var(--blue-app-blue); }
+.stock-health meter { width: 90px; height: 8px; accent-color: var(--blue-app-blue); }
+.stock-risk-badge { display: inline-block; border: 1px solid var(--rule); padding: 5px 8px; font-size: .72rem; white-space: nowrap; background: var(--blue-app-sheet); }
+.stock-risk-low { background: light-dark(#e5f2eb, #173a31); }
+.stock-risk-moderate, .stock-risk-elevated { background: light-dark(#fff2d8, #43351c); }
+.stock-risk-high, .stock-risk-critical { background: light-dark(#fbe8e4, #48262a); }
+.stock-factors { display: grid; gap: 8px; min-width: 180px; }
+.stock-factors > div { display: grid; grid-template-columns: 90px 60px 24px; align-items: center; gap: 6px; font-size: .7rem; }
+.stock-factors meter { width: 60px; height: 7px; accent-color: var(--blue-app-blue); }
+.stock-explanation { min-width: 240px; max-width: 350px; line-height: 1.6; }
+.stock-quality { display: block; margin-top: 8px; font-size: .75rem; font-weight: 500; }
+.stock-evidence { font-size: .75rem; font-weight: 500; }
+.stock-factor-notes { margin-top: 10px; font-size: .75rem; }
+.stock-factor-notes summary { cursor: pointer; color: var(--blue-app-blue); }
+.stock-factor-notes p { margin: 8px 0; }
+@media (max-width: 640px) {
+  .stock-risk-heading { align-items: flex-start; flex-direction: column; padding: 20px; gap: 16px; }
+  .stock-risk-strip { padding: 16px 20px; gap: 12px 20px; }
+}
+.stock-health meter::-webkit-meter-bar, .stock-factors meter::-webkit-meter-bar { background: var(--blue-app-sheet); border: 1px solid var(--rule); border-radius: 2px; }
+.stock-health meter::-webkit-meter-optimum-value, .stock-factors meter::-webkit-meter-optimum-value { background: var(--blue-app-blue); }
+.stock-health meter::-moz-meter-bar, .stock-factors meter::-moz-meter-bar { background: var(--blue-app-blue); }

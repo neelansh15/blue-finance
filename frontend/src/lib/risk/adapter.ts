@@ -17,7 +17,7 @@ export function lendingPosition(state: PoolState, stock: StockId): RiskPosition 
     debtUsd: held ? account.debt / CENTS_PER_USDT : 0,
     uiPriceUsd: s.price / CENTS_PER_USDT / s.multiplier,
   };
-  if (stock !== "NVDAB") return { ...base, unsupported: "The risk backend currently supports NVDAB only. This stock is not assessed." };
+  if (stock !== "NVDAB") return { ...base, unsupported: "Stock health coverage is shown in the Risk page table. Position stress testing is currently configured for NVDAB only." };
   if (status === "HALTED" || status === "CORP_ACTION" || !valuationCheck(state, stock).usable) {
     return { ...base, unsupported: "NVDAB is halted, in a corporate action, or has no usable price. No assessment is available until pricing resumes." };
   }

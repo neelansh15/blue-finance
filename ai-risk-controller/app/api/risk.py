@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 from app.models import (Assessment, AssessRequest, Model, Recommendation, RiskEvent, RiskScore,
                         SimulateRequest, SimulationResult)
@@ -58,6 +59,12 @@ def latest(request: Request, asset: str) -> Assessment:
     return result
 
 
+@router.get("/overview", summary="Five-second-cached asset health and risk factors for the dashboard")
+def overview(request: Request):
+    return JSONResponse(content=jsonable_encoder(service(request).overview()),
+                        headers={"Cache-Control": "no-store"})
+
+
 @router.post("/assess/{asset}", response_model=Assessment,
              summary="Assess collateral, sessions, oracle health and recoverable value")
 def assess(asset: str, request: Request, body: AssessRequest = Body(default_factory=AssessRequest)):
@@ -83,6 +90,7 @@ def advisory(asset: str, request: Request, body: SimulateRequest):
     if body.borrowers is None:
         raise HTTPException(422, "Explicit borrowers required; use [] for an empty account")
     svc = service(request)
+    svc.require_position_support(asset)
     assessment, snapshot = svc.assess(asset, body)
     recommendation = svc.recommend_assessed(assessment, snapshot, body)
     scenarios = body.scenarios if body.scenarios is not None else default_scenarios()

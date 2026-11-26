@@ -5,9 +5,10 @@ const error = (message: string, status: number) => new Response(JSON.stringify({
 
 export async function proxyRisk(request: Request, operation: string, asset: string,
   baseUrl = process.env.RISK_API_URL, upstreamFetch: typeof fetch = fetch): Promise<Response> {
-  if (!["NVDAB", "NVDA", "BNB_STOCK_NVDA"].includes(asset.toUpperCase()))
+  const overview = operation === "overview" && asset === "all" && request.method === "GET";
+  if (!overview && !["NVDAB", "NVDA", "BNB_STOCK_NVDA"].includes(asset.toUpperCase()))
     return error("This market is not supported by the risk backend.", 404);
-  if (!(operation === "advisory" && request.method === "POST" || operation === "market-status" && request.method === "GET"))
+  if (!(overview || operation === "advisory" && request.method === "POST" || operation === "market-status" && request.method === "GET"))
     return error("Unsupported risk operation.", 405);
   if (!baseUrl) return error("Advisory service is not configured. Demo borrowing remains available.", 503);
   let url: URL;
@@ -16,7 +17,7 @@ export async function proxyRisk(request: Request, operation: string, asset: stri
     if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash ||
         (url.pathname !== "/" && url.pathname !== ""))
       return error("Advisory service configuration is invalid.", 503);
-    url = new URL(`/risk/${operation}/NVDA`, url);
+    url = new URL(overview ? "/risk/overview" : `/risk/${operation}/NVDA`, url);
   } catch { return error("Advisory service configuration is invalid.", 503); }
   let body: string | undefined;
   if (request.method === "POST") {
