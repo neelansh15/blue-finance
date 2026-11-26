@@ -563,6 +563,10 @@
   padding: 14px 16px;
 }
 
+.app-ticket-body > .dapp-banner:first-child {
+  margin-top: 0;
+}
+
 .market-action-picker {
   min-inline-size: 0;
   margin: 0;
