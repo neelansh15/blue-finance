@@ -1,8 +1,8 @@
 # BNB Bangkok: Build, Demo & Pitch (Nov 25-27, 2026)
 
 **Type:** Hackathon and demo night, plus a startup pitch track
-**Saved:** Nov 13, 2026 (updated Nov 19)
-**Source:** https://www.bnbchain.org/en/blog/bnb-bangkok-build-demo-and-pitch (BNB Chain blog, published Nov 6, 2026). Both Luma pages also read on Nov 13, 2026.
+**Compiled:** Nov 13, 2026 (updated Nov 19)
+**Source:** https://www.bnbchain.org/en/blog/bnb-bangkok-build-demo-and-pitch (BNB Chain blog, published Nov 6, 2026). Both Luma pages were also read on Nov 13, 2026.
 
 ## Overview
 
@@ -43,7 +43,6 @@ BNB Chain is hosting a hackathon and demo night in Bangkok focused on **RWA, Tra
 
 * EASY Residency S5 terms and what the fast-track gives in practice.
 * Builder Fund terms.
-* Which project to bring, new build or existing.
 
 ## Related
 
