@@ -1,0 +1,17 @@
+# Dawn
+
+Working name for a lending product for tokenized US stocks (RWAs) on BNB Chain, built for BNB Bangkok (Nov 25-27, 2026). Research lives as markdown files at the repo root. Edit freely.
+
+## Direction (draft)
+
+Isolated-market lending for tokenized equities and RWAs, stablecoin borrow only in v1. Differentiator: a risk layer that knows when the underlying market is open (regime LTV haircuts, gap-risk model, conservative oracle). A propAMM is an optional liquidation venue, not required. Leverage vault and shorting come later.
+
+## Files
+
+- [architecture-v0.md](architecture-v0.md): lending architecture draft
+- [yzi-labs-research.md](yzi-labs-research.md): what YZi Labs and BNB Chain fund, funding routes
+- [bnb-bangkok-event.md](bnb-bangkok-event.md): event details, tracks, judging, prizes
+- [ideas-brainstorm.md](ideas-brainstorm.md): shortlist of ideas
+- [liquidity-protocol-ideas.md](liquidity-protocol-ideas.md): hooks and prop AMM research
+
+Imported Nov 26, 2026 from the wiki (wiki.superd.app, Public Programs > BNB Bangkok). The wiki copies are the older versions from now on; edit here.
