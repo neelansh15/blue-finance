@@ -19,7 +19,7 @@ src/
   interfaces/IMorpho.sol      minimal vendored Morpho Blue interface, MarketParams, MarketParamsLib.id
   interfaces/IOracle.sol      Morpho IOracle
   interfaces/IRegimeRegistry.sol  Regime enum, registry interface, RegimeLib (rank / moreConservative)
-  interfaces/IAtlasFeed.sol   latestAnswer / latestTimestamp / decimals
+  interfaces/IAtlasFeed.sol   latestAnswer / latestRoundData / decimals (latestTimestamp reverts on real feeds)
   interfaces/IBStockLike.sol  ERC-8056 style uiMultiplier / balanceOfUI / UIMultiplierUpdated
   mocks/MockAtlasFeed.sol     owner-settable feed, can be switched to revert
   mocks/MockBStock.sol        ERC20 with scheduled uiMultiplier, for tests and the demo
@@ -95,6 +95,19 @@ Deploy to an anvil fork: `anvil --fork-url https://bsc-dataseed.binance.org`, th
 - Failure handling: a reverting registry or an out-of-range enum is treated as HALTED.
 - Never reverts: every external read is a bounded staticcall that checks the return size, so `price()` does not revert. The only exception is `NoPrice()` before the first valid observation.
 
+## Atlas feed findings (BSC mainnet, probed 2026-11-26 13:59-14:05 UTC, public RPC)
+
+**Oracle read-path change: NEEDS AN OPUS-LEVEL SECURITY REVIEW.** `DawnOracle._readFeed` (new, replaces the `latestAnswer` + `latestTimestamp` reads) is hand-written assembly decoding `latestRoundData()`. Review: the return buffer, range checks, the `answeredInRound >= roundId` rule, and the changed staleness semantics (updatedAt).
+
+- **Interface (94 feeds from the Lista bStock page, 5 probed in detail):** `description()` ("SingleFeed TSLAB/USD"), `decimals()` = 8, `latestAnswer()`, `latestRoundData()` exist. `latestTimestamp()`, `latestRound()` and `version()` REVERT. `getRoundData(1)` returns the same single round. No public logs available on the free RPC.
+- **Round fields:** one round only. `roundId == answeredInRound`, either 1 (68 feeds) or 0 (26 feeds). `startedAt` is updatedAt or updatedAt - 1. So the adapter requires `answeredInRound >= roundId` but not `roundId > 0`.
+- **Update cadence (updatedAt age across all 94 feeds, on a US market holiday, Thanksgiving, NYSE closed):** the 26 round-0 feeds were 48-90 s old; the 68 round-1 feeds were 88 s to 3588 s old (about 1 h, median about 45 min). Feeds do update while the market is closed (extended-hours prices), but at an hourly-ish cadence. Not measured: an ordinary weekend (public RPC is not archive; no history).
+- **Staleness consequence:** a 1 h live staleness (the old placeholder) sits right at the observed maximum age and would flip to the last-good fallback. The real-feed deploy path uses 2 h for OPEN/EXTENDED (CLOSED 4 h, WEEKEND 6 h unchanged). All values remain placeholders.
+- **Units: per RAW token.** `balanceOfUI = raw x uiMultiplier`. SNDKB has uiMultiplier = 8e18; the feed answers $606.05 while the underlying SNDK traded at $73.6 (regular close) and $76.7 (after hours): answer = 8 x share price. Consistent: IBMB (answer 246.2 vs IBM 243.9 x 1.00976 = 246.3) and SQQQB. Inconclusive within about 1%: NVDAB, AAPLB, SPYB, SOXSB, NOKB (multipliers 1.0004-1.01). TSLAB multiplier is 1.0.
+- **Scaling:** 8 decimals; answer x 1e28 = Morpho price for 18-dec collateral and 18-dec loan, per raw token (test asserts this on the fork).
+- **Fork tests** (`test/fork/AtlasRealFeedFork.t.sol`): live bands, so they assert sanity, not exact prices. The registry used there has no holidays seeded, so the regime shown is the plain calendar one.
+- **multiplier moves:** SNDKB at 8 suggests a split happened; the feed and multiplier relationship around a change is unobserved.
+
 ## Router (DawnRouter)
 
 - targetLTV = LLTV x (1 - h_max) - margin, h_max over OPEN/EXTENDED/CLOSED/WEEKEND (cached at listing). With placeholders: 62.5% x 85% - 2% = 51.125%. The limit is applied to oracle.price(), which already carries the current regime's haircut, so a WEEKEND flip tightens the limit by a further 15% and a position opened at the limit in any routine regime stays healthy on Morpho after a flip to any other routine regime (test_Scenario2b). Opening in a haircut regime is deliberately conservative (haircut counted twice).
@@ -125,8 +138,8 @@ With `jumpBandBps != 0` (placeholder 30%), an UPWARD feed move above lastGood x 
 
 ## Unverified assumptions and open issues
 
-1. **Atlas units are unverified.** It is not known whether the Atlas price is per UI share or per raw token. The `feedPerUIShare` flag covers both, and `_readAtlas` is the only adapter that would need to change.
-2. **Atlas read access is unverified.** It is not known whether reads are open or whitelist-only. A revert is handled as "no price", and `decimals()` is checked only if it is readable at deploy time.
+1. **Atlas units: measured, one decisive data point.** See "Atlas feed findings" below. Real feeds quote per raw token (`feedPerUIShare = false`). Only SNDKB (multiplier 8) separates the two hypotheses cleanly; for multipliers near 1 the evidence is within extended-hours noise. Re-verify when a bStock with a large multiplier is the target.
+2. **Atlas read access:** open to any caller on BSC (verified with eth_call from an arbitrary address on 2026-11-26).
 3. **USDT is assumed to equal 1 USD.** The feed is assumed to be quoted in USD. A depeg is not modelled.
 4. **Split timing (the jump breaker is upward-only, so this still applies).**
    - If a per-UI feed switches to post-split prices before `uiMultiplier` changes, and no keeper has set CORP_ACTION, the oracle prices live at the halved value.
