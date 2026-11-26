@@ -1,0 +1,248 @@
+.simple-masthead {
+  padding: clamp(26px, 4vw, 52px) 0;
+  border-bottom: 1px solid var(--rule);
+  background-color: var(--sheet);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  text-align: center;
+}
+
+.simple-masthead h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.simple-masthead p,
+.simple-stage p,
+.simple-choice > span:last-child {
+  color: var(--secondary);
+}
+
+.simple-masthead p {
+  margin-top: 8px;
+}
+
+.simple-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  max-width: 720px;
+  margin: 24px auto 0;
+}
+
+.simple-steps li {
+  position: relative;
+  min-width: 0;
+}
+
+.simple-steps li:not(:last-child)::after {
+  position: absolute;
+  inset: 18px -50% auto 50%;
+  height: 1px;
+  background: var(--rule-strong);
+  content: "";
+}
+
+.simple-steps button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: 620 clamp(0.66rem, 2.25vw, 0.875rem)/1.2 var(--font-instrument-sans), sans-serif;
+}
+
+.simple-steps button span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+  font-family: var(--mono);
+}
+
+.simple-steps button[aria-current="step"] span {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-blue);
+}
+
+.simple-steps button:disabled {
+  color: var(--secondary);
+  cursor: default;
+}
+
+.simple-steps button:not(:disabled):hover,
+.simple-steps button[aria-current="step"] {
+  color: var(--blue);
+}
+
+.simple-stage {
+  max-width: 960px;
+  padding-block: clamp(24px, 4vw, 46px) 64px;
+}
+
+.simple-stage h2 {
+  font-size: clamp(1.45rem, 3vw, 2.15rem);
+}
+
+.simple-stage h3 {
+  margin-bottom: 8px;
+}
+
+.simple-stage h2:focus {
+  outline: none;
+}
+
+.simple-center {
+  text-align: center;
+}
+
+.simple-center p,
+.simple-receipt p {
+  margin: 10px 0 18px;
+  overflow-wrap: anywhere;
+}
+
+.simple-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 2vw, 20px);
+  max-width: 680px;
+  margin: 18px auto 32px;
+}
+
+.simple-choice {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  min-height: 158px;
+  padding: clamp(14px, 3vw, 30px);
+  border: 1px solid var(--rule-strong);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+  font: inherit;
+  line-height: 1.35;
+}
+
+.simple-choice:hover {
+  background: var(--sheet);
+  border-color: var(--blue);
+}
+
+.simple-choice strong {
+  font-size: 1.35rem;
+}
+
+.simple-choice > span:last-child {
+  font-size: 0.875rem;
+}
+
+.simple-icon {
+  width: 34px;
+  height: 34px;
+  background: var(--blue);
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+}
+
+.simple-table {
+  width: 100%;
+  margin-top: 14px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.simple-table th,
+.simple-table td {
+  padding: 10px clamp(4px, 1.4vw, 14px);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  line-height: 1.25;
+}
+
+.simple-table thead th {
+  background: var(--sheet);
+}
+
+.simple-table .app-asset img {
+  flex: none;
+}
+
+.simple-market {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+}
+
+.simple-market:hover {
+  background: var(--sheet);
+}
+
+.simple-ticket,
+.simple-receipt {
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+.simple-ticket .app-ticket-head {
+  gap: 12px;
+}
+
+.simple-ticket .app-ticket-head h2 {
+  font-size: clamp(1rem, 3vw, 1.45rem);
+}
+
+.simple-form {
+  display: grid;
+  gap: 14px;
+}
+
+.simple-receipt dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.simple-receipt .btn {
+  margin-top: 16px;
+}
+
+@media (max-width: 540px) {
+  .simple-table {
+    font-size: 0.75rem;
+  }
+
+  .simple-table .app-asset {
+    gap: 4px;
+  }
+
+  .simple-table .app-asset img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .simple-market {
+    gap: 4px;
+    padding-inline: 0;
+  }
+}

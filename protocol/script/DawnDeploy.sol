@@ -135,11 +135,11 @@ abstract contract DawnDeploy {
     }
 
     /// PLACEHOLDER caps on market totalBorrowAssets (USDT, 18 decimals). HALTED/CORP_ACTION are blocked anyway.
-    function _totalCap() internal pure returns (uint256) {
+    function _totalCap() internal pure virtual returns (uint256) {
         return 1_000_000e18;
     }
 
-    function _regimeCaps() internal pure returns (uint256[6] memory) {
+    function _regimeCaps() internal pure virtual returns (uint256[6] memory) {
         return [uint256(1_000_000e18), 500_000e18, 250_000e18, 250_000e18, 0, 0];
     }
 
