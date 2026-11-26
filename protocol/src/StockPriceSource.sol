@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IAtlasFeed} from "./interfaces/IAtlasFeed.sol";
+import {IPriceFeed} from "./interfaces/IPriceFeed.sol";
 import {IBStockLike} from "./interfaces/IBStockLike.sol";
 import {IMarketCalendar} from "./interfaces/IMarketCalendar.sol";
 
@@ -14,6 +14,9 @@ import {IMarketCalendar} from "./interfaces/IMarketCalendar.sol";
 ///      - New borrowing (`usableForBorrow`) also needs the reporter to have accepted the live round within
 ///        `borrowMaxAge`. Acceptance rejects a move larger than `continuityBps` from the last accepted price,
 ///        so a gap or an unannounced split stops new loans until the admin accepts a new reference.
+///      - Optionally, a second feed in the same units cross-checks new borrowing: it must be fresh and agree
+///        with the primary price within a tolerance for the stock's market status. It is off when the feed is
+///        zero. The cross-check never affects valuation or liquidation.
 contract StockPriceSource {
     uint256 public constant BPS = 10_000;
     uint256 public constant MAX_PRICE = 1e16;
@@ -22,7 +25,7 @@ contract StockPriceSource {
     address public immutable admin;
     address public immutable reporter;
     address public immutable guardian;
-    IAtlasFeed public immutable feed;
+    IPriceFeed public immutable feed;
     IBStockLike public immutable stock;
     IMarketCalendar public immutable calendar;
     bool public immutable feedPerDisplayedUnit;
@@ -37,6 +40,12 @@ contract StockPriceSource {
     uint256 public maxPrice;
     bool public suspended;
 
+    /// @notice Secondary feed in the same units as the primary feed, or zero for no cross-check.
+    IPriceFeed public crossCheckFeed;
+    uint32 public crossCheckMaxAge;
+    /// @notice Largest allowed difference from the cross-check, in basis points, per MarketStatus OPEN..WEEKEND.
+    uint16[4] public crossCheckBps;
+
     error Unauthorized();
     error InvalidConfig();
     error InvalidRound();
@@ -46,12 +55,13 @@ contract StockPriceSource {
     event PriceAccepted(uint256 price, uint256 observedAt, uint256 multiplier);
     event PriceSuspended();
     event BandSet(uint256 minPrice, uint256 maxPrice);
+    event CrossCheckSet(address feed, uint32 maxAge, uint16[4] toleranceBps);
 
     struct Config {
         address admin;
         address reporter;
         address guardian;
-        IAtlasFeed feed;
+        IPriceFeed feed;
         IBStockLike stock;
         IMarketCalendar calendar;
         bool feedPerDisplayedUnit;
@@ -60,6 +70,9 @@ contract StockPriceSource {
         uint16 continuityBps;
         uint256 minPrice;
         uint256 maxPrice;
+        IPriceFeed crossCheckFeed;
+        uint32 crossCheckMaxAge;
+        uint16[4] crossCheckBps;
     }
 
     constructor(Config memory c) {
@@ -80,6 +93,7 @@ contract StockPriceSource {
         liquidationMaxAge = c.liquidationMaxAge;
         continuityBps = c.continuityBps;
         _setBand(c.minPrice, c.maxPrice);
+        _setCrossCheck(c.crossCheckFeed, c.crossCheckMaxAge, c.crossCheckBps);
     }
 
     function refresh() external {
@@ -107,6 +121,25 @@ contract StockPriceSource {
         _setBand(minPrice_, maxPrice_);
     }
 
+    /// @notice Sets or clears (feed = 0) the secondary feed that new borrowing must agree with.
+    function setCrossCheck(IPriceFeed feed_, uint32 maxAge, uint16[4] calldata toleranceBps) external {
+        if (msg.sender != admin) revert Unauthorized();
+        _setCrossCheck(feed_, maxAge, toleranceBps);
+    }
+
+    /// @notice The cross-check price and its difference from the primary price.
+    /// @return available False when no cross-check is set or its round is invalid or too old.
+    function crossCheck() external view returns (bool available, uint256 referencePrice, uint256 deviationBps) {
+        (uint256 primary,) = _livePrice();
+        uint256 updatedAt;
+        (referencePrice, updatedAt) = _crossCheckPrice();
+        if (referencePrice == 0 || primary == 0 || block.timestamp - updatedAt > crossCheckMaxAge) {
+            return (false, referencePrice, 0);
+        }
+        uint256 difference = primary > referencePrice ? primary - referencePrice : referencePrice - primary;
+        return (true, referencePrice, difference * BPS / referencePrice);
+    }
+
     /// @dev Aave's oracle expects a positive latestAnswer and bubbles up a source revert, which stops
     ///      liquidation for accounts using this asset until the price is valid again.
     function latestAnswer() external view returns (int256) {
@@ -119,7 +152,7 @@ contract StockPriceSource {
     function usableForBorrow() external view returns (bool) {
         if (!_valuationUsable() || block.timestamp - observedAt > borrowMaxAge) return false;
         (uint256 current, uint256 updatedAt) = _livePrice();
-        return updatedAt == observedAt && current == price;
+        return updatedAt == observedAt && current == price && _agreesWithCrossCheck(current);
     }
 
     function _accept(bool newReference) private {
@@ -139,6 +172,45 @@ contract StockPriceSource {
         minPrice = minPrice_;
         maxPrice = maxPrice_;
         emit BandSet(minPrice_, maxPrice_);
+    }
+
+    function _setCrossCheck(IPriceFeed feed_, uint32 maxAge, uint16[4] memory toleranceBps) private {
+        if (address(feed_) != address(0)) {
+            if (address(stock) == address(0) || feed_.decimals() != decimals || maxAge == 0) revert InvalidConfig();
+            for (uint256 i; i < 4; ++i) {
+                if (toleranceBps[i] == 0 || toleranceBps[i] >= BPS) revert InvalidConfig();
+            }
+        }
+        crossCheckFeed = feed_;
+        crossCheckMaxAge = maxAge;
+        crossCheckBps = toleranceBps;
+        emit CrossCheckSet(address(feed_), maxAge, toleranceBps);
+    }
+
+    function _agreesWithCrossCheck(uint256 primary) private view returns (bool) {
+        if (address(crossCheckFeed) == address(0)) return true;
+        uint256 marketStatus = uint256(calendar.status(address(stock)));
+        if (marketStatus >= 4) return false;
+        (uint256 reference_, uint256 updatedAt) = _crossCheckPrice();
+        if (reference_ == 0 || block.timestamp - updatedAt > crossCheckMaxAge) return false;
+        uint256 difference = primary > reference_ ? primary - reference_ : reference_ - primary;
+        return difference * BPS <= reference_ * crossCheckBps[marketStatus];
+    }
+
+    function _crossCheckPrice() private view returns (uint256 converted, uint256 updatedAt) {
+        if (address(crossCheckFeed) == address(0)) return (0, 0);
+        try crossCheckFeed.latestRoundData() returns (
+            uint80 id, int256 answer, uint256, uint256 stamp, uint80 answered
+        ) {
+            if (answer <= 0 || uint256(answer) > MAX_PRICE || stamp == 0 || stamp > block.timestamp || answered < id) {
+                return (0, 0);
+            }
+            uint256 converted_ = uint256(answer);
+            if (feedPerDisplayedUnit) converted_ = converted_ * _multiplier() / 1e18;
+            return (converted_, stamp);
+        } catch {
+            return (0, 0);
+        }
     }
 
     /// @dev A changed multiplier means a corporate action took effect after the last accepted price. The admin

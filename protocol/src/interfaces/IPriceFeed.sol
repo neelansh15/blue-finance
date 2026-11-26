@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// Atlas SingleFeed subset used by Blue (see INTERFACES.md). Verified against the real BSC feeds on 2026-11-26:
-/// decimals(), latestAnswer() and latestRoundData() exist; latestTimestamp() and latestRound() REVERT, so Blue
-/// reads latestRoundData() only (through BlueOracle._readFeed).
-interface IAtlasFeed {
+/// @notice Chainlink-style round feed. Atlas SingleFeeds for bStocks and the Chainlink USDT/USD feed on BNB Chain
+///         both expose this surface. Atlas feeds revert on latestTimestamp() and latestRound(), so Blue reads
+///         latestRoundData() only (verified against BNB mainnet on 2026-11-26 and 2026-11-27).
+interface IPriceFeed {
     function latestAnswer() external view returns (int256);
     function latestRoundData()
         external

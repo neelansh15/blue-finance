@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IBStockLike} from "../interfaces/IBStockLike.sol";
+import {IBStockLike} from "../../src/interfaces/IBStockLike.sol";
 
-/// @title MockBStock
-/// @notice Demo/test ERC20 with ERC-8056 / BEP-677 scaled-UI semantics, modelled on the bStock
+/// @title TestBStock
+/// @notice Test ERC20 with ERC-8056 / BEP-677 scaled-UI semantics, modelled on the bStock
 ///         SecuritiesToken: raw balances never change, uiMultiplier() (1e18) is display-only,
 ///         setUIMultiplier(new, effectiveAt) emits UIMultiplierUpdated immediately and views keep
 ///         returning the old multiplier until effectiveAt. A new schedule overwrites a pending one.
 ///         No compliance or pause logic (that is a documented gap versus the real token).
-contract MockBStock is IBStockLike {
+contract TestBStock is IBStockLike {
     string public name;
     string public symbol;
     uint8 public constant decimals = 18;
@@ -73,9 +73,9 @@ contract MockBStock is IBStockLike {
         return (ui * 1e18) / uiMultiplier();
     }
 
-    // ---- multiplier controls (owner = test or demo script)
+    // ---- multiplier controls (owner = the test)
 
-    /// Schedules a multiplier change. effectiveAt may equal block.timestamp in this mock (immediate),
+    /// Schedules a multiplier change. effectiveAt may equal block.timestamp here (immediate),
     /// unlike the real token, which requires a future effectiveAt <= 365 days ahead.
     function setUIMultiplier(uint256 newMultiplier, uint256 effectiveAt) public onlyOwner {
         if (newMultiplier < MIN_MULTIPLIER || newMultiplier > MAX_MULTIPLIER) revert InvalidMultiplier();
@@ -88,7 +88,7 @@ contract MockBStock is IBStockLike {
         emit UIMultiplierUpdated(old, newMultiplier, effectiveAt);
     }
 
-    /// Convenience for demos: change takes effect in this block.
+    /// Convenience for tests: change takes effect in this block.
     function setUIMultiplierNow(uint256 newMultiplier) external {
         setUIMultiplier(newMultiplier, block.timestamp);
     }

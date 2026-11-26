@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IAtlasFeed} from "../interfaces/IAtlasFeed.sol";
+import {IPriceFeed} from "../../src/interfaces/IPriceFeed.sol";
 
-/// @title MockAtlasFeed
-/// @notice Chainlink/Atlas-style feed for tests and the demo. Owner-controlled.
+/// @title TestPriceFeed
+/// @notice Chainlink/Atlas-style feed for tests. Owner-controlled.
 ///         Can be switched to revert on every read to simulate a whitelist removal or outage.
-contract MockAtlasFeed is IAtlasFeed {
+contract TestPriceFeed is IPriceFeed {
     address public owner;
     uint8 public immutable decimals;
     int256 internal _answer;
