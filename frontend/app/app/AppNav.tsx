@@ -16,6 +16,7 @@ export default function AppNav() {
           <BrandLogo />
         </Link>
         <div className="app-nav-links">
+          <Link href="/app/simplified" aria-current={path === "/app/simplified" ? "page" : undefined}>Simplified</Link>
           <Link href="/app/dashboard" aria-current={path === "/app/dashboard" ? "page" : undefined}>Dashboard</Link>
           <Link href="/app/earn" aria-current={path === "/app/earn" ? "page" : undefined}>Earn</Link>
           <Link href="/app/borrow" aria-current={path === "/app/borrow" ? "page" : undefined}>Borrow</Link>
