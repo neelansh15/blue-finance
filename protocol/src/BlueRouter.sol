@@ -2,12 +2,12 @@
 pragma solidity 0.8.28;
 
 import {IMorpho, Id, MarketParams, MarketParamsLib} from "./interfaces/IMorpho.sol";
-import {IDawnOracle} from "./interfaces/IDawnOracle.sol";
+import {IBlueOracle} from "./interfaces/IBlueOracle.sol";
 import {IRegimeRegistry, RegimeLib} from "./interfaces/IRegimeRegistry.sol";
 import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 
-/// @title DawnRouter
-/// @notice Borrow front door for Dawn markets on an unmodified Morpho Blue. Users authorize the router once with
+/// @title BlueRouter
+/// @notice Borrow front door for Blue markets on an unmodified Morpho Blue. Users authorize the router once with
 ///         MORPHO.setAuthorization(router, true); the router then supplies collateral, borrows and withdraws
 ///         collateral on their behalf, and only ever for msg.sender.
 ///
@@ -29,7 +29,7 @@ import {SafeTransferLib} from "./libraries/SafeTransferLib.sol";
 ///         and Morpho's LLTV bind such users. Making the router binding needs a collateral wrapper that only the
 ///         router can deposit, which is out of scope for the demo. Treat the router as UX and policy for honest
 ///         users, not as a security boundary for the market.
-contract DawnRouter {
+contract BlueRouter {
     using MarketParamsLib for MarketParams;
     using RegimeLib for IRegimeRegistry.Regime;
     using SafeTransferLib for address;
@@ -62,7 +62,7 @@ contract DawnRouter {
         keccak256("Eligibility(address account,uint256 nonce,uint256 expiry)");
     bytes32 internal constant DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    bytes32 internal constant NAME_HASH = keccak256("DawnRouter");
+    bytes32 internal constant NAME_HASH = keccak256("BlueRouter");
     bytes32 internal constant VERSION_HASH = keccak256("1");
 
     IMorpho public immutable MORPHO;
@@ -251,7 +251,7 @@ contract DawnRouter {
             MORPHO.idToMarketParams(id);
         MarketParams memory mp = MarketParams(loanToken, collateralToken, oracle, irm, lltv);
         (,, uint128 collateral) = MORPHO.position(id, account);
-        return _limit(collateral, IDawnOracle(mp.oracle).price(), targetLtv(id, _regime(mp)));
+        return _limit(collateral, IBlueOracle(mp.oracle).price(), targetLtv(id, _regime(mp)));
     }
 
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
@@ -265,7 +265,7 @@ contract DawnRouter {
 
     // ================================================================ admin
 
-    /// @notice List a Dawn market. Checks it exists on Morpho with these exact params, that its oracle prices this
+    /// @notice List a Blue market. Checks it exists on Morpho with these exact params, that its oracle prices this
     ///         collateral off this router's registry, and caches targetLTV from the oracle's routine haircuts.
     function listMarket(MarketParams calldata mp, uint16 marginBps, uint256 totalCap, uint256[6] calldata regimeCaps)
         external
@@ -275,7 +275,7 @@ contract DawnRouter {
         if (_markets[id].listed) revert MarketAlreadyListed();
         if (Id.unwrap(marketOfCollateral[mp.collateralToken]) != bytes32(0)) revert MarketAlreadyListed();
         _checkParams(id, mp);
-        IDawnOracle o = IDawnOracle(mp.oracle);
+        IBlueOracle o = IBlueOracle(mp.oracle);
         if (o.ASSET() != mp.collateralToken || address(o.REGISTRY()) != address(REGISTRY)) revert MarketMismatch();
 
         uint16 hMax;
@@ -392,7 +392,7 @@ contract DawnRouter {
         if (paused) revert IsPaused();
         r = _regime(mp);
         if (r.isFreezeRegime()) revert RegimeBlocked(r);
-        IDawnOracle o = IDawnOracle(mp.oracle);
+        IBlueOracle o = IBlueOracle(mp.oracle);
         o.update();
         if (o.isFrozen()) revert OracleFrozen();
         (bool ok,,) = o.liveRawPrice();
@@ -410,7 +410,7 @@ contract DawnRouter {
         (, uint128 borrowShares, uint128 collateral) = MORPHO.position(id, account);
         // Morpho SharesMathLib.toAssetsUp
         uint256 debt = _mulDivUp(borrowShares, totalBorrowAssets + VIRTUAL_ASSETS, totalBorrowShares + VIRTUAL_SHARES);
-        uint256 limit = _limit(collateral, IDawnOracle(mp.oracle).price(), cfg.targetLtvWad);
+        uint256 limit = _limit(collateral, IBlueOracle(mp.oracle).price(), cfg.targetLtvWad);
         if (debt > limit) revert AboveTargetLtv(debt, limit);
     }
 

@@ -2,8 +2,8 @@
 pragma solidity 0.8.28;
 
 import {IMorpho, Id, MarketParams, MarketParamsLib} from "../src/interfaces/IMorpho.sol";
-import {DawnOracle} from "../src/DawnOracle.sol";
-import {DawnRouter} from "../src/DawnRouter.sol";
+import {BlueOracle} from "../src/BlueOracle.sol";
+import {BlueRouter} from "../src/BlueRouter.sol";
 import {RegimeRegistry} from "../src/RegimeRegistry.sol";
 import {MockAtlasFeed} from "../src/mocks/MockAtlasFeed.sol";
 import {MockBStock} from "../src/mocks/MockBStock.sol";
@@ -12,15 +12,15 @@ interface IERC20Approve {
     function approve(address, uint256) external returns (bool);
 }
 
-/// @title DawnDeploy
+/// @title BlueDeploy
 /// @notice Shared deployment logic for script/Deploy.s.sol and the fork scenario tests (test/scenarios).
 ///         Uses no cheatcodes, so the same code runs under vm.startBroadcast and inside a test. Every call is made
 ///         from this contract's execution context: under broadcast that is the deployer EOA, in a test it is the
 ///         test contract. `p.deployer` must be that address (it becomes admin and mock owner).
 ///
 ///         ALL RISK PARAMETERS BELOW ARE PLACEHOLDERS, identical to the labelled placeholders in
-///         frontend/src/lib/dawn/params.ts. They are not calibrated (see architecture-v1.md §13).
-abstract contract DawnDeploy {
+///         frontend/src/lib/blue/params.ts. They are not calibrated (see architecture-v1.md §13).
+abstract contract BlueDeploy {
     using MarketParamsLib for MarketParams;
 
     // BNB Chain (chain id 56). Verified on a fork by test/fork/MorphoBnbFork.t.sol.
@@ -47,7 +47,7 @@ abstract contract DawnDeploy {
     uint256 internal constant MAX_ATTESTATION_TTL = 15 minutes;
 
     /// Public demo signer key. NOT A SECRET: anyone can sign eligibility attestations with it. Demo only.
-    uint256 internal constant DEMO_SIGNER_KEY = uint256(keccak256("dawn.demo.eligibility.signer"));
+    uint256 internal constant DEMO_SIGNER_KEY = uint256(keccak256("blue.demo.eligibility.signer"));
 
     /// Optional REAL Atlas feed (and real bStock). Default address(0) keeps the MockAtlasFeed / MockBStock path,
     /// which every test and the demo use. Set by script/Deploy.s.sol from env ATLAS_FEED / BSTOCK.
@@ -70,13 +70,13 @@ abstract contract DawnDeploy {
         RegimeRegistry registry;
         MockAtlasFeed feed;
         MockBStock bStock;
-        DawnOracle oracle;
-        DawnRouter router;
+        BlueOracle oracle;
+        BlueRouter router;
         MarketParams marketParams;
         Id marketId;
     }
 
-    function _deployDawn(DeployParams memory p) internal returns (Deployment memory d) {
+    function _deployBlue(DeployParams memory p) internal returns (Deployment memory d) {
         d.registry = new RegimeRegistry(p.deployer, p.keeper, MAX_OVERRIDE, false);
         d.registry.setHolidays(_nyseHolidays(), true);
         d.registry.setEarlyCloses(_nyseEarlyCloses(), true);
@@ -91,12 +91,12 @@ abstract contract DawnDeploy {
             d.feed = new MockAtlasFeed(8, p.initialPrice);
             feedAddr = address(d.feed);
         }
-        DawnOracle.Config memory c = _oracleConfig(feedAddr, address(d.registry), address(d.bStock));
+        BlueOracle.Config memory c = _oracleConfig(feedAddr, address(d.registry), address(d.bStock));
         if (realAtlasFeed != address(0)) {
             c.feedPerUIShare = false;
             c.stalenessSec = [uint32(2 hours), 2 hours, 4 hours, 6 hours, 1 hours, 1 hours];
         }
-        d.oracle = new DawnOracle(c);
+        d.oracle = new BlueOracle(c);
 
         d.marketParams = MarketParams({
             loanToken: USDT, collateralToken: address(d.bStock), oracle: address(d.oracle), irm: IRM, lltv: LLTV
@@ -104,7 +104,7 @@ abstract contract DawnDeploy {
         d.marketId = d.marketParams.id();
         IMorpho(MORPHO).createMarket(d.marketParams);
 
-        d.router = new DawnRouter(MORPHO, address(d.registry), p.deployer, p.signer, MAX_ATTESTATION_TTL);
+        d.router = new BlueRouter(MORPHO, address(d.registry), p.deployer, p.signer, MAX_ATTESTATION_TTL);
         d.router.listMarket(d.marketParams, MARGIN_BPS, _totalCap(), _regimeCaps());
         if (p.guardian != address(0)) d.router.setGuardian(p.guardian);
 
@@ -117,7 +117,7 @@ abstract contract DawnDeploy {
     function _oracleConfig(address feed, address registry, address asset)
         internal
         pure
-        returns (DawnOracle.Config memory c)
+        returns (BlueOracle.Config memory c)
     {
         c.atlasFeed = feed;
         c.registry = registry;
@@ -125,7 +125,7 @@ abstract contract DawnDeploy {
         c.loanDecimals = 18;
         c.collateralDecimals = 18;
         c.feedDecimals = 8;
-        c.feedPerUIShare = true; // mock default is per UI share; real Atlas feeds are per raw token (see _deployDawn)
+        c.feedPerUIShare = true; // mock default is per UI share; real Atlas feeds are per raw token (see _deployBlue)
         c.haircutsBps = [H_OPEN, H_EXTENDED, H_CLOSED, H_WEEKEND, H_HALTED, H_CORP_ACTION];
         c.stalenessSec = [uint32(1 hours), 1 hours, 4 hours, 6 hours, 1 hours, 1 hours]; // PLACEHOLDER
         c.maxFreeze = MAX_FREEZE;

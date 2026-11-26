@@ -195,8 +195,28 @@
   font: inherit;
 }
 
-.simple-market:hover {
+.simple-market-row {
+  position: relative;
+}
+
+.simple-market::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+
+.simple-market-row:hover,
+.simple-market-row:has(.simple-market:focus-visible) {
   background: var(--sheet);
+}
+
+.simple-market-row:has(.simple-market:focus-visible) {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+.simple-market:focus-visible {
+  outline: none;
 }
 
 .simple-ticket,
@@ -211,6 +231,46 @@
 
 .simple-ticket .app-ticket-head h2 {
   font-size: clamp(1rem, 3vw, 1.45rem);
+}
+
+.simple-ticket .simple-ticket-market {
+  margin-top: 3px;
+  color: var(--plot-muted);
+  font-size: 0.875rem;
+}
+
+.simple-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 730;
+}
+
+.simple-success svg {
+  flex: none;
+  margin-top: 0.08em;
+  color: light-dark(#197549, #78d5a5);
+}
+
+.simple-stage .btn {
+  border: 1px solid var(--blue);
+  background: var(--blue);
+  color: var(--on-blue);
+}
+
+.simple-center .btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.simple-stage .btn:not(:disabled):hover {
+  background: var(--accent-hover);
+}
+
+.simple-stage .btn:disabled {
+  border-color: var(--rule);
+  background: var(--sheet);
+  color: var(--secondary);
 }
 
 .simple-form {

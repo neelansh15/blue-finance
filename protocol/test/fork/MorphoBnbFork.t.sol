@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {IMorpho, MarketParams, MarketParamsLib, Id} from "../../src/interfaces/IMorpho.sol";
-import {DawnOracle} from "../../src/DawnOracle.sol";
+import {BlueOracle} from "../../src/BlueOracle.sol";
 import {RegimeRegistry} from "../../src/RegimeRegistry.sol";
 import {MockAtlasFeed} from "../../src/mocks/MockAtlasFeed.sol";
 import {MockBStock} from "../../src/mocks/MockBStock.sol";
@@ -27,7 +27,7 @@ contract MorphoBnbForkTest is Test {
     MockBStock stock;
     MockAtlasFeed feed;
     RegimeRegistry reg;
-    DawnOracle oracle;
+    BlueOracle oracle;
     MarketParams mp;
 
     function setUp() public {
@@ -42,7 +42,7 @@ contract MorphoBnbForkTest is Test {
         stock = new MockBStock("Mock bAAPL", "bAAPL");
         feed = new MockAtlasFeed(8, 200e8);
         reg = new RegimeRegistry(address(this), address(this), 1 days, false);
-        DawnOracle.Config memory c;
+        BlueOracle.Config memory c;
         c.atlasFeed = address(feed);
         c.registry = address(reg);
         c.asset = address(stock);
@@ -55,7 +55,7 @@ contract MorphoBnbForkTest is Test {
         c.maxFreeze = 12 hours;
         c.continuityBandBps = 500;
         c.expiredFreezeHaircutBps = 1000;
-        oracle = new DawnOracle(c);
+        oracle = new BlueOracle(c);
 
         mp = MarketParams({
             loanToken: USDT, collateralToken: address(stock), oracle: address(oracle), irm: IRM, lltv: LLTV

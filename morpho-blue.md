@@ -1,6 +1,6 @@
 # Morpho Blue
 
-Reference research for the isolated-market core that Dawn's architecture is modeled on. Facts are from Morpho's docs, the Morpho Blue repo and whitepaper (Oct 2023), and market data dated up to Nov 26, 2026. Items marked "Dawn note" are design implications, not Morpho facts.
+Reference research for the isolated-market core that Blue's architecture is modeled on. Facts are from Morpho's docs, the Morpho Blue repo and whitepaper (Oct 2023), and market data dated up to Nov 26, 2026. Items marked "Blue note" are design implications, not Morpho facts.
 
 ## What it is
 
@@ -36,7 +36,7 @@ Sources: Morpho Blue README (GitHub), whitepaper, docs.morpho.org.
 * Loan asset should not be ERC4626.
 * Liveness risks: a token that reverts on transfer, an oracle that reverts on `price()` (this blocks borrow, collateral withdrawal and liquidation), an IRM that reverts, very large amounts (~1e35) overflowing share math.
 
-Dawn note: tokenized equities with pause, blacklist or freeze logic fall under "token can revert on transfer". A paused or blacklisted collateral token can block liquidation.
+Blue note: tokenized equities with pause, blacklist or freeze logic fall under "token can revert on transfer". A paused or blacklisted collateral token can block liquidation.
 
 ## Oracles
 
@@ -46,7 +46,7 @@ Dawn note: tokenized equities with pause, blacklist or freeze logic fall under "
 * The oracle price is both the liquidation trigger and the exchange rate used when a liquidator repays debt for collateral.
 * Docs state no oracle is immune to manipulation, and curators, not Morpho, are responsible for oracle selection.
 
-Dawn note: because the oracle is immutable per market, a conservative-of-two oracle router (primary feed and DEX TWAP) and a market-hours status flag must live inside the oracle contract the market points to. The regime logic can be added as a wrapper without changing the core.
+Blue note: because the oracle is immutable per market, a conservative-of-two oracle router (primary feed and DEX TWAP) and a market-hours status flag must live inside the oracle contract the market points to. The regime logic can be added as a wrapper without changing the core.
 
 ## Liquidation
 
@@ -58,7 +58,7 @@ Dawn note: because the oracle is immutable per market, a conservative-of-two ora
 * Bad debt: if LTV rises above 1/LIF, a liquidator can take all collateral while repaying only part of the debt. When collateral reaches zero with debt remaining, the bad debt is socialized across that market's lenders immediately (total supply assets reduced). Aave and Compound do not account for bad debt this way (whitepaper comparison).
 * Optional periphery: a PreLiquidation contract exists in the repo (`src/periphery/pre-liquidation`), letting borrowers opt in to earlier, softer liquidation.
 
-Dawn note: the LIF is static per market in Morpho. Dawn's regime-aware bonus would need a custom liquidation path or a pre-liquidation-style module. Bad debt starts when LTV exceeds 1/LIF. Example: 62.5% LLTV with LIF about 1.127 means bad debt above 88.7% LTV, so collateral can fall about 29.6% from the liquidation threshold (1 - 62.5/88.7) before bad debt, before slippage.
+Blue note: the LIF is static per market in Morpho. Blue's regime-aware bonus would need a custom liquidation path or a pre-liquidation-style module. Bad debt starts when LTV exceeds 1/LIF. Example: 62.5% LLTV with LIF about 1.127 means bad debt above 88.7% LTV, so collateral can fall about 29.6% from the liquidation threshold (1 - 62.5/88.7) before bad debt, before slippage.
 
 ## Interest rate model (AdaptiveCurveIRM)
 
@@ -96,9 +96,9 @@ Dawn note: the LIF is static per market in Morpho. Dawn's regime-aware bonus wou
 
 Sources differ on definitions (TVL with or without collateral, which markets are counted), so the figures are not directly comparable. Private credit tokens were about 58% of RWA deposits in CertiK's September snapshot, and a few borrowers dominated several RWA collateral markets (Sentora, Oct 1).
 
-## What Dawn takes and changes
+## What Blue takes and changes
 
-| Morpho Blue | Dawn |
+| Morpho Blue | Blue |
 |-------------|------|
 | Five-parameter isolated market | Keep as the core market model |
 | Immutable oracle, any `price()` source | Oracle router contract: conservative of primary feed and DEX TWAP, plus market-status flag |
@@ -112,7 +112,7 @@ Sources differ on definitions (TVL with or without collateral, which markets are
 
 * Whether to fork Morpho Blue (GPL-2.0-or-later core license, MIT for other files) or write a minimal core with the same market model.
 * Whether market creation should be permissionless or factory-gated for tokenized equities (transfer restrictions, issuer pause and blacklist).
-* Which enabled LLTV values fit equity gap risk, given the 38.5% to 98% list is fixed by Morpho governance and Dawn would set its own.
+* Which enabled LLTV values fit equity gap risk, given the 38.5% to 98% list is fixed by Morpho governance and Blue would set its own.
 
 ## Checked / Not checked
 

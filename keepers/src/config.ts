@@ -3,7 +3,7 @@ import type { AssetRef } from "./halt/types.js";
 export interface KeeperAsset extends AssetRef {
   /** Atlas (or mock) feed address used for the continuity check. */
   feed?: `0x${string}`;
-  /** DawnOracle for this asset; when set the keeper calls its permissionless update() as a heartbeat. */
+  /** BlueOracle for this asset; when set the keeper calls its permissionless update() as a heartbeat. */
   oracle?: `0x${string}`;
 }
 

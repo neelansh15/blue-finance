@@ -5,14 +5,14 @@ import {Script, console2} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {stdStorage, StdStorage} from "forge-std/StdStorage.sol";
 import {Id} from "../src/interfaces/IMorpho.sol";
-import {DawnDeploy} from "./DawnDeploy.sol";
+import {BlueDeploy} from "./BlueDeploy.sol";
 
 interface IERC20Bal {
     function balanceOf(address) external view returns (uint256);
 }
 
 /// @title Deploy
-/// @notice Deploys RegimeRegistry, MockBStock, MockAtlasFeed, DawnOracle and DawnRouter, creates the bStock/USDT
+/// @notice Deploys RegimeRegistry, MockBStock, MockAtlasFeed, BlueOracle and BlueRouter, creates the bStock/USDT
 ///         Morpho market (62.5% LLTV, AdaptiveCurveIrm), lists it on the router, seeds supply and writes
 ///         deployments/<chainid>.json. Intended for a BNB Chain fork (anvil --fork-url). Not for mainnet as is:
 ///         the collateral and feed are mocks and the eligibility signer defaults to a public demo key.
@@ -32,7 +32,7 @@ interface IERC20Bal {
 /// Usage:
 ///   anvil --fork-url https://bsc-dataseed.binance.org
 ///   ANVIL_FUND_USDT=true forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
-contract Deploy is Script, DawnDeploy {
+contract Deploy is Script, BlueDeploy {
     using stdJson for string;
     using stdStorage for StdStorage;
 
@@ -62,7 +62,7 @@ contract Deploy is Script, DawnDeploy {
         realBStock = vm.envOr("BSTOCK", address(0));
 
         vm.startBroadcast(pk);
-        d = _deployDawn(p);
+        d = _deployBlue(p);
         vm.stopBroadcast();
 
         _write(d, p);
@@ -80,7 +80,7 @@ contract Deploy is Script, DawnDeploy {
     }
 
     function _write(Deployment memory d, DeployParams memory p) internal {
-        string memory k = "dawn";
+        string memory k = "blue";
         k.serialize("chainId", block.chainid);
         k.serialize("morpho", MORPHO);
         k.serialize("irm", IRM);
@@ -89,8 +89,8 @@ contract Deploy is Script, DawnDeploy {
         k.serialize("regimeRegistry", address(d.registry));
         k.serialize("mockAtlasFeed", address(d.feed));
         k.serialize("mockBStock", address(d.bStock));
-        k.serialize("dawnOracle", address(d.oracle));
-        k.serialize("dawnRouter", address(d.router));
+        k.serialize("blueOracle", address(d.oracle));
+        k.serialize("blueRouter", address(d.router));
         k.serialize("marketId", Id.unwrap(d.marketId));
         k.serialize("keeper", p.keeper);
         k.serialize("eligibilitySigner", p.signer);

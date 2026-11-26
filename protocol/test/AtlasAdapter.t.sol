@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
-import {DawnOracle} from "../src/DawnOracle.sol";
+import {BlueOracle} from "../src/BlueOracle.sol";
 import {RegimeRegistry} from "../src/RegimeRegistry.sol";
 import {MockAtlasFeed} from "../src/mocks/MockAtlasFeed.sol";
 import {MockBStock} from "../src/mocks/MockBStock.sol";
@@ -48,20 +48,20 @@ contract AtlasAdapterTest is Test {
     RealShapeFeed feed;
     MockBStock stock;
     RegimeRegistry reg;
-    DawnOracle oracle;
+    BlueOracle oracle;
 
     function setUp() public {
         vm.warp(T0);
         feed = new RealShapeFeed();
         feed.set(1, 100e8, T0 - 10, T0 - 9, 1);
-        stock = new MockBStock("Dawn bAAPL", "bAAPL");
+        stock = new MockBStock("Blue bAAPL", "bAAPL");
         reg = new RegimeRegistry(address(this), address(this), 1 days, false);
         reg.setHolidays(new uint32[](0), true);
         oracle = _deploy(false);
     }
 
-    function _deploy(bool perUI) internal returns (DawnOracle) {
-        DawnOracle.Config memory c;
+    function _deploy(bool perUI) internal returns (BlueOracle) {
+        BlueOracle.Config memory c;
         c.atlasFeed = address(feed);
         c.registry = address(reg);
         c.asset = address(stock);
@@ -74,7 +74,7 @@ contract AtlasAdapterTest is Test {
         c.maxFreeze = 12 hours;
         c.continuityBandBps = 500;
         c.expiredFreezeHaircutBps = 1000;
-        return new DawnOracle(c);
+        return new BlueOracle(c);
     }
 
     function test_RealShapedFeed_SeedsAndPrices() public view {
@@ -125,7 +125,7 @@ contract AtlasAdapterTest is Test {
     function test_DirtyRoundIdBits_Rejected() public {
         // Hand-built return data with an out-of-range roundId word.
         DirtyFeed d = new DirtyFeed();
-        DawnOracle.Config memory c;
+        BlueOracle.Config memory c;
         c.atlasFeed = address(d);
         c.registry = address(reg);
         c.asset = address(stock);
@@ -137,10 +137,10 @@ contract AtlasAdapterTest is Test {
         c.maxFreeze = 12 hours;
         c.continuityBandBps = 500;
         c.expiredFreezeHaircutBps = 1000;
-        DawnOracle o = new DawnOracle(c);
+        BlueOracle o = new BlueOracle(c);
         (bool ok,,) = o.liveRawPrice();
         assertFalse(ok);
-        vm.expectRevert(DawnOracle.NoPrice.selector);
+        vm.expectRevert(BlueOracle.NoPrice.selector);
         o.price();
     }
 
@@ -153,8 +153,8 @@ contract AtlasAdapterTest is Test {
     function test_PerRawVsPerUI_Scaling() public {
         stock.setUIMultiplierNow(8e18);
         // multiplier changed after deploy -> CORP_ACTION path; deploy fresh oracles instead
-        DawnOracle perRaw = _deploy(false);
-        DawnOracle perUI = _deploy(true);
+        BlueOracle perRaw = _deploy(false);
+        BlueOracle perUI = _deploy(true);
         assertEq(perRaw.lastGoodPrice(), 100e36, "per raw token: answer used as is");
         assertEq(perUI.lastGoodPrice(), 800e36, "per UI share: x uiMultiplier");
     }

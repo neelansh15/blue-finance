@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// ERC-8056 / BEP-677 style scaled-UI token surface used by Dawn.
+/// ERC-8056 / BEP-677 style scaled-UI token surface used by Blue.
 interface IBStockLike {
     /// Three arguments, matching the verified bStock SecuritiesToken ABI and BEP-677
     /// (INTERFACES.md listed two; see "Changes" there).

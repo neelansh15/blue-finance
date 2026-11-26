@@ -1,4 +1,4 @@
-# Dawn keepers (WS6)
+# Blue keepers (WS6)
 
 Off-chain keepers: session calendar, halt monitor, regime keeper (plus oracle heartbeat), demo control, liquidation bot.
 
@@ -21,7 +21,7 @@ Off-chain keepers: session calendar, halt monitor, regime keeper (plus oracle he
 | RPC_URL | required | JSON-RPC |
 | CHAIN_ID | 56 | 56 uses viem bsc, anything else a generic chain (anvil fork etc.) |
 | REGIME_REGISTRY | required | RegimeRegistry address |
-| ASSETS | required | JSON array `[{"symbol":"TSLAB","ticker":"TSLA","token":"0x..","feed":"0x..","oracle":"0x..","spotSymbol":"TSLABUSDT"}]`; `oracle` (DawnOracle) enables the `update()` heartbeat; `feed` (Atlas or mock) is needed for the continuity check, `spotSymbol` defaults to `<symbol>USDT` |
+| ASSETS | required | JSON array `[{"symbol":"TSLAB","ticker":"TSLA","token":"0x..","feed":"0x..","oracle":"0x..","spotSymbol":"TSLABUSDT"}]`; `oracle` (BlueOracle) enables the `update()` heartbeat; `feed` (Atlas or mock) is needed for the continuity check, `spotSymbol` defaults to `<symbol>USDT` |
 | KEEPER_PRIVATE_KEY | - | holds KEEPER role; required only when DRY_RUN=false |
 | DRY_RUN | true | only the exact value `false` (or `0`) sends txs |
 | POLL_INTERVAL_MS | 30000 | loop period (Nasdaq RSS is still fetched at most once per 60 s) |
@@ -31,7 +31,7 @@ Off-chain keepers: session calendar, halt monitor, regime keeper (plus oracle he
 | CALENDAR_GRACE_MS | 90000 | local calendar only pushed if stable over this window (avoids flapping vs the chain clock at boundaries) |
 | FEED_QUOTES_PER_UI | true | feed quotes per UI share, so raw price = feed x uiMultiplier |
 | MULTIPLIER_HOLD_MS | 3600000 | multiplier watcher reports corp_action until effectiveAt + this |
-| ORACLE_UPDATE_INTERVAL_MS | 60000 | min time between DawnOracle `update()` calls per asset (permissionless; dry run only logs) |
+| ORACLE_UPDATE_INTERVAL_MS | 60000 | min time between BlueOracle `update()` calls per asset (permissionless; dry run only logs) |
 | REBASE | - | comma list of symbols whose current price becomes the continuity reference at start |
 
 ## Behaviour
@@ -39,7 +39,7 @@ Off-chain keepers: session calendar, halt monitor, regime keeper (plus oracle he
 - Keeper: desired = max(on-chain calendar, local calendar, signal). Sets an override only when it is more conservative than the on-chain calendar; de-escalation is `clearOverride` then `setOverride`; clears when nothing needs it. On first sight of an active HALTED/CORP_ACTION override the latch is seeded, so a restart cannot clear blindly.
 
 - Registry rules honoured: overrides are never OPEN; a global override (asset address(0)) is read and counts as a floor, so no asset override is set when it already covers the need; a new override while one is active is at least as conservative and its duration is stretched so it does not expire earlier (capped at MAX_OVERRIDE). Relaxing needs `clearOverride`, which the keeper only calls when `keeperCanClear` is true; otherwise it logs `override_wait` (let it expire or ask the admin to clear). The keeper never writes the global override (demo CLI can: `regime set global HALTED`).
-- Oracle heartbeat: after the regime step each tick, `DawnOracle.update()` is called (throttled by ORACLE_UPDATE_INTERVAL_MS); dry run logs it as `dry_run_tx` kind oracleUpdate.
+- Oracle heartbeat: after the regime step each tick, `BlueOracle.update()` is called (throttled by ORACLE_UPDATE_INTERVAL_MS); dry run logs it as `dry_run_tx` kind oracleUpdate.
 - Calendar: `sessionRegime` mirrors `RegimeRegistry.calendarRegimeAt` (overnight before a holiday or after a Friday/early-close Friday is WEEKEND, Sunday 20:00 before a Monday holiday is WEEKEND, early close 13:00 OPEN end, 17:00 EXTENDED end). Holiday tables are local; the on-chain tables are set by the admin, mismatches are logged as `calendar_mismatch`.
 - Demo CLI: `multiplier <mockBStock> <v> [--at ts]` calls `setUIMultiplierNow` / `setUIMultiplier`; `price` calls `setAnswer`; `oracle update <oracle>`.
 - `UIMultiplierUpdated` uses the 3-arg form `(old, new, effectiveAt)` (matches MockBStock and the real token).

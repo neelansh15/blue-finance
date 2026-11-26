@@ -1,4 +1,4 @@
-# Dawn demo: local BSC fork
+# Blue demo: local BSC fork
 
 Everything runs on a local anvil fork of BSC mainnet (chain id 56, port 8545). All tunables live in
 `demo/config.env` and are PLACEHOLDERS (haircuts, caps, prices, durations). Keys are the public anvil keys.
@@ -15,7 +15,7 @@ Logs: `demo/logs/` (anvil.log, deploy.log, bot.log, check.out).
     source demo/config.env
     demo/start.sh            # idempotent: kills old anvil, forks, deploys, writes:
                              #   protocol/deployments/56.json
-                             #   frontend/.env.local  (NEXT_PUBLIC_DAWN_MODE=real + addresses)
+                             #   frontend/.env.local  (NEXT_PUBLIC_BLUE_MODE=real + addresses)
                              #   keepers/.env.anvil   (keeper + bot config; bash-source it)
     cd frontend && npm run dev          # http://localhost:3000/app  (real client, demo user key)
 
@@ -61,7 +61,7 @@ Say: "The market closes, the limit tightens, the existing position is not liquid
     demo price $FEED 100             # feed catches up (per-share price halves)
     demo oracle update $ORACLE
     snap                             # unfrozen, price 200, hf 1.25
-Say: "A naive oracle sees the price jump or drop and liquidates. DawnOracle freezes, then unfreezes once the feed is continuous."
+Say: "A naive oracle sees the price jump or drop and liquidates. BlueOracle freezes, then unfreezes once the feed is continuous."
 
 ### 4. Price gap, bot liquidates
 (restart `demo/start.sh` and reopen the position first, or `evm_revert` to a snapshot)

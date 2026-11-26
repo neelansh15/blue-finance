@@ -43,7 +43,7 @@ Full detail: [architecture-v0.md](architecture-v0.md).
 
 ## Stage 4: Name (Nov 26)
 
-Working name: Dawn Finance.
+Working name: Blue Finance.
 
 Alternative under consideration (Nov 26): Blue Finance. No decision yet.
 

@@ -18,7 +18,6 @@ class Policy(Model):
     min_history_points: int = Field(default=20, ge=3)
     history_max_age_hours: Positive = 120
     oracle_max_age_seconds: Positive = 300
-    oracle_max_age_by_regime: dict[str, Positive] | None = None
     market_max_age_seconds: Positive = 300
     max_price_divergence: Ratio = .10
     volatility_stress_z: Positive = 2.33
@@ -26,8 +25,6 @@ class Policy(Model):
     min_liquidation_threshold: Positive = .30
     max_liquidation_threshold: Ratio = .77
     market_lltv: Positive = .625
-    router_hmax: Ratio = .15
-    router_margin: Ratio = .02
     max_ltv: Ratio = .60
     ltv_buffer: Positive = .08
     max_supply_tokens: NonNegative = 100000
@@ -46,8 +43,6 @@ class Policy(Model):
 
     @model_validator(mode="after")
     def valid_policy(self):
-        if self.oracle_max_age_by_regime is not None and set(self.oracle_max_age_by_regime) != {'OPEN', 'EXTENDED', 'CLOSED', 'WEEKEND', 'HALTED', 'CORP_ACTION'}:
-            raise ValueError('Per-regime oracle freshness requires all six Dawn regimes')
         if set(self.weights) != {"volatility", "liquidity", "issuer", "oracle", "concentration"}:
             raise ValueError("Exactly five known risk weights are required")
         if abs(sum(self.weights.values()) - 1) > 1e-9:
@@ -61,13 +56,7 @@ class Policy(Model):
             raise ValueError("Invalid LTV bounds or buffer")
         if self.at_risk_health_factor <= 1:
             raise ValueError("At-risk health factor must exceed 1")
-        if self.router_target_ltv <= 0:
-            raise ValueError("Router haircut and margin leave no borrowing capacity")
         return self
-
-    @property
-    def router_target_ltv(self) -> float:
-        return self.market_lltv * (1 - self.router_hmax) - self.router_margin
 
     @property
     def fingerprint(self) -> str:

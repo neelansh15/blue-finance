@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
-import {DawnOracle} from "../../src/DawnOracle.sol";
+import {BlueOracle} from "../../src/BlueOracle.sol";
 import {RegimeRegistry} from "../../src/RegimeRegistry.sol";
 import {IRegimeRegistry, RegimeLib} from "../../src/interfaces/IRegimeRegistry.sol";
 
@@ -16,7 +16,7 @@ interface IBStockUi {
     function decimals() external view returns (uint8);
 }
 
-/// Reads the REAL Atlas feeds on BSC through DawnOracle. Skipped (not failed) if the RPC is unreachable.
+/// Reads the REAL Atlas feeds on BSC through BlueOracle. Skipped (not failed) if the RPC is unreachable.
 /// RPC: BSC_RPC_URL, else the public endpoint. Feed/token addresses: docs.bsc.lista.org multi-oracle-bstock
 /// (fetched 2026-11-26). Live data, so assertions are bands, not exact values.
 contract AtlasRealFeedForkTest is Test {
@@ -49,8 +49,8 @@ contract AtlasRealFeedForkTest is Test {
         assets.push(Asset("SNDKB", 0x3eE4dF61bd4F867E349BEaE8bFE07bc31b4850fb, 0x1C5211723f67A77DAaDb62DDc6D68Ee23e724c0f, 150, 3000));
     }
 
-    function _deploy(Asset memory a, uint32 liveStaleness) internal returns (DawnOracle) {
-        DawnOracle.Config memory c;
+    function _deploy(Asset memory a, uint32 liveStaleness) internal returns (BlueOracle) {
+        BlueOracle.Config memory c;
         c.atlasFeed = a.feed;
         c.registry = address(reg);
         c.asset = a.token;
@@ -63,7 +63,7 @@ contract AtlasRealFeedForkTest is Test {
         c.maxFreeze = 12 hours;
         c.continuityBandBps = 500;
         c.expiredFreezeHaircutBps = 1000;
-        return new DawnOracle(c);
+        return new BlueOracle(c);
     }
 
     function test_Fork_RealFeedsThroughOracle() public {
@@ -71,7 +71,7 @@ contract AtlasRealFeedForkTest is Test {
         for (uint256 i; i < assets.length; ++i) {
             Asset memory a = assets[i];
             // Generous 6h staleness so the test does not depend on when it runs (see test below for age).
-            DawnOracle o = _deploy(a, 6 hours);
+            BlueOracle o = _deploy(a, 6 hours);
             (uint80 rid, int256 ans,, uint256 upd, uint80 air) = IFeedLike(a.feed).latestRoundData();
             assertEq(IFeedLike(a.feed).decimals(), 8, a.name);
             assertGt(ans, 0, a.name);
@@ -116,7 +116,7 @@ contract AtlasRealFeedForkTest is Test {
             (,,, uint256 upd,) = IFeedLike(a.feed).latestRoundData();
             uint256 age = block.timestamp - upd;
             emit log_named_uint(string.concat(a.name, " age seconds"), age);
-            DawnOracle o2h = _deploy(a, 2 hours);
+            BlueOracle o2h = _deploy(a, 2 hours);
             IRegimeRegistry.Regime r = reg.regime(a.token);
             (bool ok2,,) = o2h.liveRawPrice();
             if (!RegimeLib.isFreezeRegime(r)) assertEq(ok2, age <= o2h.stalenessSec(r), a.name);
@@ -125,10 +125,10 @@ contract AtlasRealFeedForkTest is Test {
     }
 }
 
-import {DawnDeploy} from "../../script/DawnDeploy.sol";
+import {BlueDeploy} from "../../script/BlueDeploy.sol";
 
-/// The deploy path with a real Atlas feed + real bStock (DawnDeploy.realAtlasFeed / realBStock).
-contract AtlasRealDeployForkTest is Test, DawnDeploy {
+/// The deploy path with a real Atlas feed + real bStock (BlueDeploy.realAtlasFeed / realBStock).
+contract AtlasRealDeployForkTest is Test, BlueDeploy {
     function test_Fork_DeployWithRealFeed() public {
         string memory url = vm.envOr("BSC_RPC_URL", string("https://bsc-dataseed.binance.org"));
         try vm.createSelectFork(url) {}
@@ -137,7 +137,7 @@ contract AtlasRealDeployForkTest is Test, DawnDeploy {
         }
         realAtlasFeed = 0xf569C3e52e797219eCFDc1659c3250B0BbDC693C; // TSLAB/USD
         realBStock = 0x5b1910eAaD6450E50f816082Aa078C41F10C292f; // TSLAB
-        Deployment memory d = _deployDawn(
+        Deployment memory d = _deployBlue(
             DeployParams({
                 deployer: address(this),
                 keeper: address(this),

@@ -4,18 +4,18 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {IMorpho, Id, MarketParams, MarketParamsLib} from "../../src/interfaces/IMorpho.sol";
 import {IRegimeRegistry} from "../../src/interfaces/IRegimeRegistry.sol";
-import {DawnRouter} from "../../src/DawnRouter.sol";
-import {DawnDeploy} from "../../script/DawnDeploy.sol";
+import {BlueRouter} from "../../src/BlueRouter.sol";
+import {BlueDeploy} from "../../script/BlueDeploy.sol";
 
 interface IERC20T {
     function approve(address, uint256) external returns (bool);
     function balanceOf(address) external view returns (uint256);
 }
 
-/// Shared fork setup: runs the same DawnDeploy code as script/Deploy.s.sol on a BNB Chain fork, then moves time
+/// Shared fork setup: runs the same BlueDeploy code as script/Deploy.s.sol on a BNB Chain fork, then moves time
 /// forward to the next OPEN session. RPC: BSC_RPC_URL, else the public endpoint. All tests are skipped (not failed)
 /// if the fork cannot be created.
-abstract contract ScenarioBase is Test, DawnDeploy {
+abstract contract ScenarioBase is Test, BlueDeploy {
     using MarketParamsLib for MarketParams;
 
     IMorpho internal constant M = IMorpho(MORPHO);
@@ -46,7 +46,7 @@ abstract contract ScenarioBase is Test, DawnDeploy {
         if (!forked) return;
 
         deal(USDT, address(this), SEED);
-        d = _deployDawn(
+        d = _deployBlue(
             DeployParams({
                 deployer: address(this),
                 keeper: keeper,
@@ -77,7 +77,7 @@ abstract contract ScenarioBase is Test, DawnDeploy {
         d.oracle.update();
     }
 
-    function _attest(address account) internal returns (DawnRouter.Attestation memory a) {
+    function _attest(address account) internal returns (BlueRouter.Attestation memory a) {
         a.nonce = nextNonce++;
         a.expiry = block.timestamp + 10 minutes;
         a.signature = _sign(signerKey, account, a.nonce, a.expiry);
@@ -88,7 +88,7 @@ abstract contract ScenarioBase is Test, DawnDeploy {
         return abi.encodePacked(r, s, v);
     }
 
-    function _noAttestation() internal pure returns (DawnRouter.Attestation memory a) {}
+    function _noAttestation() internal pure returns (BlueRouter.Attestation memory a) {}
 
     /// Mint collateral to `who`, approve the router, authorize it on Morpho.
     function _prepare(address who, uint256 collateral) internal {
@@ -102,7 +102,7 @@ abstract contract ScenarioBase is Test, DawnDeploy {
     /// Supply collateral and borrow `amount` through the router.
     function _open(address who, uint256 collateral, uint256 amount) internal {
         _prepare(who, collateral);
-        DawnRouter.Attestation memory a = _attest(who);
+        BlueRouter.Attestation memory a = _attest(who);
         vm.prank(who);
         d.router.supplyCollateralAndBorrow(d.marketParams, collateral, amount, who, a);
     }
@@ -113,7 +113,7 @@ abstract contract ScenarioBase is Test, DawnDeploy {
         vm.prank(who);
         d.router.supplyCollateralAndBorrow(d.marketParams, collateral, 0, who, _noAttestation());
         amount = d.router.borrowLimit(d.marketId, who);
-        DawnRouter.Attestation memory a = _attest(who);
+        BlueRouter.Attestation memory a = _attest(who);
         vm.prank(who);
         d.router.supplyCollateralAndBorrow(d.marketParams, 0, amount, who, a);
     }

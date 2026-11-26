@@ -52,7 +52,7 @@ export const regimeRegistryAbi = parseAbi([
   "event OverrideCleared(address indexed asset, address by)",
 ]);
 
-export const dawnOracleAbi = parseAbi([
+export const blueOracleAbi = parseAbi([
   "function price() view returns (uint256)",
   "function priceForRegime(uint8 r) view returns (uint256)",
   "function lastGoodPrice() view returns (uint256)",

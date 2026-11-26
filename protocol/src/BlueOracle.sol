@@ -6,7 +6,7 @@ import {IAtlasFeed} from "./interfaces/IAtlasFeed.sol";
 import {IBStockLike} from "./interfaces/IBStockLike.sol";
 import {IRegimeRegistry, RegimeLib} from "./interfaces/IRegimeRegistry.sol";
 
-/// @title DawnOracle
+/// @title BlueOracle
 /// @notice Morpho Blue IOracle for one bStock collateral / stablecoin loan market.
 ///
 ///   price() = p_raw x (1 - h[regime]) [x (1 - h_expired) if the served last-good price is older than maxFreeze]
@@ -36,7 +36,7 @@ import {IRegimeRegistry, RegimeLib} from "./interfaces/IRegimeRegistry.sol";
 ///      NoPrice() before the oracle has ever observed a valid price.
 ///      Rounding: every step rounds down, i.e. collateral is never overvalued by rounding.
 ///      The oracle has no owner. The only privileged call is forceUnfreeze (registry admin, after maxFreeze).
-contract DawnOracle is IOracle {
+contract BlueOracle is IOracle {
     using RegimeLib for IRegimeRegistry.Regime;
 
     struct Config {

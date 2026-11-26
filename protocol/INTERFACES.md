@@ -1,4 +1,4 @@
-# Dawn shared interfaces (v0, contract between workstreams)
+# Blue shared interfaces (v0, contract between workstreams)
 
 Source of truth for names. Agents may add to this but must not rename without noting it at the bottom under "Changes".
 
@@ -21,7 +21,7 @@ event OverrideCleared(address indexed asset, address by);
 ```
 Calendar is US Eastern with DST computed on-chain (second Sunday of March to first Sunday of November). Sessions: pre 04:00-09:30 EXTENDED, regular 09:30-16:00 OPEN, post 16:00-20:00 EXTENDED, 20:00-04:00 weekday CLOSED, Fri 20:00 to Sun 20:00 WEEKEND, holidays WEEKEND.
 
-## IDawnOracle (also Morpho IOracle)
+## IBlueOracle (also Morpho IOracle)
 ```solidity
 function price() external view returns (uint256);          // Morpho scale 1e36 adjusted for decimals
 function lastGoodPrice() external view returns (uint256);
@@ -45,7 +45,7 @@ function latestRoundData() external view returns (uint80 roundId, int256 answer,
 function decimals() external view returns (uint8);
 ```
 
-Dawn reads ONLY `latestRoundData()` (updatedAt for staleness). `latestTimestamp()` was removed from the interface: it reverts on the real Atlas feeds.
+Blue reads ONLY `latestRoundData()` (updatedAt for staleness). `latestTimestamp()` was removed from the interface: it reverts on the real Atlas feeds.
 
 ## Keeper -> chain
 Keeper hot key holds KEEPER role on the registry. Keeper reads `regime(asset)`, `calendarRegime()`, `overrideOf(asset)`, oracle `frozenSince()` and `uiMultiplier()`.
@@ -53,9 +53,9 @@ Keeper hot key holds KEEPER role on the registry. Keeper reads `regime(asset)`, 
 ## Changes
 
 Atlas read path, Nov 26 2026 (NEEDS AN OPUS-LEVEL SECURITY REVIEW):
-- **IAtlasFeed:** `latestTimestamp()` removed, `latestRoundData()` added. DawnOracle reads feeds through the single adapter `_readFeed(address)`. Accepts only: return data of at least 5 words, round ids within uint80, `answeredInRound >= roundId`, `0 < answer <= MAX_ANSWER`, `updatedAt != 0`. Failure means "no price" (never reverts). `MockAtlasFeed` is unchanged (it keeps `latestTimestamp()` as an extra view).
+- **IAtlasFeed:** `latestTimestamp()` removed, `latestRoundData()` added. BlueOracle reads feeds through the single adapter `_readFeed(address)`. Accepts only: return data of at least 5 words, round ids within uint80, `answeredInRound >= roundId`, `0 < answer <= MAX_ANSWER`, `updatedAt != 0`. Failure means "no price" (never reverts). `MockAtlasFeed` is unchanged (it keeps `latestTimestamp()` as an extra view).
 - **Units:** real Atlas feeds quote per raw token, so real deployments use `feedPerUIShare = false`; the mock default stays per UI share.
-- **DawnDeploy / Deploy.s.sol:** `realAtlasFeed` / `realBStock` hooks, env `ATLAS_FEED` / `BSTOCK`. Unset keeps the mock path. With a real feed: per raw token, 2 h live staleness, `Deployment.feed` is address(0).
+- **BlueDeploy / Deploy.s.sol:** `realAtlasFeed` / `realBStock` hooks, env `ATLAS_FEED` / `BSTOCK`. Unset keeps the mock path. With a real feed: per raw token, 2 h live staleness, `Deployment.feed` is address(0).
 - **Tests:** test/AtlasAdapter.t.sol (10), test/fork/AtlasRealFeedFork.t.sol (4). Existing tests unchanged.
 
 Protocol core (registry, oracle, mocks), Nov 26 2026. No names above were renamed. Additions and one deviation:
@@ -74,10 +74,10 @@ Protocol core (registry, oracle, mocks), Nov 26 2026. No names above were rename
   - Early-close days run 09:30-13:00 OPEN and 13:00-17:00 EXTENDED.
   - The overnight period after a Friday, or before a holiday, is WEEKEND.
   - Sunday 20:00 onward is CLOSED, or WEEKEND if Monday is a holiday.
-- **IDawnOracle additions:**
+- **IBlueOracle additions:**
   - Calls: `update()` (permissionless: records the price, freezes or unfreezes), `forceUnfreeze()` (registry admin, only after maxFreeze).
   - Views: `priceForRegime(Regime)`, `isFrozen()`, `liveRawPrice()`, `stalenessSec(Regime)`, `lastGoodAt()`, `lastMultiplier()`, `frozenRegime()`.
   - Event: `PriceRecorded(uint256 rawPrice, uint64 observedAt, uint256 multiplier)`.
-  - Constructor: takes a `DawnOracle.Config` struct. Besides the params listed above, it adds `feedDecimals`, `feedPerUIShare` and `expiredFreezeHaircutBps`.
+  - Constructor: takes a `BlueOracle.Config` struct. Besides the params listed above, it adds `feedDecimals`, `feedPerUIShare` and `expiredFreezeHaircutBps`.
   - `lastGoodPrice` is stored pre-haircut.
   - The oracle also freezes on its own when `uiMultiplier()` differs from the multiplier the last good price was recorded with.
