@@ -4,8 +4,9 @@
 
 ## Prototype
 
+- Lenders receive bluTokens (bluUSDT), Blue’s name for Aave aTokens. Borrower debt is recorded in bluDebtUSDT, an Aave variable debt token.
 - The Aave Pool has one borrowable USDT reserve shared by five collateral-only mock stock reserves. They are TSLAB, NVDAB, QQQb, SPCXb, and GOOGLb. Enable isolated stock collateral explicitly after supplying it.
-- The pool checks the debt owner’s signed eligibility, the stock’s current borrow permission, the LTV for the stock’s current market status, and USDT caps. A pause or missed heartbeat blocks new risk against that stock. Repayment stays available. Flash loans are disabled in the prototype.
+- The pool checks the debt owner’s signed eligibility, the stock’s current borrow permission, the LTV for the stock’s current market status, and USDT caps. A pause or missed heartbeat blocks new borrowing against that stock. Repayment stays available. A missed heartbeat alone still lets borrowers withdraw collateral within the current LTV when the price is valid, as on Zona. A halt, corporate action, or guardian hold blocks withdrawals while the account has debt. Flash loans are disabled in the prototype.
 - Aave isolation enforces one active stock per account. Blue accounts for each stock’s accrued USDT debt using Aave’s scaled debt and current reserve index. Repayment and liquidation reconcile that balance, including debt burned when liquidation records a deficit.
 - Pricing follows Zona Lend. Health and liquidation read the live Atlas round when it is under 24 hours old, inside a fixed price band (1/20 to 20 times the launch price in the prototype), uses the multiplier of the last accepted price, and the stock is not in `CORP_ACTION`. A real gap therefore reaches liquidators immediately. New borrowing also needs the keeper to have accepted the round within 2 hours. A move of more than 20% stops new loans until the admin calls `acceptReference()`.
 - Set `CORP_ACTION` on the calendar before a known split. Otherwise a feed that updates before the multiplier looks like a crash and can trigger liquidations. A changed multiplier stops pricing until the admin accepts a round that reflects it.

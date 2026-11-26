@@ -175,6 +175,7 @@ abstract contract BlueV3Deployment {
         configurator.setDebtCeiling(stock, USDT_CAP * 100);
     }
 
+    /// @dev Supply receipts are bluTokens (bluUSDT) and debt tokens are bluDebtTokens (bluDebtUSDT).
     function _reserve(address asset, string memory symbol, address aToken, address debtToken, bytes memory rateData)
         private
         pure
@@ -185,9 +186,9 @@ abstract contract BlueV3Deployment {
             variableDebtTokenImpl: debtToken,
             underlyingAsset: asset,
             aTokenName: string.concat("Blue ", symbol),
-            aTokenSymbol: string.concat("a", symbol),
-            variableDebtTokenName: string.concat("Blue variable debt ", symbol),
-            variableDebtTokenSymbol: string.concat("variableDebt", symbol),
+            aTokenSymbol: string.concat("blu", symbol),
+            variableDebtTokenName: string.concat("Blue debt ", symbol),
+            variableDebtTokenSymbol: string.concat("bluDebt", symbol),
             params: "",
             interestRateData: rateData
         });

@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ICreditDelegationToken} from "aave/interfaces/ICreditDelegationToken.sol";
 import {IMarketCalendar} from "../src/interfaces/IMarketCalendar.sol";
 import {MockBStock} from "../src/mocks/MockBStock.sol";
@@ -82,6 +83,8 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
     function testAllMockStocksDrawFromOneReserve() external {
         assertEq(d.pool.getReservesCount(), STOCK_COUNT + 1);
         address aUsdt = d.pool.getReserveAToken(address(usdt));
+        assertEq(IERC20Metadata(aUsdt).symbol(), "bluUSDT");
+        assertEq(IERC20Metadata(d.pool.getReserveVariableDebtToken(address(usdt))).symbol(), "bluDebtUSDT");
         _borrow(TESLA_BORROWER, 70 ether);
         _borrow(NVIDIA_BORROWER, 30 ether);
         assertEq(d.pool.stockDebt(address(d.stocks[TESLA].token)), 70 ether);
@@ -157,6 +160,32 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
             abi.encodeWithSelector(StockBorrowControls.NewRiskBlocked.selector, address(d.stocks[NVIDIA].token))
         );
         _borrow(NVIDIA_BORROWER, 1 ether);
+    }
+
+    function testMonitoringLapseStillAllowsWithdrawalWithinLimit() external {
+        address tesla = address(d.stocks[TESLA].token);
+        _borrow(TESLA_BORROWER, 100 ether);
+        vm.warp(block.timestamp + HEARTBEAT);
+        vm.expectRevert(abi.encodeWithSelector(StockBorrowControls.NewRiskBlocked.selector, tesla));
+        _borrow(TESLA_BORROWER, 1 ether);
+
+        // $100 of debt at a 50% LTV needs 0.8 TSLAB. Aave's 62.5% liquidation threshold alone needs only 0.64.
+        vm.startPrank(TESLA_BORROWER);
+        d.pool.withdraw(tesla, 1 ether, TESLA_BORROWER);
+        IERC20 aStock = IERC20(d.pool.getReserveAToken(tesla));
+        aStock.transfer(NVIDIA_BORROWER, 0.5 ether);
+        vm.expectRevert(BluePool.AboveStockLtv.selector);
+        d.pool.withdraw(tesla, 0.8 ether, TESLA_BORROWER); // Leaves 0.7 TSLAB.
+        vm.stopPrank();
+    }
+
+    function testWithdrawalWithDebtNeedsValidPrice() external {
+        address tesla = address(d.stocks[TESLA].token);
+        _borrow(TESLA_BORROWER, 100 ether);
+        vm.warp(block.timestamp + LIQUIDATION_MAX_AGE + 1);
+        vm.expectRevert(StockPriceSource.UnusablePrice.selector);
+        vm.prank(TESLA_BORROWER);
+        d.pool.withdraw(tesla, 0.1 ether, TESLA_BORROWER);
     }
 
     function testExpiredOverrideCannotReopenUsingOldPermission() external {
