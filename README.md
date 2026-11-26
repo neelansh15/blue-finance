@@ -16,3 +16,7 @@ Isolated-market lending for tokenized equities and RWAs, stablecoin borrow only 
 - [protocol/](protocol): smart contracts (placeholder)
 
 Compiled Nov 2026.
+
+## AI Risk Controller
+
+The standalone [AI Risk Controller](ai-risk-controller/README.md) provides collateral risk assessment, market-session intelligence, recoverable value estimates, parameter recommendations and borrower simulation. See its README for the API and simulated weekend demo.
