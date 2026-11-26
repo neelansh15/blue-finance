@@ -1,6 +1,6 @@
 # Blue Finance pitch deck
 
-13 slides in one file, `index.html`. Open it in a browser.
+14 slides in one file, `index.html`. Open it in a browser.
 
 - Arrows or space move between slides, `F` toggles full screen, `#6` in the address opens slide 6.
 - Slide text is plain HTML. The charts are drawn by the script at the bottom of the file, with their numbers inline.

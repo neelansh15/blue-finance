@@ -123,6 +123,7 @@
   .steps h3 { margin-top: 6px; font-size: 19px; }
   .steps p { font-size: 15.5px; color: var(--secondary); margin-top: 10px; }
 
+  .steps.three { grid-template-columns: repeat(3, 1fr); margin-top: 0; }
   .checks { list-style: none; }
   .checks li { padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 17px; }
 
@@ -268,7 +269,41 @@
     <footer><span>Prototype parameters: 50% base LTV, 62.5% liquidation threshold, 0 / 4 / 10 / 15% borrowing discounts. Not yet calibrated. Interest excluded.</span><span class="page">6</span></footer>
   </section></div>
 
-  <!-- 7. Failure modes -->
+  <!-- 7. Leveraged borrow -->
+  <div class="frame"><section class="slide">
+    <h2>One-click leveraged borrow, <em>inside the pool’s limits</em></h2>
+    <p class="lead">Borrow USDT, buy more of the same stock and post it as collateral, in one action.</p>
+    <div style="display:grid;grid-template-columns:1fr 440px;gap:64px;margin-top:34px">
+      <div>
+        <ol class="steps three">
+          <li><h3>Borrow USDT</h3><p>An ordinary pool borrow, within the stock’s current limit.</p></li>
+          <li><h3>Swap to bStock</h3><p>Buy more of the same stock, with a slippage bound.</p></li>
+          <li><h3>Supply it</h3><p>The new collateral makes room for the next round, up to five.</p></li>
+        </ol>
+        <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:34px;gap:18px">
+          <div style="background:var(--sheet);padding:18px 20px"><h3>One click</h3><p class="muted small" style="margin-top:8px">For wallets that batch calls on BNB Chain (EIP-5792). If any step fails, the position stays as it was.</p></div>
+          <div style="background:var(--sheet);padding:18px 20px"><h3>Guided steps</h3><p class="muted small" style="margin-top:8px">For other wallets. Confirm each step, and repay with the borrowed USDT if a swap fails.</p></div>
+        </div>
+        <p class="muted small" style="margin-top:18px">The same screen reduces or closes a position.</p>
+      </div>
+      <div>
+        <h3 style="margin-bottom:14px">Highest leverage by session</h3>
+        <table class="tight">
+          <tbody>
+            <tr><th>Regular</th><td style="text-align:right">1.96×</td></tr>
+            <tr><th>Pre and after hours</th><td style="text-align:right">1.89×</td></tr>
+            <tr><th>Overnight</th><td style="text-align:right">1.80×</td></tr>
+            <tr><th>Weekend</th><td style="text-align:right">1.72×</td></tr>
+          </tbody>
+        </table>
+        <div class="col" style="margin-top:26px"><div class="stat" style="font-size:54px">1.5×</div><p>turns $1,000 of stock into about $1,498, with $499 of debt. Health factor 1.87. Liquidation if the price falls about 47%.</p></div>
+        <p class="muted small" style="margin-top:14px">At 1.96× a fall of about 21% is enough.</p>
+      </div>
+    </div>
+    <footer><span>Runs in the demo app on the simulated pool; no transaction is sent. Example: no starting debt, 0.3% swap fee, price held at the quote, 2× product cap.</span><span class="page">7</span></footer>
+  </section></div>
+
+  <!-- 8. Failure modes -->
   <div class="frame"><section class="slide">
     <h2>When something breaks, <em>repayment stays open</em></h2>
     <table style="margin-top:34px">
@@ -283,10 +318,10 @@
       </tbody>
     </table>
     <p class="muted small" style="margin-top:22px;max-width:980px">Reopening after monitoring lapses takes 30 minutes of healthy reports. A split must be flagged on the calendar before it takes effect. Issuer transfer rules can independently block collateral movement, including liquidations.</p>
-    <footer><span>Behavior of the v3 contracts. A valid price is under 24 hours old, inside a fixed band and consistent with the share multiplier.</span><span class="page">7</span></footer>
+    <footer><span>Behavior of the v3 contracts. A valid price is under 24 hours old, inside a fixed band and consistent with the share multiplier.</span><span class="page">8</span></footer>
   </section></div>
 
-  <!-- 8. Pricing -->
+  <!-- 9. Pricing -->
   <div class="frame"><section class="slide">
     <h2>Strict prices for new loans, <em>live prices for liquidations</em></h2>
     <p class="lead">Atlas prices all five bStocks. New borrowing has to pass more tests than liquidation.</p>
@@ -304,10 +339,10 @@
       <div class="col"><h3>Chainlink values USDT</h3><p>USDT counts between $0.90 and $1.10. A round more than an hour old stops new borrowing.</p></div>
       <div class="col"><h3>Real gaps reach liquidators</h3><p>A large price move counts for health and liquidation without waiting for review.</p></div>
     </div>
-    <footer><span>Behavior of the v3 contracts. Atlas is the only stock price source.</span><span class="page">8</span></footer>
+    <footer><span>Behavior of the v3 contracts. Atlas is the only stock price source.</span><span class="page">9</span></footer>
   </section></div>
 
-  <!-- 9. Positioning -->
+  <!-- 10. Positioning -->
   <div class="frame"><section class="slide">
     <h2>Zona’s borrow controls, <em>brought to BNB bStocks</em></h2>
     <p class="lead">Blue models its separation of borrowing permission from valuation on Zona Lend.</p>
@@ -322,10 +357,10 @@
         <tr><th>Liquidation then</th><td class="ours">Continues on a valid price</td><td>Stops while the flag is set</td><td>Continues on a valid price</td></tr>
       </tbody>
     </table>
-    <footer><span>Public docs read Nov 26 2026: docs.bsc.lista.org, docs.zona.finance. Lista stock count: Crypto Briefing, Nov 12 2026.</span><span class="page">9</span></footer>
+    <footer><span>Public docs read Nov 26 2026: docs.bsc.lista.org, docs.zona.finance. Lista stock count: Crypto Briefing, Nov 12 2026.</span><span class="page">10</span></footer>
   </section></div>
 
-  <!-- 10. Progress -->
+  <!-- 11. Progress -->
   <div class="frame"><section class="slide">
     <h2>The v3 contracts run against <em>real bStocks</em> on a BNB fork</h2>
     <div style="display:grid;grid-template-columns:420px 1fr;gap:72px;margin-top:40px">
@@ -351,10 +386,10 @@
       </ul>
     </div>
     <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit and no mainnet deployment. The web app only simulates the pool, and keepers still run on the earlier Morpho prototype.</p>
-    <footer><span>Fork tests send nothing to mainnet. Balances are set locally.</span><span class="page">10</span></footer>
+    <footer><span>Fork tests send nothing to mainnet. Balances are set locally.</span><span class="page">11</span></footer>
   </section></div>
 
-  <!-- 11. Business model -->
+  <!-- 12. Business model -->
   <div class="frame"><section class="slide">
     <h2>Blue keeps <em>10%</em> of the interest borrowers pay</h2>
     <div style="display:grid;grid-template-columns:700px 1fr;gap:64px;margin-top:34px">
@@ -374,10 +409,10 @@
         <p class="muted small" style="margin-top:28px">Revenue scales with USDT borrowed. The prototype caps the reserve at 1,000 USDT, so limits rise only after calibration and review.</p>
       </div>
     </div>
-    <footer><span>Illustration from prototype parameters (2% base, +4% to 80% use, +60% above; 10% reserve factor). Simple annual rates before compounding. Not a forecast.</span><span class="page">11</span></footer>
+    <footer><span>Illustration from prototype parameters (2% base, +4% to 80% use, +60% above; 10% reserve factor). Simple annual rates before compounding. Not a forecast.</span><span class="page">12</span></footer>
   </section></div>
 
-  <!-- 12. Road to mainnet -->
+  <!-- 13. Road to mainnet -->
   <div class="frame"><section class="slide">
     <h2>Five steps from prototype <em>to a capped mainnet launch</em></h2>
     <ol class="steps">
@@ -388,13 +423,13 @@
       <li><h3>Launch small</h3><p>Verify issuer transfer rules and shortfall handling, then open with low caps.</p></li>
     </ol>
     <div style="margin-top:64px;background:var(--sheet);padding:24px 28px;display:flex;gap:40px;align-items:center">
-      <h3 style="white-space:nowrap">After launch</h3>
-      <p class="muted">One-click leveraged borrow: borrow USDT, buy more of the same stock and post it as collateral, with every borrow still passing the pool’s stock rules.</p>
+      <h3 style="white-space:nowrap">Leverage</h3>
+      <p class="muted">One-click leveraged borrow runs in the demo today. Live use still needs real swaps and wallet execution against the pool.</p>
     </div>
-    <footer><span>Steps and open items from architecture-v3.md and protocol/README.md.</span><span class="page">12</span></footer>
+    <footer><span>Steps and open items from architecture-v3.md and protocol/README.md.</span><span class="page">13</span></footer>
   </section></div>
 
-  <!-- 13. Close -->
+  <!-- 14. Close -->
   <div class="frame"><section class="slide navy">
     <img class="logo" src="assets/blue-finance-dark.png" alt="Blue Finance">
     <h1 style="margin-top:72px">Lending that knows<br><em>when the market is closed.</em></h1>
@@ -404,7 +439,7 @@
       <div class="col" style="border-color:#a6beff"><h3>Security reviewers</h3><p style="color:var(--on-navy-muted)">To review the Aave pool changes and price contracts before launch.</p></div>
       <div class="col" style="border-color:#a6beff"><h3>Lenders and bStock holders</h3><p style="color:var(--on-navy-muted)">To test limits and tell us what they need to borrow on-chain.</p></div>
     </div>
-    <footer style="border-color:#304776;color:#b9caec"><span><a href="https://github.com/neelansh15/blue-finance">github.com/neelansh15/blue-finance</a> · Prototype, not live. Nothing here is an offer or investment advice.</span><span class="page">13</span></footer>
+    <footer style="border-color:#304776;color:#b9caec"><span><a href="https://github.com/neelansh15/blue-finance">github.com/neelansh15/blue-finance</a> · Prototype, not live. Nothing here is an offer or investment advice.</span><span class="page">14</span></footer>
   </section></div>
 </main>
 
