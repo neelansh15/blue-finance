@@ -9,9 +9,7 @@ Isolated-market lending for tokenized equities and RWAs, stablecoin borrow only 
 ## Files
 
 - [architecture-v0.md](architecture-v0.md): lending architecture draft
-- [yzi-labs-research.md](yzi-labs-research.md): what YZi Labs and BNB Chain fund, funding routes
+- [idea-progression.md](idea-progression.md): how the idea evolved and why
 - [bnb-bangkok-event.md](bnb-bangkok-event.md): event details, tracks, judging, prizes
-- [ideas-brainstorm.md](ideas-brainstorm.md): shortlist of ideas
-- [liquidity-protocol-ideas.md](liquidity-protocol-ideas.md): hooks and prop AMM research
 
 Compiled Nov 2026.
