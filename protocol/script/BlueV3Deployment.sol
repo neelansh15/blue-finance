@@ -11,10 +11,10 @@ import {AaveProtocolDataProvider} from "aave/helpers/AaveProtocolDataProvider.so
 import {AaveOracle} from "aave/misc/AaveOracle.sol";
 import {DefaultReserveInterestRateStrategyV2} from "aave/misc/DefaultReserveInterestRateStrategyV2.sol";
 import {IDefaultInterestRateStrategyV2} from "aave/interfaces/IDefaultInterestRateStrategyV2.sol";
-import {RegimeRegistry} from "morpho-prototype/RegimeRegistry.sol";
-import {IBStockLike} from "morpho-prototype/interfaces/IBStockLike.sol";
-import {MockBStock} from "morpho-prototype/mocks/MockBStock.sol";
-import {MockAtlasFeed} from "morpho-prototype/mocks/MockAtlasFeed.sol";
+import {MarketCalendar} from "../src/MarketCalendar.sol";
+import {IBStockLike} from "../src/interfaces/IBStockLike.sol";
+import {MockBStock} from "../src/mocks/MockBStock.sol";
+import {MockAtlasFeed} from "../src/mocks/MockAtlasFeed.sol";
 import {BluePool} from "../src/BluePool.sol";
 import {StockBorrowControls} from "../src/StockBorrowControls.sol";
 import {StockPriceSource} from "../src/StockPriceSource.sol";
@@ -47,7 +47,7 @@ abstract contract BlueV3Deployment {
         PoolAddressesProvider provider;
         BluePool pool;
         PoolConfiguratorInstance configurator;
-        RegimeRegistry registry;
+        MarketCalendar calendar;
         StockBorrowControls controls;
         AaveOracle oracle;
         Stock[STOCK_COUNT] stocks;
@@ -63,14 +63,14 @@ abstract contract BlueV3Deployment {
         d.provider.setACLManager(address(acl));
         acl.addPoolAdmin(roles.admin);
 
-        d.registry = new RegimeRegistry(roles.admin, address(0), 7 days, false);
-        d.stocks[0] = _mockStock("Mock Tesla bStock", "TSLAB", 250e8, roles);
-        d.stocks[1] = _mockStock("Mock NVIDIA bStock", "NVDAB", 125e8, roles);
-        d.stocks[2] = _mockStock("Mock Nasdaq 100 ETF bStock", "QQQb", 500e8, roles);
-        d.stocks[3] = _mockStock("Mock SpaceX bStock", "SPCXb", 100e8, roles);
-        d.stocks[4] = _mockStock("Mock Alphabet bStock", "GOOGLb", 200e8, roles);
+        d.calendar = new MarketCalendar(roles.admin, address(0), 7 days, false);
+        d.stocks[0] = _mockStock("Mock Tesla bStock", "TSLAB", 250e8, d.calendar, roles);
+        d.stocks[1] = _mockStock("Mock NVIDIA bStock", "NVDAB", 125e8, d.calendar, roles);
+        d.stocks[2] = _mockStock("Mock Nasdaq 100 ETF bStock", "QQQb", 500e8, d.calendar, roles);
+        d.stocks[3] = _mockStock("Mock SpaceX bStock", "SPCXb", 100e8, d.calendar, roles);
+        d.stocks[4] = _mockStock("Mock Alphabet bStock", "GOOGLb", 200e8, d.calendar, roles);
         d.usdtFeed = new MockAtlasFeed(8, 1e8);
-        d.usdtPrice = _price(d.usdtFeed, IBStockLike(address(0)), roles);
+        d.usdtPrice = _price(d.usdtFeed, IBStockLike(address(0)), d.calendar, 1e8, roles);
         address[] memory assets = new address[](STOCK_COUNT + 1);
         assets[0] = usdt;
         address[] memory sources = new address[](assets.length);
@@ -88,7 +88,7 @@ abstract contract BlueV3Deployment {
             roles.guardian,
             roles.signer,
             d.provider,
-            d.registry,
+            d.calendar,
             d.usdtPrice,
             HEARTBEAT,
             RECOVERY,
@@ -131,21 +131,38 @@ abstract contract BlueV3Deployment {
         }
     }
 
-    function _mockStock(string memory name, string memory symbol, int256 price, Roles memory roles)
-        private
-        returns (Stock memory stock)
-    {
+    function _mockStock(
+        string memory name,
+        string memory symbol,
+        int256 price,
+        MarketCalendar calendar,
+        Roles memory roles
+    ) private returns (Stock memory stock) {
         stock.token = new MockBStock(name, symbol);
         stock.feed = new MockAtlasFeed(8, price);
-        stock.source = _price(stock.feed, stock.token, roles);
+        stock.source = _price(stock.feed, stock.token, calendar, uint256(price), roles);
     }
 
-    function _price(MockAtlasFeed feed, IBStockLike stock, Roles memory roles)
+    /// @dev The prototype's absolute band runs from 1/20 to 20 times the launch price.
+    function _price(MockAtlasFeed feed, IBStockLike stock, MarketCalendar calendar, uint256 launch, Roles memory roles)
         private
         returns (StockPriceSource source)
     {
         source = new StockPriceSource(
-            roles.admin, roles.keeper, roles.guardian, feed, stock, false, BORROW_MAX_AGE, LIQUIDATION_MAX_AGE, 2_000
+            StockPriceSource.Config({
+                admin: roles.admin,
+                reporter: roles.keeper,
+                guardian: roles.guardian,
+                feed: feed,
+                stock: stock,
+                calendar: calendar,
+                feedPerDisplayedUnit: false,
+                borrowMaxAge: BORROW_MAX_AGE,
+                liquidationMaxAge: LIQUIDATION_MAX_AGE,
+                continuityBps: 2_000,
+                minPrice: launch / 20,
+                maxPrice: launch * 20
+            })
         );
         source.refresh();
     }
@@ -153,7 +170,7 @@ abstract contract BlueV3Deployment {
     function _configureCollateral(PoolConfiguratorInstance configurator, address stock) private {
         configurator.configureReserveAsCollateral(stock, BASE_LTV, LIQUIDATION_THRESHOLD, LIQUIDATION_BONUS);
         // Aave V3.6 isolation enforces one stock collateral. Its principal ceiling is in 2-decimal base units.
-        // Blue's lower, per-regime ceiling is enforced in accrued USDT units.
+        // Blue's lower, per-status ceiling is enforced in accrued USDT units.
         configurator.setDebtCeiling(stock, USDT_CAP * 100);
     }
 

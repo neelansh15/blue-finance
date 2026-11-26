@@ -5,8 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ICreditDelegationToken} from "aave/interfaces/ICreditDelegationToken.sol";
-import {IRegimeRegistry} from "morpho-prototype/interfaces/IRegimeRegistry.sol";
-import {MockBStock} from "morpho-prototype/mocks/MockBStock.sol";
+import {IMarketCalendar} from "../src/interfaces/IMarketCalendar.sol";
+import {MockBStock} from "../src/mocks/MockBStock.sol";
 import {BluePool} from "../src/BluePool.sol";
 import {StockBorrowControls} from "../src/StockBorrowControls.sol";
 import {StockPriceSource} from "../src/StockPriceSource.sol";
@@ -84,7 +84,7 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
     function testHaltBlocksOnlyTeslaAndAllowsRepay() external {
         _borrow(TESLA_BORROWER, 70 ether);
         d.controls.report(address(d.stocks[TESLA].token), false);
-        d.registry.setOverride(address(d.stocks[TESLA].token), IRegimeRegistry.Regime.HALTED, 1 hours);
+        d.calendar.setOverride(address(d.stocks[TESLA].token), IMarketCalendar.MarketStatus.HALTED, 1 hours);
 
         vm.expectRevert(
             abi.encodeWithSelector(StockBorrowControls.NewRiskBlocked.selector, address(d.stocks[TESLA].token))
@@ -136,7 +136,7 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
     }
 
     function testExpiredOverrideCannotReopenUsingOldPermission() external {
-        d.registry.setOverride(address(d.stocks[TESLA].token), IRegimeRegistry.Regime.CORP_ACTION, 2 minutes);
+        d.calendar.setOverride(address(d.stocks[TESLA].token), IMarketCalendar.MarketStatus.CORP_ACTION, 2 minutes);
         vm.warp(block.timestamp + 2 minutes);
         vm.expectRevert(
             abi.encodeWithSelector(StockBorrowControls.NewRiskBlocked.selector, address(d.stocks[TESLA].token))
@@ -158,8 +158,8 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
         _borrow(TESLA_BORROWER, 1 ether);
         assertEq(usdt.balanceOf(TESLA_BORROWER), 80 ether);
 
-        // In the weekend regime the native 50% LTV would allow this draw, but Blue allows 42.5%.
-        d.registry.setOverride(address(d.stocks[NVIDIA].token), IRegimeRegistry.Regime.WEEKEND, 1 hours);
+        // In the weekend status the native 50% LTV would allow this draw, but Blue allows 42.5%.
+        d.calendar.setOverride(address(d.stocks[NVIDIA].token), IMarketCalendar.MarketStatus.WEEKEND, 1 hours);
         d.controls.setCaps(address(d.stocks[NVIDIA].token), [uint128(400 ether), 400 ether, 400 ether, 400 ether]);
         vm.expectRevert(BluePool.AboveStockLtv.selector);
         _borrow(NVIDIA_BORROWER, 170 ether);
@@ -210,9 +210,38 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
         assertEq(d.pool.debtStock(TESLA_BORROWER), address(d.stocks[TESLA].token));
     }
 
-    function testSplitInvalidPriceBlocksBorrowButRepayStillWorks() external {
-        _borrow(TESLA_BORROWER, 80 ether);
+    function testGenuineGapBlocksBorrowButLiquidationUsesLivePrice() external {
+        address tesla = address(d.stocks[TESLA].token);
+        _borrow(TESLA_BORROWER, 150 ether);
         vm.warp(block.timestamp + 1);
+        // A 76% drop with no corporate action: outside the continuity band, inside the absolute band.
+        d.stocks[TESLA].feed.setAnswer(60e8);
+
+        assertFalse(d.stocks[TESLA].source.usableForBorrow());
+        vm.expectRevert(StockPriceSource.DiscontinuousPrice.selector);
+        d.stocks[TESLA].source.refresh();
+        vm.expectRevert(abi.encodeWithSelector(StockBorrowControls.NewRiskBlocked.selector, tesla));
+        _borrow(TESLA_BORROWER, 1 ether);
+
+        assertEq(d.stocks[TESLA].source.latestAnswer(), 60e8);
+        (,,,,, uint256 health) = d.pool.getUserAccountData(TESLA_BORROWER);
+        assertLt(health, 1e18);
+        uint256 debtBefore = d.pool.stockDebt(tesla);
+        _fundUsdt(address(this), 200 ether); // Covers accrued interest.
+        d.pool.liquidationCall(tesla, address(usdt), TESLA_BORROWER, type(uint256).max, false);
+        assertLt(d.pool.stockDebt(tesla), debtBefore);
+
+        // Borrowing reopens only after the admin accepts the new reference.
+        d.stocks[TESLA].source.acceptReference();
+        assertTrue(d.stocks[TESLA].source.usableForBorrow());
+    }
+
+    function testAnnouncedSplitBlocksBorrowAndLiquidationButRepayWorks() external {
+        address tesla = address(d.stocks[TESLA].token);
+        _borrow(TESLA_BORROWER, 80 ether);
+        d.calendar.setOverride(tesla, IMarketCalendar.MarketStatus.CORP_ACTION, 1 days);
+        vm.warp(block.timestamp + 1);
+        // Feed-first 2:1 split: the price halves before the multiplier changes.
         d.stocks[TESLA].feed.setAnswer(125e8);
         assertFalse(d.stocks[TESLA].source.usableForBorrow());
         vm.expectRevert(StockPriceSource.UnusablePrice.selector);
@@ -223,14 +252,33 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
         usdt.approve(address(d.pool), type(uint256).max);
         d.pool.repay(address(usdt), type(uint256).max, VARIABLE, TESLA_BORROWER);
         vm.stopPrank();
-        assertEq(d.pool.stockDebt(address(d.stocks[TESLA].token)), 0);
+        assertEq(d.pool.stockDebt(tesla), 0);
+    }
+
+    function testChangedMultiplierNeedsNewReference() external {
+        d.stocks[TESLA].token.setUIMultiplierNow(2e18);
+        vm.expectRevert(StockPriceSource.UnusablePrice.selector);
+        d.stocks[TESLA].source.latestAnswer();
+        assertFalse(d.stocks[TESLA].source.usableForBorrow());
+
+        vm.warp(block.timestamp + 1);
+        d.stocks[TESLA].feed.setAnswer(250e8);
+        d.stocks[TESLA].source.acceptReference();
+        assertEq(d.stocks[TESLA].source.latestAnswer(), 250e8);
+    }
+
+    function testPriceOutsideAbsoluteBandIsUnusable() external {
+        vm.warp(block.timestamp + 1);
+        d.stocks[TESLA].feed.setAnswer(10e8); // Below 1/20 of the 250 launch price.
+        vm.expectRevert(StockPriceSource.UnusablePrice.selector);
+        d.stocks[TESLA].source.latestAnswer();
+        assertFalse(d.stocks[TESLA].source.usableForBorrow());
     }
 
     function testLiquidationReconcilesStockDebtIncludingDeficit() external {
         _borrow(TESLA_BORROWER, 150 ether);
         vm.warp(block.timestamp + 1);
         d.stocks[TESLA].feed.setAnswer(20e8);
-        d.stocks[TESLA].source.acceptReference();
         d.controls.report(address(d.stocks[TESLA].token), false);
         _fundUsdt(address(this), 150 ether);
         d.pool.liquidationCall(address(d.stocks[TESLA].token), address(usdt), TESLA_BORROWER, type(uint256).max, false);

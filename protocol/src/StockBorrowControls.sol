@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {ECDSA} from "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
-import {IRegimeRegistry} from "morpho-prototype/interfaces/IRegimeRegistry.sol";
+import {IMarketCalendar} from "./interfaces/IMarketCalendar.sol";
 import {IPoolAddressesProvider} from "aave/interfaces/IPoolAddressesProvider.sol";
 import {StockPriceSource} from "./StockPriceSource.sol";
 
@@ -27,7 +27,7 @@ contract StockBorrowControls is EIP712 {
     address public immutable guardian;
     address public immutable signer;
     IPoolAddressesProvider public immutable provider;
-    IRegimeRegistry public immutable registry;
+    IMarketCalendar public immutable calendar;
     StockPriceSource public immutable debtPrice;
     uint32 public immutable heartbeat;
     uint32 public immutable recovery;
@@ -56,7 +56,7 @@ contract StockBorrowControls is EIP712 {
         address guardian_,
         address signer_,
         IPoolAddressesProvider provider_,
-        IRegimeRegistry registry_,
+        IMarketCalendar calendar_,
         StockPriceSource debtPrice_,
         uint32 heartbeat_,
         uint32 recovery_,
@@ -64,7 +64,7 @@ contract StockBorrowControls is EIP712 {
     ) EIP712("Blue Stock Borrow Controls", "1") {
         if (
             admin_ == address(0) || keeper_ == address(0) || guardian_ == address(0) || signer_ == address(0)
-                || address(provider_) == address(0) || address(registry_) == address(0)
+                || address(provider_) == address(0) || address(calendar_) == address(0)
                 || address(debtPrice_) == address(0) || heartbeat_ == 0 || maxEligibility_ == 0
         ) revert InvalidPolicy();
         admin = admin_;
@@ -72,7 +72,7 @@ contract StockBorrowControls is EIP712 {
         guardian = guardian_;
         signer = signer_;
         provider = provider_;
-        registry = registry_;
+        calendar = calendar_;
         debtPrice = debtPrice_;
         heartbeat = heartbeat_;
         recovery = recovery_;
@@ -178,17 +178,17 @@ contract StockBorrowControls is EIP712 {
                 || block.timestamp - policy.healthySince < recovery || !_fresh(stock, policy)
                 || policy.lastReport < _lastRestrictionEnd(stock)
         ) revert NewRiskBlocked(stock);
-        uint256 regime = uint256(registry.regime(stock));
-        return (uint256(policy.baseLtv) * (BPS - policy.discounts[regime]) / BPS, policy.caps[regime]);
+        uint256 marketStatus = uint256(calendar.status(stock));
+        return (uint256(policy.baseLtv) * (BPS - policy.discounts[marketStatus]) / BPS, policy.caps[marketStatus]);
     }
 
     function _fresh(address stock, Policy storage policy) private view returns (bool) {
-        return uint256(registry.regime(stock)) < 4 && policy.source.usableForBorrow() && debtPrice.usableForBorrow();
+        return uint256(calendar.status(stock)) < 4 && policy.source.usableForBorrow() && debtPrice.usableForBorrow();
     }
 
     function _lastRestrictionEnd(address stock) private view returns (uint64) {
-        (IRegimeRegistry.Regime state, uint64 expiry) = registry.overrideOf(stock);
-        (IRegimeRegistry.Regime globalState, uint64 globalExpiry) = registry.overrideOf(address(0));
+        (IMarketCalendar.MarketStatus state, uint64 expiry) = calendar.overrideOf(stock);
+        (IMarketCalendar.MarketStatus globalState, uint64 globalExpiry) = calendar.overrideOf(address(0));
         if (uint256(state) < 4) expiry = 0;
         if (uint256(globalState) < 4) globalExpiry = 0;
         return expiry > globalExpiry ? expiry : globalExpiry;
