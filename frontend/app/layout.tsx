@@ -1,26 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
-import { THEME_COLORS, themeInitScript } from "./theme";
-
-const instrumentSans = localFont({
-  src: "./fonts/instrument-sans.woff2",
-  variable: "--font-instrument-sans",
-  weight: "400 700",
-  display: "swap",
-});
-
-const instrumentSerif = localFont({
-  src: "./fonts/instrument-serif-italic.woff2",
-  variable: "--font-instrument-serif",
-  style: "italic",
-  weight: "400",
-  display: "swap",
-  adjustFontFallback: "Times New Roman",
-});
 
 export const metadata: Metadata = {
-  title: "Dawn Finance | Market-aware lending for tokenized stocks",
+  title: "Dawn Finance: lending for tokenized US stocks on BNB Chain (draft)",
   description:
     "Dawn Finance is a draft lending protocol for tokenized US stocks on BNB Chain, built on unmodified Morpho Blue, with a risk layer that knows when the US market is open. Prototype for BNB Bangkok. Not live.",
 };
@@ -28,16 +10,16 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  colorScheme: "light dark",
+  colorScheme: "dark light",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#111923" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f8fa" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${instrumentSans.variable} ${instrumentSerif.variable}`}>
-      <head>
-        <meta id="dawn-theme-color" name="theme-color" content={THEME_COLORS.light} suppressHydrationWarning />
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

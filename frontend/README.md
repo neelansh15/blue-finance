@@ -9,8 +9,12 @@ npm run build   # production build
 npm run start   # serve the production build
 ```
 
-## Landing-page graphics
+## Demo app (`/app`)
 
-The bStock icons come from the BscScan token metadata for [NVDAB](https://bscscan.com/token/0x02fca66c1d1afb4e2a7884261eb00f63598a7436), [TSLAB](https://bscscan.com/token/0x5b1910eaad6450e50f816082aa078c41f10c292f), and [AAPLB](https://bscscan.com/token/0x431a3bee82e2ca41e49895cbece5bb0f76a89b7a). The USDT icon comes from the [PancakeSwap token list](https://tokens.pancakeswap.finance/pancakeswap-extended.json). The silicon-die illustration is original generated artwork.
+Mocked-data demo UI. Developer controls: `/app?dev=1` or Shift+D. All chain access is in `src/lib/dawn/` (`client.ts` entry, `mock.ts` now, `real.ts` viem stub, env `NEXT_PUBLIC_DAWN_*`, `NEXT_PUBLIC_DAWN_MODE=real` to select it). Pure math is in `src/lib/dawn/math.ts`.
 
-The **Launch App** link opens the Dashboard, with Earn and Borrow alongside it. All three pages use an in-memory demo account for the NVDAb, QQQb, and SPCXb markets. Prices, rates, and transactions are simulated. The app uses the QQQb icon from BscScan and the [SPCXb icon from CoinGecko](https://www.coingecko.com/en/coins/spacex-bstocks-tokenized-stock).
+```
+npm test        # vitest
+```
+
+Haircuts, margin and the continuity band in `src/lib/dawn/params.ts` are illustrative placeholders.
