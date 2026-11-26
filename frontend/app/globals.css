@@ -321,6 +321,35 @@ ol {
   background: color-mix(in srgb, var(--surface) 60%, transparent);
 }
 
+.landing-launch {
+  flex: none;
+  min-height: 44px;
+  padding-inline: 14px;
+  border-radius: 0;
+  background: light-dark(#2040bf, #a6beff);
+  color: light-dark(#fff, #0b1530);
+  white-space: nowrap;
+}
+
+.landing-launch:hover {
+  background: light-dark(#17339f, #b9caff);
+}
+
+.landing-launch svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 440px) {
+  .landing-nav .nav-links {
+    display: none;
+  }
+
+  .landing-launch {
+    margin-inline-start: auto;
+  }
+}
+
 /* ---------- Hero ---------- */
 .hero {
   position: relative;
