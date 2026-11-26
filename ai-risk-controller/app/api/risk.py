@@ -9,6 +9,7 @@ from app.services.risk_service import RiskService
 from app.integrations.market_status import AssetMarketStatus, status_failures
 from app.routing.engine import route_markets
 from app.routing.models import RoutingDecision, RoutingRequest
+from app.simulation.portfolio import default_scenarios, simulate
 
 router = APIRouter(prefix="/risk", tags=["Risk controller"])
 
@@ -31,6 +32,10 @@ class EventsResponse(Model):
 class SimulationResponse(Model):
     assessment: Assessment
     simulations: list[SimulationResult]
+
+
+class AdvisoryResponse(SimulationResponse):
+    recommendation: Recommendation
 
 
 class HistoryResponse(Model):
@@ -67,6 +72,20 @@ def score(asset: str, request: Request):
              summary="Generate an approval-gated advisory recommendation; never executes a transaction")
 def recommend(asset: str, request: Request, body: SimulateRequest = Body(default_factory=SimulateRequest)):
     return service(request).recommend(asset, body)
+
+
+@router.post("/advisory/{asset}", response_model=AdvisoryResponse,
+             summary="Assess an explicit demo portfolio once for an advisory frontend summary")
+def advisory(asset: str, request: Request, body: SimulateRequest):
+    # An empty account must never silently become the synthetic 120-borrower book.
+    if body.borrowers is None:
+        raise HTTPException(422, "Explicit borrowers required; use [] for an empty account")
+    svc = service(request)
+    assessment, snapshot = svc.assess(asset, body)
+    recommendation = svc.recommend_assessed(assessment, snapshot, body)
+    scenarios = body.scenarios if body.scenarios is not None else default_scenarios()
+    results = [simulate(assessment, snapshot, body.borrowers, s, svc.policy) for s in scenarios]
+    return AdvisoryResponse(assessment=assessment, recommendation=recommendation, simulations=results)
 
 
 @router.post("/simulate/{asset}", response_model=SimulationResponse)

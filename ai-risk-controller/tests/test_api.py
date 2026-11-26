@@ -36,7 +36,7 @@ def test_all_endpoints_and_openapi(client):
     assert len(simulation.json()["simulations"]) == 8
     assert client.get("/docs").status_code == 200
     schema = client.get("/openapi.json").json()
-    assert len(schema["paths"]) == 9
+    assert '/risk/advisory/{asset}' in schema['paths']
 
 
 def test_validation_and_empty_inputs(client):

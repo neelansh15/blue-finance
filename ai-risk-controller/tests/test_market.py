@@ -28,6 +28,27 @@ def test_exchange_sessions(time, expected):
     assert detect_session(datetime.fromisoformat(time), Policy()).underlying_session == expected
 
 
+@pytest.mark.parametrize('time,regime,effective', [
+    ('2026-11-20T19:59:00-05:00', 'EXTENDED', Session.EXTENDED),
+    ('2026-11-20T20:00:00-05:00', 'WEEKEND', Session.WEEKEND_CLOSED),
+    ('2026-11-22T19:59:00-05:00', 'WEEKEND', Session.WEEKEND_CLOSED),
+    ('2026-11-22T20:00:00-05:00', 'CLOSED', Session.OVERNIGHT),
+    ('2026-11-25T20:00:00-05:00', 'WEEKEND', Session.WEEKEND_CLOSED),
+    ('2026-11-26T20:00:00-05:00', 'CLOSED', Session.OVERNIGHT),
+    ('2026-11-27T16:59:00-05:00', 'EXTENDED', Session.EXTENDED),
+    ('2026-11-27T17:00:00-05:00', 'WEEKEND', Session.WEEKEND_CLOSED),
+    ('2026-07-02T20:00:00-04:00', 'WEEKEND', Session.WEEKEND_CLOSED),
+])
+def test_policy_regimes_match_registry_boundaries(time, regime, effective):
+    from app.market_sessions.session_policy import adjustment
+    info = detect_session(datetime.fromisoformat(time), Policy())
+    assert info.protocol_regime == regime
+    assert info.effective_session == effective
+    if regime == 'WEEKEND':
+        assert adjustment(info, Policy()).cap_multiplier == .4
+        assert adjustment(info, Policy()).gap_floor == .08
+
+
 def test_overrides_and_friday_warning():
     at = DEMO_TIMES["friday"]
     assert detect_session(at, Policy()).prolonged_closure_approaching

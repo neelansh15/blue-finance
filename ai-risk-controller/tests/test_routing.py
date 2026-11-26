@@ -49,7 +49,7 @@ def test_paused_primary_proposes_independently_eligible_different_contract(servi
     assert result.proposed_target.contract_address != result.evaluations[0].target.contract_address
 
 
-@pytest.mark.parametrize('change', ['same_asset','same_venue','global','both_paused','unapproved','disabled','same_contract','cross_chain','wrong_loan','missing_alternative','stale_alternative','unknown_alternative'])
+@pytest.mark.parametrize('change', ['same_asset','same_venue','global','both_paused','unapproved','disabled','same_market','cross_chain','wrong_loan','missing_alternative','stale_alternative','unknown_alternative'])
 def test_no_safe_alternative_holds_exposure(service, change):
     req, policy = request(), demo_policy()
     req.markets[0].controls.government_pause = 'ASSET'
@@ -61,7 +61,7 @@ def test_no_safe_alternative_holds_exposure(service, change):
     if change == 'both_paused': req.markets[1].controls.governance_paused = True
     if change == 'unapproved': policy.targets[1].approved = False
     if change == 'disabled': policy.targets[1].enabled = False
-    if change == 'same_contract': policy.targets[1].contract_address = policy.targets[0].contract_address
+    if change == 'same_market': policy.targets[1].market_id = policy.targets[0].market_id
     if change == 'cross_chain': policy.targets[1].chain_id = 1
     if change == 'wrong_loan': policy.targets[1].loan_asset = 'OTHER'
     if change == 'missing_alternative': req.markets.pop()
@@ -118,6 +118,22 @@ def test_duplicate_identities_rejected():
     raw = policy.model_dump()
     raw['targets'][1] = raw['targets'][0]
     with pytest.raises(ValidationError): type(policy).model_validate(raw)
+
+
+def test_distinct_markets_can_share_morpho_singleton(service):
+    req, policy = request(), demo_policy()
+    policy.targets[1].contract_address = policy.targets[0].contract_address
+    # Different market IDs are independently eligible on the same singleton.
+    req.markets[0].controls.governance_paused = True
+    result = run(service, req, policy)
+    assert result.action == 'PROPOSE_ALTERNATIVE'
+    assert result.proposed_target.market_id != policy.targets[0].market_id
+    assert result.proposed_target.contract_address == policy.targets[0].contract_address
+    raw = policy.model_dump()
+    raw['targets'][1]['market_id'] = raw['targets'][0]['market_id']
+    raw['targets'][1]['contract_address'] = '0x' + '3' * 40
+    with pytest.raises(ValidationError, match='Duplicate contract/market'):
+        type(policy).model_validate(raw)
 
 
 def test_route_api_and_immutable_registry(service):

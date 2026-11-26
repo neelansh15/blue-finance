@@ -5,6 +5,8 @@ import { useRef, useState, type FormEvent } from "react";
 import { useDemoAccount } from "./DemoAccount";
 import { health, money, quantity } from "./format";
 import TokenIcon from "../components/TokenIcon";
+import RiskPanel from "./risk/RiskPanel";
+import { lendingPosition } from "../../src/lib/risk/adapter";
 import { ILLUSTRATIVE_HAIRCUT, REGIME_LABEL, type Regime } from "../components/regimes";
 import {
   ACTIONS, CENTS_PER_USDT, MARKETS, TOKENS_PER_UNIT, accountTotals,
@@ -284,6 +286,9 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
           </div>
         </section>
       </div>
+      {!isLender && <details className="wrap risk-embedded"><summary>Analyse this demo position</summary>
+        <RiskPanel key={JSON.stringify(lendingPosition(market, position))} position={lendingPosition(market, position)} />
+      </details>}
       <p className="wrap app-footnote">Sample rates and balances. Simulated actions reset on refresh.</p>
     </main>
   );

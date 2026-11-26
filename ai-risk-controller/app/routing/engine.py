@@ -58,8 +58,9 @@ def route_markets(service: RiskService, asset: str, request: RoutingRequest, pol
         if not target.approved or not target.enabled: reasons.append('Destination not approved/enabled')
         if target.chain_id != primary.chain_id: reasons.append('Cross-chain movement is unsupported')
         if target.loan_asset != primary.loan_asset: reasons.append('Loan asset is incompatible')
-        if target.target_id != primary.target_id and target.contract_address.lower() == primary.contract_address.lower():
-            reasons.append('Alternative must use a different configured contract')
+        if (target.target_id != primary.target_id and target.chain_id == primary.chain_id
+                and target.market_id.lower() == primary.market_id.lower()):
+            reasons.append('Alternative must use a different market ID')
         if global_pause or target.collateral_asset in blocked_assets or target.underlying_venue in blocked_venues:
             reasons.append('Government/regulator restriction applies to this exposure')
         if item is None:

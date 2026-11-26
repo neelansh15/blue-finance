@@ -134,6 +134,9 @@ class Snapshot(Model):
 class SessionInfo(Model):
     underlying_session: Session
     effective_session: Session
+    # Historical audit rows predate this field; retain unknown rather than invent
+    # an on-chain regime when reading old evidence. New assessments set it.
+    protocol_regime: Literal["OPEN", "EXTENDED", "CLOSED", "WEEKEND", "HALTED"] | None = None
     exchange_timezone: str = "America/New_York"
     regular_open: AwareDatetime | None = None
     regular_close: AwareDatetime | None = None

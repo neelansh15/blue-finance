@@ -6,6 +6,8 @@ import CorpActionBanner from "./CorpActionBanner";
 import DemoPanel from "./DemoPanel";
 import PositionCard from "./PositionCard";
 import { useDawn } from "./useDawn";
+import RiskPanel from "../risk/RiskPanel";
+import { demoPosition } from "../../../src/lib/risk/adapter";
 
 export default function DemoApp() {
   const { client, snapshot, error } = useDawn();
@@ -44,6 +46,9 @@ export default function DemoApp() {
             <BorrowForm s={snapshot} client={client} />
             {dev && client.demo && <DemoPanel s={snapshot} demo={client.demo} />}
           </div>
+          <details className="risk-embedded"><summary>Analyse this demo position</summary>
+            <RiskPanel key={JSON.stringify(demoPosition(snapshot))} position={demoPosition(snapshot)} />
+          </details>
         </>
       )}
       <p className="illustrative dapp-foot">

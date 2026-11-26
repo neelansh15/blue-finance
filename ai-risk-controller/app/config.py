@@ -25,6 +25,8 @@ class Policy(Model):
     min_liquidation_threshold: Positive = .30
     max_liquidation_threshold: Ratio = .77
     market_lltv: Positive = .625
+    router_hmax: Ratio = .15
+    router_margin: Ratio = .02
     max_ltv: Ratio = .60
     ltv_buffer: Positive = .08
     max_supply_tokens: NonNegative = 100000
@@ -56,7 +58,13 @@ class Policy(Model):
             raise ValueError("Invalid LTV bounds or buffer")
         if self.at_risk_health_factor <= 1:
             raise ValueError("At-risk health factor must exceed 1")
+        if self.router_target_ltv <= 0:
+            raise ValueError("Router haircut and margin leave no borrowing capacity")
         return self
+
+    @property
+    def router_target_ltv(self) -> float:
+        return self.market_lltv * (1 - self.router_hmax) - self.router_margin
 
     @property
     def fingerprint(self) -> str:

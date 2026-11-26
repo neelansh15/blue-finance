@@ -42,7 +42,7 @@ class RoutingPolicy(Model):
     def unique_targets(self):
         if len({t.target_id for t in self.targets}) != len(self.targets):
             raise ValueError('Duplicate target IDs')
-        identities = {(t.chain_id, t.contract_address.lower(), t.market_id.lower()) for t in self.targets}
+        identities = {(t.chain_id, t.market_id.lower()) for t in self.targets}
         if len(identities) != len(self.targets):
             raise ValueError('Duplicate contract/market identities')
         return self

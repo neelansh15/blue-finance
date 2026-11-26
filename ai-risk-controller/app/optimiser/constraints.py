@@ -11,6 +11,8 @@ def validate_bounds(parameters: Parameters, policy: Policy) -> None:
         raise ValueError("Exposure exceeds governance caps")
     if policy.immutable_threshold and parameters.liquidation_threshold != policy.market_lltv:
         raise ValueError("Existing Morpho market LLTV is immutable")
+    if policy.immutable_threshold and parameters.ltv > policy.router_target_ltv + 1e-12:
+        raise ValueError("LTV exceeds configured DawnRouter haircut/margin ceiling")
     if policy.immutable_threshold and abs(parameters.liquidation_incentive - morpho_incentive(policy.market_lltv)) > 1e-12:
         raise ValueError("Existing Morpho market liquidation incentive is fixed by its LLTV")
     if not parameters.collateral_accepted and (parameters.ltv or parameters.borrow_cap or parameters.supply_cap):

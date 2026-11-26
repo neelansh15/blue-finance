@@ -32,11 +32,14 @@ class RuleBasedOptimiser:
         volatility_limit = (p.max_ltv - min(.3, (volatility if volatility is not None else 1) * .2)) * price_ratio
         ltv = max(0, min(p.max_ltv, threshold - p.ltv_buffer - session.extra_ltv_buffer,
                          recovery_limit - session.extra_ltv_buffer, volatility_limit))
+        if p.immutable_threshold:
+            ltv = min(ltv, p.router_target_ltv * price_ratio)
         depth_budget = a.metrics.depth_usd * p.depth_participation
         volume_budget = a.metrics.volume_24h_usd * p.volume_participation
         supply = min(p.max_supply_tokens, min(depth_budget, volume_budget) / a.recovery.reference_price)
         supply *= session.cap_multiplier * (1 - issuer_haircut)
         reasons = [session.reason, f"Recovery constraint: {recovery_limit:.4f} before session buffer",
+                   f"Configured DawnRouter ceiling: {p.router_target_ltv:.5f}; deployment parameters must be verified",
                    f"Volatility constraint: {volatility_limit:.4f}",
                    "Supply cap in tokens; borrow cap in USD; exposure constrained by executable depth and volume",
                    "Target LTV is measured against the protocol oracle; conservative-reference/oracle conversion prevents price-premium overborrowing",

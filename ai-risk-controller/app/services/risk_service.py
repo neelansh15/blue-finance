@@ -143,6 +143,10 @@ class RiskService:
 
     def recommend(self, asset: str, request: SimulateRequest) -> Recommendation:
         assessment, snapshot = self.assess(asset, request)
+        return self.recommend_assessed(assessment, snapshot, request)
+
+    def recommend_assessed(self, assessment: Assessment, snapshot: Snapshot, request: SimulateRequest) -> Recommendation:
+        """Reuse one evidence snapshot for the frontend summary and stress results."""
         parameters, reasons = self.optimiser.recommend(assessment)
         borrowers = request.borrowers if request.borrowers is not None else synthetic_borrowers()
         impact = simulate(assessment, snapshot, borrowers, Scenario(name="proposed_router_policy",
