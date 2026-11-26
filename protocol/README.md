@@ -101,7 +101,7 @@ The hackathon pool deployed on November 27, 2026 to BNB Smart Chain, chain ID 56
 | MarketCalendar | `0x33CcEcEDA8f2f47BdE9f234FF025977aeB292B17` |
 | AaveOracle | `0x727D5D5001717e7F5fAC98c5b134B27487192e4d` |
 
-[First deployment transaction](https://bscscan.com/tx/0xc84e46923f3b27e8e038716ac4aa6006a6fa9bd0d3b28fe0bcee0ce43ffd51ca) · [Final deployment transaction](https://bscscan.com/tx/0x38cf51152ebfed7579b9ebd700c381a622f849115887a0045692113529443cac) · [Frontend contract configuration](../frontend/src/lib/blue/mainnet.ts) · [Demo walkthrough](../frontend/README.md#onchain-demo-app)
+[First deployment transaction](https://bscscan.com/tx/0xc84e46923f3b27e8e038716ac4aa6006a6fa9bd0d3b28fe0bcee0ce43ffd51ca) · [Final deployment transaction](https://bscscan.com/tx/0x38cf51152ebfed7579b9ebd700c381a622f849115887a0045692113529443cac) · [All 37 deployed contracts](../frontend/src/lib/blue/deployment.ts), published on the docs site at `/docs/deployment` · [Frontend contract configuration](../frontend/src/lib/blue/mainnet.ts) · [Demo walkthrough](../frontend/README.md#onchain-demo-app)
 
 For a future deployment signed by the owner from MetaMask, use [the launcher](script/deploy-bsc-mainnet.sh). It checks chain ID 56 and keeps mainnet recovery files separate from local fork runs.
 

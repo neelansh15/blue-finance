@@ -45,6 +45,16 @@ export const poolContract = {
     "error StockDebtCapExceeded()",
     "error NewRiskBlocked(address stock)",
     "error Ineligible(address account, address stock)",
+    "error AboveStockLtv()",
+    "error UnsupportedDebtAsset()",
+    "error SupplyCapExceeded()",
+    "error BorrowCapExceeded()",
+    "error DebtCeilingExceeded()",
+    "error HealthFactorLowerThanLiquidationThreshold()",
+    "error CollateralCannotCoverNewBorrow()",
+    "error NotEnoughAvailableUserBalance()",
+    "error ReservePaused()",
+    "error ReserveFrozen()",
   ]),
 } as const;
 
@@ -57,6 +67,7 @@ export const controlsContract = {
     "function eligibleUntil(address account, address stock) view returns (uint256)",
     "function eligibilityDigest(address account, address stock, uint256 nonce, uint256 expiry) view returns (bytes32)",
     "function riskLimits(address stock) view returns (uint256 ltv, uint256 cap)",
+    "function withdrawLimit(address stock) view returns (uint256 ltv)",
     "function report(address stock, bool healthy)",
     "function registerEligibility(address stock, uint256 expiry, bytes signature)",
     "error NewRiskBlocked(address stock)",
@@ -77,6 +88,9 @@ export const oracleContract = {
 export const dataProviderContract = {
   address: BLUE.dataProvider,
   abi: parseAbi([
+    "function getReserveData(address asset) view returns (uint256 unbacked, uint256 accruedToTreasuryScaled, uint256 totalAToken, uint256 totalStableDebt, uint256 totalVariableDebt, uint256 liquidityRate, uint256 variableBorrowRate, uint256 stableBorrowRate, uint256 averageStableBorrowRate, uint256 liquidityIndex, uint256 variableBorrowIndex, uint40 lastUpdateTimestamp)",
+    "function getReserveConfigurationData(address asset) view returns (uint256 decimals, uint256 ltv, uint256 liquidationThreshold, uint256 liquidationBonus, uint256 reserveFactor, bool usageAsCollateralEnabled, bool borrowingEnabled, bool stableBorrowRateEnabled, bool isActive, bool isFrozen)",
+    "function getPaused(address asset) view returns (bool isPaused)",
     "function getReserveCaps(address asset) view returns (uint256 borrowCap, uint256 supplyCap)",
     "function getUserReserveData(address asset, address user) view returns (uint256 currentATokenBalance, uint256 currentStableDebt, uint256 currentVariableDebt, uint256 principalStableDebt, uint256 scaledVariableDebt, uint256 stableBorrowRate, uint256 liquidityRate, uint40 stableRateLastUpdated, bool usageAsCollateralEnabled)",
   ]),
@@ -88,6 +102,8 @@ export const priceSourceAbi = parseAbi([
   "error UnusablePrice()",
   "error DiscontinuousPrice()",
 ]);
+
+export const stockTokenAbi = parseAbi(["function uiMultiplier() view returns (uint256)"]);
 
 export const tokenContract = (address: Address) => ({ address, abi: erc20Abi });
 

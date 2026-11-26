@@ -23,7 +23,7 @@ export default function AppNav() {
           <Link href="/app/risk" aria-current={path === "/app/risk" ? "page" : undefined}>Risk</Link>
         </div>
         <div className="app-nav-actions">
-          <span className="app-demo-label app-nav-simulation">{path === "/app" ? "BNB Mainnet" : "Simulation"}</span>
+          <span className="app-demo-label app-nav-simulation">{path.startsWith("/app/simulator") || path.startsWith("/app/research") ? "Simulation" : "BNB Mainnet"}</span>
           <ThemeToggle />
           <WalletButton />
         </div>

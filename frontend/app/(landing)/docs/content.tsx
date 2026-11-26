@@ -1,5 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import {
+  DEPLOYMENT, DEPLOYMENT_ACCOUNTS, DEPLOYMENT_GROUPS, EXTERNAL_ASSETS, RESERVE_TOKENS, type DeployedContract,
+} from "../../../src/lib/blue/deployment";
 
 const repo = "https://github.com/neelansh15/blue-finance/blob/main";
 
@@ -29,6 +32,26 @@ function Table({ columns, rows }: { columns: string[]; rows: ReactNode[][] }) {
   );
 }
 
+const scan = "https://bscscan.com";
+
+function AddressLink({ address, kind = "address" }: { address: string; kind?: "address" | "token" }) {
+  return <a href={`${scan}/${kind}/${address}`}><code>{address}</code></a>;
+}
+
+function Created({ contract }: { contract: DeployedContract }) {
+  return <a href={`${scan}/tx/${contract.created}`} aria-label={`Creation transaction of ${contract.label}`}>Creation transaction</a>;
+}
+
+function ContractTable({ contracts }: { contracts: DeployedContract[] }) {
+  return <Table columns={["Contract", "Address", "Role"]} rows={contracts.map((item) => [
+    <>{item.label}<br /><small>{item.contract}</small></>,
+    <><AddressLink address={item.address} /><br /><Created contract={item} /></>,
+    item.role,
+  ])} />;
+}
+
+const contractCount = DEPLOYMENT_GROUPS.reduce((sum, group) => sum + group.contracts.length, 0) + RESERVE_TOKENS.length * 2;
+
 export const docHref = (slug: string) => slug ? `/docs/${slug}` : "/docs";
 export const sourceHref = (path: string) => `${repo}/${path}`;
 
@@ -57,12 +80,12 @@ export const articles: DocArticle[] = [
       {
         id: "prototype-scope",
         title: "BNB Chain launch",
-        body: <p>The hackathon pool is deployed on BNB Smart Chain at <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC"><code>0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</code></a>. Open the <Link href="/app">onchain workspace</Link> for live markets and wallet actions, or the <Link href="/app/simulator">simulator</Link> for a pre-funded walkthrough.</p>,
+        body: <p>The hackathon pool is deployed on BNB Smart Chain at <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC"><code>0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</code></a>. See every <Link href="/docs/deployment">deployed contract and role</Link>. Open <Link href="/app/earn">Earn</Link>, <Link href="/app/borrow">Borrow</Link> or <Link href="/app/simplified">Simplified Mode</Link> for live markets and wallet actions, or the <Link href="/app/simulator">simulator</Link> for a pre-funded walkthrough.</p>,
       },
       {
         id: "demo",
         title: "Run the demo",
-        body: <><p>Connect a wallet on BNB Smart Chain with USDT and BNB for gas. Supply a small amount of USDT, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The pool launched with zero seeded USDT. For borrowing, the operator must seed liquidity, confirm keeper recovery and fresh prices, and register eligibility for the selected stock. The onchain workspace shows these gates. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
+        body: <><p>Connect a wallet on BNB Smart Chain with USDT and BNB for gas. Supply a small amount of USDT, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The pool launched with zero seeded USDT. Borrowing also needs liquidity, a keeper that has completed the recovery window with fresh prices, and eligibility for the selected stock. Borrow and Risk show these gates. Leveraged borrowing in Simplified Mode is a simulation. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
       },
     ],
     sources: [
@@ -70,6 +93,53 @@ export const articles: DocArticle[] = [
       { path: "architecture-v3.md", title: "Architecture v3" },
       { path: "protocol/README.md", title: "Protocol README" },
       { path: "implementation-plan.md", title: "Implementation plan" },
+    ],
+  },
+  {
+    slug: "deployment",
+    title: "BNB Mainnet deployment",
+    summary: `Contract addresses and roles for Blue on BNB Smart Chain (chain ID ${DEPLOYMENT.chainId}). ${DEPLOYMENT.transactions} deployment transactions created ${contractCount} contracts.`,
+    sections: [
+      {
+        id: "status",
+        title: "What is confirmed",
+        body: <><Table columns={["Check", "Status"]} rows={[
+          ["Onchain deployment", `Confirmed. All ${DEPLOYMENT.transactions} transactions have successful receipts in blocks ${DEPLOYMENT.firstBlock} to ${DEPLOYMENT.finalBlock}, on November 26, 2026 UTC (November 27 in Bangkok).`],
+          ["Contracts created", `${contractCount} distinct contracts: 23 deployed directly, 2 proxies created by the addresses provider and 12 reserve token proxies created by the configurator. Each had code onchain.`],
+          ["Explorer source verification", "Not confirmed. A successful deployment does not mean the source is verified on BscScan. Check the Contract tab of each address."],
+          ["Security review", "None. The contracts are an unaudited hackathon prototype."],
+        ]} /><p><a href={`${scan}/tx/${DEPLOYMENT.firstTransaction}`}>First deployment transaction</a> · <a href={`${scan}/tx/${DEPLOYMENT.finalTransaction}`}>Final deployment transaction</a></p></>,
+      },
+      ...DEPLOYMENT_GROUPS.map((group) => ({ id: group.id, title: group.title, body: <ContractTable contracts={group.contracts} /> })),
+      {
+        id: "reserve-tokens",
+        title: "Reserve receipt and debt tokens",
+        body: <><p>Each reserve has a bluToken and a bluDebtToken proxy. USDT is the only borrowable asset, so the stock debt tokens stay unused.</p>
+          <ContractTable contracts={RESERVE_TOKENS.flatMap((reserve) => [reserve.receipt, reserve.debt])} /></>,
+      },
+      {
+        id: "external",
+        title: "Pre-existing tokens and external feeds",
+        body: <><p>These contracts existed before the deployment. Blue did not deploy them and does not control them. The bStock issuer can pause a token or change its transfer rules.</p>
+          <Table columns={["Asset", "Token (pre-existing)", "Price feed (external)"]} rows={EXTERNAL_ASSETS.map((item) => [
+            item.asset,
+            <AddressLink address={item.token} kind="token" />,
+            <>{item.feedName}<br /><AddressLink address={item.feed} /></>,
+          ])} /></>,
+      },
+      {
+        id: "accounts",
+        title: "Accounts and roles",
+        body: <><p>Roles as set at deployment. The admin can replace them, so read the contracts for the current holders.</p>
+          <Table columns={["Account", "Roles"]} rows={DEPLOYMENT_ACCOUNTS.map((item) => [<AddressLink address={item.address} />, item.roles])} />
+          <p>The deployment seeded zero USDT and left no deficit backstop registered. Automated keeper reporting and eligibility signing need dedicated accounts and a running service.</p></>,
+      },
+    ],
+    sources: [
+      { path: "frontend/src/lib/blue/deployment.ts", title: "Deployment registry" },
+      { path: "protocol/script/DeployBsc.s.sol", title: "DeployBsc script" },
+      { path: "protocol/script/BlueV3Deployment.sol", title: "Pool and reserve configuration" },
+      { path: "protocol/README.md#bnb-mainnet-deployment", title: "Deployment notes" },
     ],
   },
   {
@@ -316,7 +386,7 @@ forge script script/DeployBsc.s.sol:DeployBsc \
         body: <ul>
           <li>Calibrate the risk parameters in <code>BlueV3Deployment.sol</code> against price-gap history and executable liquidation depth.</li>
           <li>Confirm with Atlas which feed instances Blue should use, and decide on a second price source.</li>
-          <li>Automate keeper reporting, eligibility signing and halt monitoring. The hackathon workspace supports manual operator actions.</li>
+          <li>Activate the automated keeper and eligibility service with dedicated accounts. The onchain workspace supports manual operator actions until then.</li>
           <li>Confirm issuer transfer permissions for bStocks and how shared-reserve deficits are handled.</li>
           <li>Complete a security review and confirm license eligibility for production use.</li>
         </ul>,

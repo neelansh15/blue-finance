@@ -19,11 +19,11 @@
 
 ### Working demo
 
-Run the frontend and open `/app` for the live pool. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, supply liquidity and configure the [keeper and eligibility service](keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). The restored frontend uses the manual operator flow while the eligibility proxy is being reintegrated. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
+Run the frontend and open `/app/earn`, `/app/borrow` or `/app/simplified` for the live pool. `/app` keeps the operator workspace. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, supply liquidity and configure the [keeper and eligibility service](keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). Until that service is running, eligibility and keeper reports use the manual operator flow. Leveraged borrowing remains a simulation. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
 
 Open `/app/simulator` for a pre-funded walkthrough of lending, borrowing, a halt and repayment without wallet transactions.
 
-**BNB mainnet pool:** `0xDAC47642621B0C3E4191Fe68281EddAC355f12bC`. All 59 deployment transactions succeeded on November 27, 2026. See the [deployment addresses and receipts](protocol/README.md#bnb-mainnet-deployment).
+**BNB mainnet pool:** `0xDAC47642621B0C3E4191Fe68281EddAC355f12bC`. All 59 deployment transactions succeeded on November 27, 2026. See the [deployment addresses and receipts](protocol/README.md#bnb-mainnet-deployment); the frontend publishes the full list at `/docs/deployment`.
 
 
 ## Table of contents
@@ -148,7 +148,7 @@ Token and feed addresses are listed in the [protocol README](protocol/README.md#
 | [`ai-risk-controller/`](ai-risk-controller/README.md) | Advisory only, on simulated data. Its Blue parameter proposals still follow the Morpho design. |
 | [`protocol-old/`](protocol-old/README.md) | The earlier prototype on Morpho Blue, kept for reference. |
 
-The eligibility service that signs borrower approvals is not built.
+The keeper and eligibility service is built but not yet activated on mainnet.
 
 ## Tech stack
 

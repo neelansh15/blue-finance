@@ -11,28 +11,41 @@ npm run start   # serve the production build
 
 ## Onchain demo app
 
-Open [`/app`](http://localhost:3000/app). The page reads market session, prices, borrow gates, USDT liquidity and wallet positions from the [deployed BluePool](../protocol/README.md#bnb-mainnet-deployment). Reads work without a wallet. Writes use the connected BNB Smart Chain wallet, run a preflight call, and show confirmations and BscScan links.
+Earn, Borrow, Dashboard, Risk and Simplified Mode under `/app` read and write the [deployed BluePool](../protocol/README.md#bnb-mainnet-deployment) on BNB Smart Chain. Reads work without a wallet. Writes use the connected wallet, simulate each call before signing, wait for the receipt and link to BscScan. The [deployment reference](src/lib/blue/deployment.ts) is published at `/docs/deployment`.
 
-For a short live demo:
+| Page | Live behaviour |
+|---|---|
+| `/app/earn` | The shared USDT reserve: balances, liquidity, supply cap, onchain rates, Supply and Withdraw |
+| `/app/borrow` | Five collateral markets, positions, borrowing gates, eligibility, collateral supply and withdrawal, borrow and repay |
+| `/app/dashboard` | The connected wallet’s positions |
+| `/app/risk` | Contract risk metrics, followed by clearly labelled synthetic advisory scenarios |
+| `/app/simplified` | Five-step borrow or supply with a confirmed summary. Leveraged borrowing is a simulation |
 
-1. Connect a BNB Smart Chain wallet with BNB for gas and some of the [reserve's USDT](https://bscscan.com/token/0x55d398326f99059fF775485246999027B3197955).
-2. On **Supply USDT**, enter a small amount, approve the token allowance if prompted, and confirm the supply. Check that available liquidity and your bluUSDT balance increase.
-3. Choose **Withdraw USDT** to redeem the supplied amount if sufficient liquidity is available.
-4. Select a bStock row to view its session and borrow gate. **Supply stock** and **Withdraw stock** use that token. The position panel shows which stock is active as collateral and offers to enable the selected stock if needed.
+Shared logic lives in [`app/app/live`](app/app/live) and [`src/lib/blue/live-position.ts`](src/lib/blue/live-position.ts).
 
-For a full live borrow and repay walkthrough, use the wallet that holds the keeper and eligibility signer roles. The initial deployment uses the same wallet for both:
+### Eligibility proxy
+
+Set the server-only `BLUE_ELIGIBILITY_URL` and `BLUE_ELIGIBILITY_API_TOKEN` to enable **Request eligibility** on Borrow and Simplified. Both point to the [keeper and eligibility service](../keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). Without them the request reports that the service is not configured.
+
+### Leveraged borrowing
+
+Live leverage is not enabled. The current flow runs on the simulated pool. Before it can send transactions it needs a verified swap route and quote for each bStock, onchain slippage and deadline limits, simulation of the full call sequence, wallet batching through EIP-5792, and a reviewed recovery path for partial failure. The pool disables flash loans.
+
+### Operator workspace
+
+[`/app`](http://localhost:3000/app) keeps the manual keeper and signer actions for the operator wallet:
 
 1. Supply some USDT to the reserve. Hold and supply the selected bStock in the borrower wallet. Enable it as collateral if needed.
 2. Open **Demo operator**. Refresh the selected stock and USDT prices as their feeds update. After confirming the stock is healthy, submit a healthy report every 5–8 minutes for at least 30 minutes. A gap of 10 minutes resets recovery. A halt, a guardian hold or an unusable price blocks new borrowing.
-3. Choose **Register my eligibility** and approve the typed message and registration transaction. Eligibility lasts two hours when registered from the demo. Once the price and keeper checks are ready, borrow a small amount of USDT, then repay it. The wallet needs enough USDT to cover the accrued interest for a full repayment. Withdraw the stock after repayment.
+3. Choose **Register my eligibility** and approve the typed message and registration transaction. Eligibility lasts two hours when registered this way.
 
-The deployment seeded zero liquidity. The live demo uses manual keeper and signer actions for the operator wallet. It has no continuous keeper, public eligibility service, or liquidation bot. The contracts use prototype limits and have not been audited.
+The deployment seeded zero liquidity. There is no liquidation bot. The contracts use prototype limits and have not been audited.
 
 The public BNB RPC defaults to PublicNode. To use another browser-accessible BNB mainnet RPC, set `NEXT_PUBLIC_BSC_RPC_URL` before starting or building the app. This setting is exposed to browsers. Keep credentials out of it.
 
 ## Simulator
 
-Open [`/app/simulator`](http://localhost:3000/app/simulator) for a pre-funded walkthrough with no wallet or gas. Simplified, Dashboard, Earn, Borrow and Risk are simulator workspaces. For the original scenario controls, use `/app/simulator?dev=1` or Shift+D.
+Open [`/app/simulator`](http://localhost:3000/app/simulator) for a pre-funded walkthrough with no wallet or gas. Its balances never appear on the live pages. For the scenario controls, use `/app/simulator?dev=1` or Shift+D.
 
 ## Connected risk analysis
 

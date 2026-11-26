@@ -53,7 +53,7 @@ export default function StockRiskTable() {
   const covered = STOCKS.filter(m => data?.assets.some(a => a.aliases.includes(m.id) && a.status === "available")).length;
   return <section className="stock-risk" aria-labelledby="stock-risk-title">
     <div className="stock-risk-heading">
-      <div><p className="app-demo-label">Market intelligence</p><h2 id="stock-risk-title">Stock health at a glance</h2>
+      <div><p className="app-demo-label">Market intelligence · synthetic advisory scenarios</p><h2 id="stock-risk-title">Stock health at a glance</h2>
         <p>Compare collateral health, understand the drivers, and spot gaps in coverage.</p></div>
       <button type="button" className="stock-refresh" disabled={pending} onClick={() => refresh.current()}>{pending ? "Refreshing…" : "Refresh data"}</button>
     </div>

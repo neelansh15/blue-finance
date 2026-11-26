@@ -34,7 +34,7 @@ npm ci
 npm run dev
 ```
 
-Open [Advisory risk simulator](http://localhost:3000/app/simulator/risk). Click **Analyse demo position**. Friday/Saturday selections are historical replays and are labelled expired; “Now” generates fresh synthetic evidence. The position comes from your demo account, with displayed token quantities and USD debt. Borrowing or repaying in the demo changes the next assessment's inputs. QQQB/SPCXB and halted/frozen split scenarios are explicitly unsupported by this backend.
+Open [Risk](http://localhost:3000/app/risk). The page reads contract metrics from BNB Chain, followed by advisory analysis on synthetic scenarios. Connect a wallet with NVDAB collateral and click **Run synthetic analysis**, or run it on an empty account. Friday/Saturday selections are historical replays and are labelled expired; “Now” generates fresh synthetic evidence. The analysis uses only the size of the onchain position. Stocks other than NVDAB, and halted or frozen split scenarios, are unsupported by position analysis.
 
 `RISK_API_URL=http://127.0.0.1:8000` belongs in `frontend/.env.local` and is read only by the Next.js server. The browser uses the same origin, so the Python CORS setting can stay empty. For deployment, use the reachable backend origin rather than localhost, set it in the frontend host's server environment, and run the Python service separately. Browser cookies and authorization headers are not forwarded by the proxy. Missing/unavailable services show an error; results are never fabricated in the browser.
 

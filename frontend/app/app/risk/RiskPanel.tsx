@@ -19,7 +19,8 @@ function errorMessage(value: unknown): string {
 }
 
 /** Read-only analysis. It never changes account state, wallet actions or router limits. */
-export default function RiskPanel({ position }: { position: RiskPosition }) {
+export default function RiskPanel({ position, live: onchain = false }: { position: RiskPosition; live?: boolean }) {
+  const owner = onchain ? "Wallet" : "Demo";
   const id = useId();
   const [scenario, setScenario] = useState<Scenario>("baseline");
   const [result, setResult] = useState<Advisory | null>(null);
@@ -74,20 +75,22 @@ export default function RiskPanel({ position }: { position: RiskPosition }) {
   const expired = result && now !== null && isExpired(result.recommendation.expires_at, now);
   return (
     <section className="risk-panel" aria-labelledby={`${id}-title`}>
-      <div className="app-section-heading"><h2 id={`${id}-title`}>Advisory risk analysis</h2><span className="app-demo-label">Review required</span></div>
-      <p className="risk-intro">Assess your demo collateral and debt using the backend’s synthetic market scenarios. Recommendations require review; this analysis sends no transactions.</p>
+      <div className="app-section-heading"><h2 id={`${id}-title`}>Advisory risk analysis</h2><span className="app-demo-label">{onchain ? "Synthetic scenarios · review required" : "Review required"}</span></div>
+      <p className="risk-intro">{onchain
+        ? "Applies the backend’s synthetic market scenarios to the size of your onchain position. Scenario prices and results are hypothetical and do not change contract limits."
+        : "Assess your demo collateral and debt using the backend’s synthetic market scenarios."} Recommendations require review; this analysis sends no transactions.</p>
       {position.unsupported ? <p className="app-message" role="status">{position.unsupported}</p> : <>
         <dl className="risk-account">
-          <div><dt>Demo collateral</dt><dd>{position.quantity.toLocaleString()} NVDAb</dd></div>
-          <div><dt>Demo debt</dt><dd>{usd(position.debtUsd)}</dd></div>
-          <div><dt>UI price</dt><dd>{usd(position.uiPriceUsd)}</dd></div>
+          <div><dt>{owner} collateral</dt><dd>{position.quantity.toLocaleString()} NVDAb</dd></div>
+          <div><dt>{owner} debt</dt><dd>{usd(position.debtUsd)}</dd></div>
+          <div><dt>{onchain ? "Oracle price per displayed share" : "UI price"}</dt><dd>{usd(position.uiPriceUsd)}</dd></div>
         </dl>
         <div className="risk-controls">
           <label htmlFor={`${id}-scenario`}>Backend scenario</label>
           <select id={`${id}-scenario`} value={scenario} disabled={pending} onChange={e => { setScenario(e.target.value as Scenario); setResult(null); setError(""); }}>
             {Object.entries(SCENARIOS).map(([value, name]) => <option key={value} value={value}>{name}</option>)}
           </select>
-          <button className="btn" type="button" disabled={pending} onClick={analyse}>{pending ? "Assessing…" : "Analyse demo position"}</button>
+          <button className="btn" type="button" disabled={pending} onClick={analyse}>{pending ? "Assessing…" : onchain ? "Run synthetic analysis" : "Analyse demo position"}</button>
         </div>
         {pending && <p role="status">Assessing market evidence and borrower stress scenarios…</p>}
         {error && <p className="app-message" role="alert">{error}</p>}
