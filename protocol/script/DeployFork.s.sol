@@ -37,7 +37,7 @@ contract DeployFork is Script, BlueV3Deployment {
         console2.log("Addresses provider", address(d.provider));
         console2.log("Configurator", address(d.configurator));
         console2.log("Borrow controls", address(d.controls));
-        console2.log("Regime registry", address(d.registry));
+        console2.log("Market calendar", address(d.calendar));
         console2.log("Oracle", address(d.oracle));
         console2.log("USDT", BNB_USDT);
         console2.log("USDT feed", address(d.usdtFeed));
