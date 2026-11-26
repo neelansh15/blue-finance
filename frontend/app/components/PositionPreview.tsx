@@ -1,3 +1,5 @@
+import { AnimatedValue } from "./AnimatedValue";
+import TokenIcon from "./TokenIcon";
 import { ILLUSTRATIVE_HAIRCUT } from "./regimes";
 
 // Example position and the proposed liquidation LTV from architecture-v1, section 13.
@@ -9,25 +11,54 @@ const REGULAR_CEILING = COLLATERAL_VALUE * LIQUIDATION_LTV;
 const WEEKEND_HEALTH = (REGULAR_CEILING * (1 - ILLUSTRATIVE_HAIRCUT.weekend)) / DEBT;
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-export default function PositionPreview({ haircut, id }: { haircut: number; id: string }) {
+function amounts(haircut: number) {
   const adjusted = COLLATERAL_VALUE * (1 - haircut);
   const ceiling = adjusted * LIQUIDATION_LTV;
   const reduction = REGULAR_CEILING - ceiling;
+  return {
+    adjusted: currency.format(adjusted),
+    ceiling: currency.format(ceiling),
+    health: `${(ceiling / DEBT).toFixed(2)}×`,
+    comparison: reduction >= 0.005
+      ? `−${currency.format(reduction)} vs. regular session`
+      : "Regular-session baseline",
+  };
+}
+
+export default function PositionPreview({
+  haircut,
+  animatedHaircut,
+  id,
+}: {
+  haircut: number;
+  animatedHaircut: number;
+  id: string;
+}) {
+  const actual = amounts(haircut);
+  const visual = amounts(animatedHaircut);
 
   return (
     <div className="position" role="group" aria-labelledby={id}>
       <header className="position-head">
-        <p>Example position</p>
-        <h3 id={id}>
-          NVDAB <span aria-hidden="true">/</span>
-          <span className="sr-only"> collateral, borrowing </span> USDT
-        </h3>
+        <div>
+          <p>Example position</p>
+          <h3 id={id}>
+            NVDAB <span aria-hidden="true">/</span>
+            <span className="sr-only"> collateral, borrowing </span> USDT
+          </h3>
+        </div>
+        <div className="position-icons">
+          <TokenIcon symbol="NVDAB" />
+          <TokenIcon symbol="USDT" />
+        </div>
       </header>
 
-      <dl className="position-ceiling" aria-live="polite">
+      <dl className="position-ceiling">
         <dt>Illustrative borrowing ceiling</dt>
-        <dd className="num">{currency.format(ceiling)}</dd>
-        <dd>{reduction ? `−${currency.format(reduction)} vs. regular session` : "Regular-session baseline"}</dd>
+        <dd className="num" aria-live="polite">
+          <AnimatedValue value={actual.ceiling}>{visual.ceiling}</AnimatedValue>
+        </dd>
+        <dd><AnimatedValue value={actual.comparison}>{visual.comparison}</AnimatedValue></dd>
       </dl>
 
       <dl className="position-metrics">
@@ -37,7 +68,7 @@ export default function PositionPreview({ haircut, id }: { haircut: number; id: 
         </div>
         <div>
           <dt>Value after haircut</dt>
-          <dd className="num">{currency.format(adjusted)}</dd>
+          <dd className="num"><AnimatedValue value={actual.adjusted}>{visual.adjusted}</AnimatedValue></dd>
         </div>
         <div>
           <dt>Debt</dt>
@@ -45,7 +76,7 @@ export default function PositionPreview({ haircut, id }: { haircut: number; id: 
         </div>
         <div>
           <dt>Liquidation health</dt>
-          <dd className="num">{(ceiling / DEBT).toFixed(2)}×</dd>
+          <dd className="num"><AnimatedValue value={actual.health}>{visual.health}</AnimatedValue></dd>
         </div>
         <div>
           <dt>Weekend health</dt>

@@ -1,5 +1,7 @@
+import Image from "next/image";
 import RegimeExplorer from "./components/RegimeExplorer";
 import SiteNav from "./components/SiteNav";
+import TokenIcon from "./components/TokenIcon";
 import {
   IconArrow,
   IconDoc,
@@ -13,6 +15,12 @@ import {
 } from "./components/Icons";
 
 const REPO = "https://github.com/neelansh15/dawn-finance/blob/main";
+
+const BSTOCK_EXAMPLES = [
+  { name: "NVIDIA", symbol: "NVDAB" },
+  { name: "Tesla", symbol: "TSLAB" },
+  { name: "Apple", symbol: "AAPLB" },
+] as const;
 
 const STEPS = [
   {
@@ -124,25 +132,38 @@ export default function Home() {
               </div>
             </div>
 
-            <figure className="market-clock" id="problem">
-              <figcaption>
-                <strong>Trading hours</strong>
-                <span>Weekday · US Eastern</span>
-              </figcaption>
-              <p className="sr-only">
-                The regular US stock session runs from 9:30 a.m. to 4 p.m. Eastern on weekdays. Tokenized stocks
-                can trade around the clock, including weekends.
-              </p>
-              <div className="clock-rows" aria-hidden="true">
-                <span>US stocks <small>Regular session</small></span>
-                <div className="clock-rail clock-rail-stock"><i /></div>
-                <span>Tokenized stocks <small>24/7</small></span>
-                <div className="clock-rail clock-rail-token"><i /></div>
-                <div className="clock-axis">
-                  <span>00:00</span><span>09:30</span><span>16:00</span><span>24:00</span>
+            <div className="market-window">
+              <figure className="market-clock" id="problem">
+                <figcaption>
+                  <strong>Trading hours</strong>
+                  <span>Weekday · US Eastern</span>
+                </figcaption>
+                <p className="sr-only">
+                  The regular US stock session runs from 9:30 a.m. to 4 p.m. Eastern on weekdays. Tokenized stocks
+                  can trade around the clock, including weekends.
+                </p>
+                <div className="clock-rows" aria-hidden="true">
+                  <span>US stocks <small>Regular session</small></span>
+                  <div className="clock-rail clock-rail-stock"><i /></div>
+                  <span>Tokenized stocks <small>24/7</small></span>
+                  <div className="clock-rail clock-rail-token"><i /></div>
+                  <div className="clock-axis">
+                    <span>00:00</span><span>09:30</span><span>16:00</span><span>24:00</span>
+                  </div>
                 </div>
+              </figure>
+              <div className="stock-strip">
+                <p id="stock-examples">Examples of bStocks</p>
+                <ul aria-labelledby="stock-examples">
+                  {BSTOCK_EXAMPLES.map(({ name, symbol }) => (
+                    <li key={symbol}>
+                      <TokenIcon symbol={symbol} />
+                      <span><strong>{name}</strong><small>{symbol}</small></span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </figure>
+            </div>
           </div>
         </section>
 
@@ -165,6 +186,26 @@ export default function Home() {
               Morpho Blue handles lending in isolated markets. Dawn adds a router and oracle to manage the risks
               specific to tokenized stocks.
             </p>
+            <figure className="collateral-figure">
+              <Image
+                src="/assets/collateral-blueprint.webp"
+                alt=""
+                width={1000}
+                height={563}
+                unoptimized
+              />
+              <figcaption>
+                <span className="collateral-asset">
+                  <TokenIcon symbol="NVDAB" />
+                  <span><strong>NVDAB</strong><small>Demo collateral</small></span>
+                </span>
+                <IconArrow />
+                <span className="collateral-asset">
+                  <TokenIcon symbol="USDT" />
+                  <span><strong>USDT</strong><small>Demo loan</small></span>
+                </span>
+              </figcaption>
+            </figure>
           </div>
           <ol className="flow">
             {STEPS.map((step, index) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useMemo, useState, type CSSProperties, type PointerEvent } from "react";
+import { AnimatedValue, useAnimatedNumber } from "./AnimatedValue";
 import PositionPreview from "./PositionPreview";
 import {
   DAYS,
@@ -56,6 +57,8 @@ export default function RegimeExplorer() {
   const regime = regimeAt(step);
   const h = haircutAt(step);
   const power = 1 - h;
+  const animatedHaircut = useAnimatedNumber(h);
+  const powerPercent = Math.round(power * 100);
 
   function selectPoint(event: PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -70,11 +73,21 @@ export default function RegimeExplorer() {
         <div className="plot-heading">
           <div>
             <p className="plot-label">Borrowing power</p>
-            <p className="plot-value num">{(power * 100).toFixed(0)}<span>%</span></p>
+            <p className="plot-value num">
+              <AnimatedValue value={`${powerPercent}%`}>
+                {Math.round((1 - animatedHaircut) * 100)}<span className="plot-unit">%</span>
+              </AnimatedValue>
+            </p>
           </div>
           <div className="plot-reading">
             <p className="num">{formatStep(step)}</p>
-            <p>{REGIME_LABEL[regime]} · {(h * 100).toFixed(0)}% haircut</p>
+            <p>
+              {REGIME_LABEL[regime]} ·{" "}
+              <AnimatedValue value={`${Math.round(h * 100)}%`}>
+                {Math.round(animatedHaircut * 100)}%
+              </AnimatedValue>{" "}
+              haircut
+            </p>
           </div>
         </div>
 
@@ -156,7 +169,7 @@ export default function RegimeExplorer() {
           value={step}
           style={{ "--progress": `${(step / (WEEK_STEPS - 1)) * 100}%` } as CSSProperties}
           onChange={(e) => setStep(Number(e.target.value))}
-          aria-valuetext={`${formatStep(step)}, ${REGIME_LABEL[regime]}, borrowing power ${(power * 100).toFixed(0)}% of regular session (illustrative)`}
+          aria-valuetext={`${formatStep(step)}, ${REGIME_LABEL[regime]}, borrowing power ${powerPercent}% of regular session (illustrative)`}
         />
 
         <div className="jumps" role="group" aria-label="Compare market sessions">
@@ -178,7 +191,7 @@ export default function RegimeExplorer() {
         </p>
       </div>
 
-      <PositionPreview haircut={h} id={`${id}-position`} />
+      <PositionPreview haircut={h} animatedHaircut={animatedHaircut} id={`${id}-position`} />
     </div>
   );
 }
