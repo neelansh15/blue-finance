@@ -57,7 +57,7 @@ export default function SiteNav({ docs = false }: { docs?: boolean }) {
               ))}
             </ul>
           </details>
-          <Link className="btn launch-app" href="/app/dashboard">Open app <IconArrow /></Link>
+          <Link className="btn launch-app" href="/app/dashboard">Launch App <IconArrow /></Link>
         </div>
       </nav>
     </header>

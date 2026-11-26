@@ -122,7 +122,7 @@ export default function Home() {
                 Blue brings USDT loans backed by Binance bStocks into one Aave V3 pool on BNB Chain. Borrowing limits are set per stock and tighten outside regular US market hours.
               </p>
               <div className="ctas">
-                <Link className="btn" href="/app/simplified">Explore the app <IconArrow /></Link>
+                <Link className="btn" href="/app/simplified">Try in Simplified Mode <IconArrow /></Link>
                 <Link className="text-link" href="/docs/markets">Read the architecture <IconArrow /></Link>
               </div>
             </div>
