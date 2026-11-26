@@ -19,14 +19,13 @@ import { MARKET_STATUSES, STATUS_LABEL, type StockId } from "./markets";
 
 const actions = ["Supply USDT", "Withdraw USDT", "Supply stock", "Withdraw stock", "Borrow USDT", "Repay USDT"] as const;
 type Action = typeof actions[number];
-type View = "pool" | "earn" | "borrow" | "dashboard" | "simplified" | "risk";
+type View = "pool" | "earn" | "borrow" | "dashboard" | "risk";
 
 const views: Record<View, { title: string; initial: Action; actions: readonly Action[] }> = {
   pool: { title: "Blue onchain", initial: "Supply USDT", actions },
   earn: { title: "Earn with USDT", initial: "Supply USDT", actions: ["Supply USDT", "Withdraw USDT"] },
   borrow: { title: "Borrow against stocks", initial: "Supply stock", actions: ["Supply stock", "Borrow USDT", "Repay USDT", "Withdraw stock"] },
   dashboard: { title: "Your portfolio", initial: "Supply USDT", actions },
-  simplified: { title: "Manage your position", initial: "Supply stock", actions },
   risk: { title: "Pool risk", initial: "Supply USDT", actions: [] },
 };
 
@@ -62,8 +61,9 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "The operation failed.";
 }
 
-export default function LiveApp({ view = "pool" }: { view?: View }) {
+export default function LiveApp({ view = "pool", onBack }: { view?: View; onBack?: () => void }) {
   const config = views[view];
+  const isEarn = view === "earn";
   const { address, chainId } = useAccount();
   const publicClient = usePublicClient({ chainId: bsc.id });
   const wallet = useWalletClient({ chainId: bsc.id }).data;
@@ -93,6 +93,18 @@ export default function LiveApp({ view = "pool" }: { view?: View }) {
   const walletAmount = stockAction ? stock?.wallet : data?.usdt.wallet;
   const supplied = stockAction ? stock?.reserve[0] : data?.usdt.reserve[0];
   const debt = data?.usdt.reserve[2] ?? 0n;
+  const shared = data?.sharedReserve;
+  const supplyRate = shared ? `${display(shared.supplyRate, 25)}%` : "—";
+  const borrowRate = shared ? `${display(shared.borrowRate, 25)}%` : "—";
+  const totalLiquidity = data && shared ? data.liquidity + shared.borrowed : 0n;
+  const utilisation = shared ? `${totalLiquidity > 0n ? display(shared.borrowed * 10_000n / totalLiquidity, 2) : "0"}%` : "—";
+  const earnMax = isEarn && data && address
+    ? action === "Supply USDT" ? data.usdt.wallet
+      : data.usdt.reserve[0] < data.liquidity ? data.usdt.reserve[0] : data.liquidity
+    : undefined;
+  const earnAmountError = earnMax !== undefined && parsed !== undefined && parsed > earnMax;
+  const showStockSelection = usesCollateral || view === "risk";
+  const ticketSymbol = usesCollateral ? selected : "USDT";
   const wrongChain = !!address && chainId !== bsc.id;
   const usable = !!wallet && !wrongChain && !!data && !state.isError;
   const eligible = (stock?.eligibleUntil ?? 0n) > BigInt(Math.floor(Date.now() / 1000));
@@ -157,9 +169,16 @@ export default function LiveApp({ view = "pool" }: { view?: View }) {
     }
   }
 
+  function selectAction(next: Action) {
+    setAction(next);
+    setAmount("");
+    setRepayAll(false);
+    setFeedback(undefined);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (amountNeeded === undefined || amountNeeded === 0n || !address || !publicClient || borrowMessage) return;
+    if (amountNeeded === undefined || amountNeeded === 0n || !address || !publicClient || borrowMessage || earnAmountError) return;
     const account = address;
     const client = publicClient;
     await run(async send => {
@@ -243,36 +262,64 @@ export default function LiveApp({ view = "pool" }: { view?: View }) {
     <main id="app-main" tabIndex={-1}>
       <section className="app-masthead">
         <div className="wrap">
+          {onBack && <button type="button" className="btn dashboard-secondary" onClick={onBack}>Back to actions</button>}
           <div className="app-heading">
             <h1>{view === "pool" ? <>Blue <em>onchain.</em></> : config.title}</h1>
             <a href={`${explorer}/address/${BLUE.pool}`}>View pool on BscScan</a>
           </div>
-          <p>BNB Smart Chain mainnet. Wallet approvals use real tokens and BNB gas.</p>
-          <dl className="app-summary app-summary-overview">
+          {isEarn ? <dl className="app-summary app-summary-pair">
+            <div><dt>Your bluUSDT</dt><dd>{address ? display(data?.usdt.reserve[0]) : "—"}</dd></div>
+            <div><dt>Wallet USDT</dt><dd>{address ? display(data?.usdt.wallet) : "—"}</dd></div>
+          </dl> : <dl className="app-summary app-summary-overview">
             <div><dt>Available USDT</dt><dd>{display(data?.liquidity)}</dd></div>
             <div><dt>USDT supply cap</dt><dd>{display(data?.caps[1], 0)}</dd></div>
             <div><dt>Your bluUSDT</dt><dd>{address ? display(data?.usdt.reserve[0]) : "—"}</dd></div>
             <div><dt>Your USDT debt</dt><dd>{address ? display(data?.usdt.reserve[2]) : "—"}</dd></div>
-          </dl>
+          </dl>}
           {state.isPending && <p role="status">Loading pool from BNB Smart Chain…</p>}
           {state.isError && <p role="alert">Pool data could not be refreshed. <button type="button" onClick={() => void state.refetch()}>Retry</button></p>}
         </div>
       </section>
 
       <div className="wrap app-workspace">
-        <section className="app-market-panel" aria-labelledby="live-markets">
+        {isEarn ? <section className="app-market-panel" aria-labelledby="shared-usdt">
+          <div className="app-section-heading">
+            <h2 id="shared-usdt">USDT pool</h2>
+            <span className="app-unit">One shared reserve</span>
+          </div>
+          <table className="app-market-ledger">
+            <thead><tr>
+              <th scope="col">Asset</th><th scope="col">Supply APR</th><th scope="col">Borrow APR</th>
+              <th scope="col" className="app-market-liquidity">Available</th>
+            </tr></thead>
+            <tbody><tr>
+              <th scope="row"><span className="app-asset">
+                <TokenIcon symbol="USDT" size={32} /><span><strong>USDT</strong><small className="app-market-name">Receive bluUSDT</small></span>
+              </span></th>
+              <td>{supplyRate}</td><td>{borrowRate}</td><td className="app-market-liquidity">{display(data?.liquidity)}</td>
+            </tr></tbody>
+          </table>
+          <dl className="app-preview live-preview">
+            <div><dt>Utilisation</dt><dd>{utilisation}</dd></div>
+            <div><dt>Total supplied</dt><dd>{display(shared?.supplied)} USDT</dd></div>
+            <div><dt>Total borrowed</dt><dd>{display(shared?.borrowed)} USDT</dd></div>
+            <div><dt>Available liquidity</dt><dd>{display(data?.liquidity)} USDT</dd></div>
+            <div><dt>Supply cap</dt><dd>{display(data?.caps[1], 0)} USDT</dd></div>
+          </dl>
+          <p className="live-preview">Borrowers across all five stock markets draw from this pool.</p>
+        </section> : <section className="app-market-panel" aria-labelledby="live-markets">
           <div className="app-section-heading"><h2 id="live-markets">Collateral markets</h2><span>BNB MAINNET</span></div>
           <table className="app-market-ledger">
             <thead><tr><th scope="col">Stock</th><th scope="col">Price</th><th scope="col">Session</th><th scope="col">New loans</th></tr></thead>
             <tbody>{liveStocks.map(item => {
               const market = data?.stocks.find(stock => stock.id === item.id);
               const status = market?.market === undefined ? undefined : MARKET_STATUSES[market.market];
-              return <tr key={item.id} data-selected={selected === item.id}>
+              const assetLabel = <><TokenIcon symbol={item.id} size={28} /><span><strong>{item.id}</strong><small className="app-market-name">{item.name}</small></span></>;
+              return <tr key={item.id} data-selected={showStockSelection && selected === item.id}>
                 <th scope="row">
-                  <button className="app-market-select app-asset" type="button" aria-pressed={selected === item.id}
-                    onClick={() => { setSelected(item.id); setAmount(""); }} disabled={busy}>
-                    <TokenIcon symbol={item.id} size={28} /><span><strong>{item.id}</strong><small className="app-market-name">{item.name}</small></span>
-                  </button>
+                  {showStockSelection ? <button className="app-market-select app-asset" type="button" aria-pressed={selected === item.id}
+                    onClick={() => { setSelected(item.id); setAmount(""); }} disabled={busy}>{assetLabel}</button>
+                    : <span className="app-asset">{assetLabel}</span>}
                 </th>
                 <td>{market?.price === undefined ? "—" : `$${display(market.price, 8)}`}</td>
                 <td>{status ? STATUS_LABEL[status] : "—"}</td>
@@ -282,30 +329,51 @@ export default function LiveApp({ view = "pool" }: { view?: View }) {
           </table>
           {address && data && <dl className="app-preview live-preview">
             <div><dt>Active collateral</dt><dd>{activeCollateral?.id ?? "None"}</dd></div>
-            <div><dt>Supplied {selected}</dt><dd>{display(stock?.reserve[0])}</dd></div>
+            {showStockSelection && <div><dt>Supplied {selected}</dt><dd>{display(stock?.reserve[0])}</dd></div>}
             <div><dt>Collateral value</dt><dd>{data.user ? `$${display(data.user[0], 8)}` : "Unavailable"}</dd></div>
             <div><dt>Health factor</dt><dd>{debt === 0n ? "—" : display(data.user?.[5])}</dd></div>
-            <div><dt>Stock debt{stock?.limits ? " / cap" : ""}</dt><dd>{display(stock?.debt)}{stock?.limits && ` / ${display(stock.limits[1])}`} USDT</dd></div>
+            {showStockSelection && <div><dt>Stock debt{stock?.limits ? " / cap" : ""}</dt><dd>{display(stock?.debt)}{stock?.limits && ` / ${display(stock.limits[1])}`} USDT</dd></div>}
           </dl>}
-        </section>
+        </section>}
 
-        {config.actions.length > 0 && <section className="app-market-panel live-controls" aria-labelledby="live-manage">
-          <div className="app-section-heading"><h2 id="live-manage">Manage position</h2></div>
+        {config.actions.length > 0 && <section className="app-ticket live-controls" aria-labelledby="live-manage">
+          <header className="app-ticket-head">
+            <div className="app-asset"><TokenIcon symbol={ticketSymbol} size={36} />
+              <h2 id="live-manage">{usesCollateral ? `${selected} / USDT` : "USDT pool"}</h2>
+            </div>
+            <dl className="app-ticket-rate">
+              <dt>{view === "borrow" || action === "Borrow USDT" || action === "Repay USDT" ? "Borrow APR" : "Supply APR"}</dt>
+              <dd>{view === "borrow" || action === "Borrow USDT" || action === "Repay USDT" ? borrowRate : supplyRate}</dd>
+            </dl>
+          </header>
           <form className="live-form" onSubmit={submit}>
-            <label>Action<select value={action} disabled={busy} onChange={event => {
-              setAction(event.target.value as Action);
-              setAmount("");
-              setRepayAll(false);
-            }}>{config.actions.map(item => <option key={item}>{item}</option>)}</select></label>
-            {usesCollateral && <p>Selected stock <strong>{selected}</strong></p>}
-            <label>Amount ({stockAction ? selected : "USDT"})
-              <input inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount}
-                disabled={busy || repayAll} onChange={event => setAmount(event.target.value)} />
-            </label>
+            <fieldset className="market-action-picker app-action-rail live-action-rail">
+              <legend className="sr-only">{isEarn ? "Earn action" : "Position action"}</legend>
+              <div className="market-action-pair">
+                {config.actions.map(next => <label key={next}>
+                  <input type="radio" name="live-action" checked={action === next} disabled={busy} onChange={() => selectAction(next)} />
+                  <span>{isEarn ? next.replace(" USDT", "") : next}</span>
+                </label>)}
+              </div>
+            </fieldset>
+            <div>
+              <div className="app-amount-heading">
+                <label htmlFor="live-amount">Amount</label>
+                {isEarn && earnMax !== undefined && <span>{display(earnMax)} USDT {action === "Withdraw USDT" ? "withdrawable" : "in wallet"}</span>}
+              </div>
+              <div className="app-amount">
+                <input id="live-amount" inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount}
+                  disabled={busy || repayAll} onChange={event => setAmount(event.target.value)} />
+                <span aria-hidden="true">{stockAction ? selected : "USDT"}</span>
+                {isEarn && <button type="button" disabled={busy || !earnMax} onClick={() => {
+                  if (earnMax) setAmount(formatUnits(earnMax, 18));
+                }}>Max</button>}
+              </div>
+            </div>
             {action === "Repay USDT" && <label className="live-checkbox">
               <input type="checkbox" checked={repayAll} disabled={busy} onChange={event => setRepayAll(event.target.checked)} /> Repay entire debt
             </label>}
-            {address && <p>Wallet {display(walletAmount)} {stockAction ? selected : "USDT"}
+            {address && !isEarn && <p>Wallet {display(walletAmount)} {stockAction ? selected : "USDT"}
               {(action === "Withdraw USDT" || action === "Withdraw stock") && ` · Supplied ${display(supplied)}`}
               {action === "Repay USDT" && ` · Debt ${display(debt)}`}
             </p>}
@@ -317,14 +385,19 @@ export default function LiveApp({ view = "pool" }: { view?: View }) {
               <button type="button" disabled={!usable || busy} onClick={requestEligibility}>Request {selected} eligibility</button>
             )}
             {amount !== "" && parsed === undefined && !repayAll && <p role="alert">Enter a positive amount, using up to 18 decimal places.</p>}
-            <button className="live-primary" type="submit" disabled={!usable || busy || !amountNeeded || !!borrowMessage}>{busy ? "Wallet action in progress" : action}</button>
-            {stock && stock.reserve[0] > 0n && !stock.reserve[8] && (
+            {earnAmountError && <p role="alert">Enter at most {display(earnMax)} USDT.</p>}
+            {isEarn && address && data && <div className="app-position-preview">
+              <p>Current position</p>
+              <dl className="app-preview"><div><dt>bluUSDT balance</dt><dd>{display(data.usdt.reserve[0])}</dd></div></dl>
+            </div>}
+            <button className="btn app-submit" type="submit" disabled={!usable || busy || !amountNeeded || !!borrowMessage || earnAmountError}>{busy ? "Wallet action in progress" : action}</button>
+            {usesCollateral && stock && stock.reserve[0] > 0n && !stock.reserve[8] && (
               <button type="button" disabled={!usable || busy} onClick={() => void run(send => send(
                 BLUE.pool, encodeFunctionData({ ...poolContract, functionName: "setUserUseReserveAsCollateral", args: [stock.address, true] }), `Enable ${selected} collateral`,
               ))}>Enable {selected} as collateral</button>
             )}
           </form>
-          {(isKeeper || canSign) && <details className="live-operator">
+          {usesCollateral && (isKeeper || canSign) && <details className="live-operator">
             <summary>Demo operator · {selected}</summary>
             <p>Refresh both sources when their rounds change. After confirming the stock is healthy, report it every 5–8 minutes for at least 30 minutes.</p>
             {isKeeper && <>

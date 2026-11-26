@@ -23,6 +23,7 @@ export default function AppNav() {
           <Link href={base} aria-current={overview ? "page" : undefined}>Overview</Link>
           <Link href={`${base}/earn`} aria-current={path === `${base}/earn` ? "page" : undefined}>Earn</Link>
           <Link href={`${base}/borrow`} aria-current={path === `${base}/borrow` ? "page" : undefined}>Borrow</Link>
+          <Link href={`${base}/simplified`} aria-current={path === `${base}/simplified` ? "page" : undefined}>Simplified</Link>
         </div>
         <div className="app-nav-actions">
           <span className="app-demo-label app-nav-simulation">{preview ? "Simulation" : "BNB Mainnet"}</span>

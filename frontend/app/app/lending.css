@@ -961,9 +961,9 @@
   margin: 0;
 }
 
-.live-form input:not([type="checkbox"]),
+.live-form input:not([type="checkbox"]):not([type="radio"]):not(#live-amount),
 .live-form select,
-.live-controls button {
+.live-controls button:not(.btn) {
   min-height: 44px;
   padding: 0.55rem 0.7rem;
   border: 1px solid var(--rule);
@@ -981,10 +981,8 @@
   opacity: 0.6;
 }
 
-.live-form .live-primary {
-  background: var(--blue-app-blue);
-  color: var(--on-blue);
-  font-weight: 700;
+.live-action-rail .market-action-pair {
+  flex-wrap: wrap;
 }
 
 .live-form .live-checkbox {
