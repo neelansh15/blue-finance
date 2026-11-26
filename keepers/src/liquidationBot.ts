@@ -290,6 +290,9 @@ export interface BotDeps {
 
 export type TickOutcome = { borrower: Addr; result: "dry_run" | "sent" | "failed" | "sim_failed" | "skipped"; reason?: string; plan?: LiquidationPlan };
 
+/** Blocks re-scanned on every discovery pass (reorg / head-regression safety). */
+export const REORG_OVERLAP = 6n;
+
 export class LiquidationBot {
   readonly borrowers = new Set<string>();
   private lastBlock: bigint | undefined;
@@ -301,7 +304,12 @@ export class LiquidationBot {
   async discover(): Promise<number> {
     const { chain, cfg } = this.d;
     const head = await chain.headBlock();
-    let from = this.lastBlock !== undefined ? this.lastBlock + 1n : (cfg.fromBlock ?? (head > cfg.lookback ? head - cfg.lookback : 0n));
+    // Rescan a few blocks behind the last scan: the head can move backwards (reorg, anvil evm_revert, load-balanced RPC lagging),
+    // and a Borrow in a block we already "scanned" on the old branch would otherwise be missed forever.
+    const floor = cfg.fromBlock ?? (head > cfg.lookback ? head - cfg.lookback : 0n);
+    const last = this.lastBlock !== undefined && this.lastBlock > head ? head : this.lastBlock;
+    let from = last !== undefined ? (last >= REORG_OVERLAP ? last - REORG_OVERLAP + 1n : 0n) : floor;
+    if (from < floor) from = floor;
     let found = 0;
     while (from <= head) {
       const to = from + cfg.logChunk - 1n < head ? from + cfg.logChunk - 1n : head;
