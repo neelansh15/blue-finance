@@ -147,7 +147,7 @@ forge test                                  # 102 tests, fork tests use the publ
 forge test --no-match-path 'test/fork/*'    # offline only
 ```
 
-Last run Nov 26, 2026: 102 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, DawnOracle, DawnRouter, LiquidatorCallback, Morpho BNB fork, and the scenarios.
+Last run Nov 26, 2026: 116 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, DawnOracle, DawnRouter, LiquidatorCallback, Morpho BNB fork, and the scenarios.
 
 ## Parameters that need manual tuning
 
@@ -167,12 +167,27 @@ A position opened at or under `targetLTV` survives any routine regime change wit
 
 ### Parameter list
 
+#### Lending core (Morpho Blue)
+
+Set when the market is created. Morpho Blue is unmodified, and market parameters are immutable once created.
+
+| Parameter | Placeholder | Where | What it controls | How to tune |
+|---|---|---|---|---|
+| Loan token / collateral token | USDT / bStock | Morpho market | The asset pair | Pick listed bStocks and the loan asset |
+| LLTV | 62.5% | Morpho market | Liquidation threshold | Must be enabled on the Morpho deployment. Pick with the haircuts so `targetLTV` stays useful |
+| IRM | AdaptiveCurveIrm | Morpho market | Interest rate model | Must be enabled on Morpho. Not tuned by Dawn |
+| Oracle | `DawnOracle` | Morpho market | Price source for the market | Dawn's own contract, see below |
+| Protocol fee | set by Morpho governance | Morpho singleton | Share of interest taken by the Morpho DAO | Not controlled by Dawn |
+
+#### Dawn parameters
+
+Everything Dawn adds around Morpho: the oracle, the regime registry, the router and the keepers.
+
 | Parameter | Placeholder | Where | What it controls | How to tune |
 |---|---|---|---|---|
 | Haircut OPEN / EXTENDED / CLOSED / WEEKEND | 0 / 4 / 10 / 15 % | oracle (immutable per market) | Price cut applied in each regime | Gap-risk model: quantile of the stock's open-to-open gap for each closure type |
 | Haircut HALTED | 25% | oracle | Price cut during a halt | Historical post-halt move distribution. Currently above hMax, see limits |
 | Haircut CORP_ACTION | 10% | oracle | Price cut while a split or dividend settles | Typical feed lag around multiplier changes |
-| LLTV | 62.5% | Morpho market | Liquidation threshold | Must be enabled on Morpho. Pick with the haircuts so `targetLTV` stays useful |
 | Margin | 2% | router, adjustable by admin (max 50%) | Extra buffer under `LLTV x (1 - hMax)` | Intraday volatility on top of the gap |
 | Total borrow cap | set at deploy | router | Max market `totalBorrowAssets` | Liquidity depth, liquidator capacity |
 | Per-regime caps | set at deploy | router (guardian can only lower) | Max borrow per regime (0 disables) | Tighter in `CLOSED` and `WEEKEND` |
@@ -194,7 +209,7 @@ A position opened at or under `targetLTV` survives any routine regime change wit
 - **Unmodified Morpho Blue.** Dawn adds an oracle, a registry and a router around the canonical singleton instead of forking it. The cost: the router is bypassable, because anyone can borrow on Morpho directly. A wrapper token is the planned fix.
 - **Haircut gap.** The `HALTED` haircut (25%) exceeds the `targetLTV` hMax (15%), so a position at the limit can become liquidatable in a halt. This is documented by a test.
 - **Jump breaker.** The oracle's upward-jump freeze is new and needs a security review.
-- **Atlas adapter mismatch.** The real Atlas feed on BSC has `decimals()`, `latestAnswer()` and `latestRoundData()`, but `latestTimestamp()` reverts, which `DawnOracle` calls. The oracle needs a `latestRoundData` adapter before it can read real Atlas feeds.
+- **Atlas adapter.** The real Atlas feeds on BSC revert on `latestTimestamp()`, so `DawnOracle` reads them through `latestRoundData()`. The oracle change needs an Opus-level security review.
 - **Unverified.** Per-share or per-token units of the feed, and live behaviour of `ASSET_PAUSED` on a real corporate action.
 - **Placeholders.** Haircuts, margin (2%), and continuity band (5%) are illustrative until a gap-risk model is calibrated.
 
