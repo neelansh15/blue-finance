@@ -14,24 +14,33 @@ import {
 } from "./markets";
 
 const SESSIONS = ["open", "extended", "closed", "weekend"] as const;
-const BORROWER_ACTIONS = ["deposit", "borrow", "repay", "withdraw"] as const;
-const LENDER_ACTIONS = ["lend", "redeem"] as const;
+const ACTION_LABELS: Record<Action, string> = {
+  borrow: "Borrow", repay: "Repay", deposit: "Supply", withdraw: "Withdraw", lend: "Supply", redeem: "Withdraw",
+};
+
+type ActionGroup = { label?: string; actions: readonly Action[] };
+
+const BORROW_GROUPS: readonly ActionGroup[] = [
+  { label: "Loan", actions: ["borrow", "repay"] },
+  { label: "Collateral", actions: ["deposit", "withdraw"] },
+];
+const EARN_GROUPS: readonly ActionGroup[] = [{ actions: ["lend", "redeem"] }];
 type Mode = "borrow" | "earn";
 
 export default function LendingApp({ mode }: { mode: Mode }) {
   const params = useSearchParams();
   const isLender = mode === "earn";
-  const actions: readonly Action[] = isLender ? LENDER_ACTIONS : BORROWER_ACTIONS;
+  const groups = isLender ? EARN_GROUPS : BORROW_GROUPS;
   const initialMarket = MARKETS.find(item => item.id === params.get("market")) ?? MARKETS[isLender ? 1 : 0];
-  const initialAction = actions.find(item => item === params.get("action")) ?? (isLender ? "lend" : "borrow");
+  const initialAction = groups.flatMap(group => group.actions).find(item => item === params.get("action")) ?? (isLender ? "lend" : "borrow");
 
-  return <MarketWorkspace key={`${initialMarket.id}-${initialAction}`} mode={mode} actions={actions}
+  return <MarketWorkspace key={`${initialMarket.id}-${initialAction}`} mode={mode} groups={groups}
     initialMarket={initialMarket} initialAction={initialAction} />;
 }
 
-function MarketWorkspace({ mode, actions, initialMarket, initialAction }: {
+function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
   mode: Mode;
-  actions: readonly Action[];
+  groups: readonly ActionGroup[];
   initialMarket: Market;
   initialAction: Action;
 }) {
@@ -41,6 +50,7 @@ function MarketWorkspace({ mode, actions, initialMarket, initialAction }: {
   const [amount, setAmount] = useState("");
   const [feedback, setFeedback] = useState("");
   const workspace = useRef<HTMLElement>(null);
+  const amountField = useRef<HTMLInputElement>(null);
 
   const position = positions[market.id];
   const isLender = mode === "earn";
@@ -52,6 +62,8 @@ function MarketWorkspace({ mode, actions, initialMarket, initialAction }: {
   const amountUnits = parseAmount(amount, scale);
   const invalidAmount = amount !== "" && (amountUnits <= 0 || amountUnits > maximum);
   const canSubmit = amountUnits > 0 && !invalidAmount;
+  const needsCollateral = action === "borrow" && position.collateral === 0;
+  const previewsDebt = canSubmit && (action === "borrow" || action === "repay");
   const current = marketMetrics(market, position, regime);
   const projected = canSubmit ? applyAction(position, action, amountUnits) : position;
   const preview = marketMetrics(market, projected, regime);
@@ -165,32 +177,29 @@ function MarketWorkspace({ mode, actions, initialMarket, initialAction }: {
 
           <div className="app-ticket-body">
             <form onSubmit={submit}>
-              {isLender ? (
-                <fieldset className="earn-action-picker">
-                  <legend className="sr-only">Earn action</legend>
-                  {LENDER_ACTIONS.map(next => (
-                    <label key={next}>
-                      <input type="radio" name="earn-action" value={next} checked={action === next}
-                        onChange={() => selectAction(next)} />
-                      <span>{next === "lend" ? "Supply" : "Withdraw"}</span>
-                    </label>
-                  ))}
-                </fieldset>
-              ) : (
-                <div className="app-action-choice">
-                  <label htmlFor="market-action">Action</label>
-                  <select id="market-action" value={action} onChange={event => selectAction(event.target.value as Action)}>
-                    {actions.map(next => <option key={next} value={next}>{ACTIONS[next].label}</option>)}
-                  </select>
-                </div>
-              )}
+              <fieldset className="market-action-picker">
+                <legend className="sr-only">{isLender ? "Earn action" : "Borrow market action"}</legend>
+                {groups.map(group => (
+                  <div className={group.label ? "market-action-pair market-action-pair-labeled" : "market-action-pair"}
+                    key={group.label ?? "earn"}>
+                    {group.label && <span className="market-action-label" aria-hidden="true">{group.label}</span>}
+                    {group.actions.map(next => (
+                      <label key={next}>
+                        <input type="radio" name="market-action" value={next} checked={action === next}
+                          aria-label={ACTIONS[next].label} onChange={() => selectAction(next)} />
+                        <span>{ACTION_LABELS[next]}</span>
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </fieldset>
 
               <div className="app-amount-heading">
                 <label htmlFor="action-amount">Amount</label>
                 <span id="action-limit">{quantity.format(maximum / scale)} {symbol} available</span>
               </div>
               <div className="app-amount">
-                <input id="action-amount" inputMode="decimal" placeholder="0.00" value={amount}
+                <input id="action-amount" ref={amountField} inputMode="decimal" placeholder="0.00" value={amount}
                   aria-describedby={invalidAmount ? "action-limit amount-error" : "action-limit"}
                   aria-invalid={invalidAmount || undefined}
                   onChange={event => { setAmount(event.target.value); setFeedback(""); }} />
@@ -199,16 +208,31 @@ function MarketWorkspace({ mode, actions, initialMarket, initialAction }: {
                   onClick={() => { setAmount(String(maximum / scale)); setFeedback(""); }}>Max</button>
               </div>
               {invalidAmount && <p className="app-message" id="amount-error">Use a positive amount within the limit ({definition.collateral ? 4 : 2} decimal places max).</p>}
-              {action === "borrow" && maximum === 0 && <p className="app-message">Supply collateral to unlock borrowing.</p>}
+              {needsCollateral && <p className="app-message">Supply {market.symbol} as collateral to borrow.</p>}
+              {action === "borrow" && !needsCollateral && maximum === 0 && (
+                <p className="app-message">Borrowing limit reached. Supply more collateral or repay debt.</p>
+              )}
 
               <dl className="app-preview">
                 <div><dt>{metricLabel}</dt><dd>{metricBefore}{metricAfter !== metricBefore && (
                   <> <span aria-hidden="true">→</span><span className="sr-only"> after action </span> <strong>{metricAfter}</strong></>
                 )}</dd></div>
+                {previewsDebt && (
+                  <div><dt>Debt</dt><dd>{money(position.debt)} <span aria-hidden="true">→</span>
+                    <span className="sr-only"> after action </span> <strong>{money(projected.debt)}</strong>
+                  </dd></div>
+                )}
               </dl>
-              <button className="btn app-submit" type="submit" disabled={!canSubmit}>
-                {definition.label}<span className="sr-only"> (simulation)</span>
-              </button>
+              {needsCollateral ? (
+                <button className="btn app-submit" type="button" onClick={() => {
+                  selectAction("deposit");
+                  amountField.current?.focus();
+                }}>Supply collateral</button>
+              ) : (
+                <button className="btn app-submit" type="submit" disabled={!canSubmit}>
+                  {definition.label}<span className="sr-only"> (simulation)</span>
+                </button>
+              )}
               <p className="app-feedback" role="status">{feedback}</p>
             </form>
             <details className="app-risk-details">
