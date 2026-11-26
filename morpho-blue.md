@@ -58,7 +58,7 @@ Dawn note: because the oracle is immutable per market, a conservative-of-two ora
 * Bad debt: if LTV rises above 1/LIF, a liquidator can take all collateral while repaying only part of the debt. When collateral reaches zero with debt remaining, the bad debt is socialized across that market's lenders immediately (total supply assets reduced). Aave and Compound do not account for bad debt this way (whitepaper comparison).
 * Optional periphery: a PreLiquidation contract exists in the repo (`src/periphery/pre-liquidation`), letting borrowers opt in to earlier, softer liquidation.
 
-Dawn note: the LIF is static per market in Morpho. Dawn's regime-aware bonus would need a custom liquidation path or a pre-liquidation-style module. With a static LIF, a weekend gap larger than (1/LIF - LLTV) produces bad debt. Example: 62.5% LLTV leaves about 26% price drop before bad debt (1/1.127 = 88.7% vs 62.5%).
+Dawn note: the LIF is static per market in Morpho. Dawn's regime-aware bonus would need a custom liquidation path or a pre-liquidation-style module. Bad debt starts when LTV exceeds 1/LIF. Example: 62.5% LLTV with LIF about 1.127 means bad debt above 88.7% LTV, so collateral can fall about 29.6% from the liquidation threshold (1 - 62.5/88.7) before bad debt, before slippage.
 
 ## Interest rate model (AdaptiveCurveIRM)
 
