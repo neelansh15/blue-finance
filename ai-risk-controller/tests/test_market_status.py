@@ -294,3 +294,18 @@ def test_nasdaq_transport_failure_never_fabricates_success(monkeypatch):
                         subprocess.CompletedProcess(a, 28, stdout=b'\n000'))
     with pytest.raises(httpx.TransportError):
         fetch_nasdaq_market()
+
+
+def test_all_status_sources_expire_at_exactly_one_minute(setup):
+    _, provider, state = setup
+    def read():
+        return [provider.market(), provider.halt('NVDA'), provider.bstock(56, '0x' + 'a' * 40),
+                provider.spot('NVDABUSDT')]
+    first = read()
+    assert len(state['calls']) == 4
+    state['now'] += timedelta(seconds=59.999)
+    assert [o.fetched_at for o in read()] == [o.fetched_at for o in first]
+    assert len(state['calls']) == 4
+    state['now'] += timedelta(seconds=.001)
+    assert all(o.fetched_at == state['now'] for o in read())
+    assert len(state['calls']) == 8
