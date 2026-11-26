@@ -10,22 +10,27 @@ const LINKS = [
   { href: "#how", label: "How it works" },
   { href: "#risk", label: "Risk design" },
   { href: "#roadmap", label: "Roadmap" },
-  { href: "#docs", label: "Docs" },
+  { href: "/docs", label: "Docs" },
 ];
 
-export default function SiteNav() {
+export default function SiteNav({ docs = false }: { docs?: boolean }) {
   const menu = useRef<HTMLDetailsElement>(null);
   const toggle = useRef<HTMLElement>(null);
+  const linkHref = (href: string) => docs && href.startsWith("#") ? `/${href}` : href;
 
   return (
     <header className="nav">
       <nav className="wrap nav-inner" aria-label="Primary">
-        <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
+        <Link className="brand" href={docs ? "/" : "#top"} aria-label={docs ? "Dawn Finance home" : "Dawn Finance, back to top"}>
           <BlueprintLogo />
           <span>Dawn<span className="brand-wide"> Finance</span></span>
-        </a>
+        </Link>
         <ul className="nav-links">
-          {LINKS.map(({ href, label }) => <li key={href}><a href={href}>{label}</a></li>)}
+          {LINKS.map(({ href, label }) => (
+            <li key={href}>
+              <Link href={linkHref(href)} aria-current={docs && href === "/docs" ? "page" : undefined}>{label}</Link>
+            </li>
+          ))}
         </ul>
         <div className="nav-actions">
           <span className="nav-status"><span className="nav-status-prefix">Prototype · </span>Not live</span>
@@ -44,11 +49,11 @@ export default function SiteNav() {
             <ul>
               {LINKS.map(({ href, label }) => (
                 <li key={href}>
-                  <a href={href} onClick={() => {
+                  <Link href={linkHref(href)} aria-current={docs && href === "/docs" ? "page" : undefined} onClick={() => {
                     if (menu.current) menu.current.open = false;
                   }}>
                     {label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

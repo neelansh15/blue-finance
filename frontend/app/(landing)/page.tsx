@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import RegimeExplorer from "../components/RegimeExplorer";
 import SiteNav from "../components/SiteNav";
 import TokenIcon from "../components/TokenIcon";
@@ -128,7 +129,7 @@ export default function Home() {
               </p>
               <div className="ctas">
                 <a className="btn" href="#regimes">Explore the simulator <IconArrow /></a>
-                <a className="text-link" href={`${REPO}/architecture-v1.md`}>Read the architecture <IconArrow /></a>
+                <Link className="text-link" href="/docs/markets">Read the architecture <IconArrow /></Link>
               </div>
             </div>
 
@@ -267,6 +268,13 @@ export default function Home() {
             <p className="eyebrow">Documentation</p>
             <h2 id="docs-title">Read the design</h2>
             <ul className="docs">
+              <li>
+                <Link href="/docs">
+                  <IconDoc />
+                  <span><strong>Protocol docs</strong><small>How Dawn’s contracts, risk rules and fork demo work.</small></span>
+                  <IconArrow />
+                </Link>
+              </li>
               {DOCS.map((doc) => (
                 <li key={doc.file}>
                   <a href={`${REPO}/${doc.file}`}>
