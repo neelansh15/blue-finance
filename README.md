@@ -12,7 +12,6 @@
 ![Next.js](https://img.shields.io/badge/frontend-Next.js-000000?logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/keepers-TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Status](https://img.shields.io/badge/status-hackathon%20demo-yellow)
-![Audit](https://img.shields.io/badge/audit-none-red)
 ![Event](https://img.shields.io/badge/BNB%20Bangkok-Nov%202026-blueviolet)
 
 </div>
