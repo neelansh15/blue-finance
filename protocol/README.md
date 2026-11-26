@@ -5,13 +5,13 @@ Dawn Finance smart-contract core: lending against tokenized US stocks (bStocks) 
 - Design: [architecture-v1.md](../architecture-v1.md)
 - Shared names: [INTERFACES.md](INTERFACES.md), with deviations listed under "Changes"
 
-The router and deploy scripts are not written yet; they come in a later phase.
+Router, deploy script and fork scenarios are included (see below). All risk parameters are labelled PLACEHOLDERS, not calibrated.
 
 ## Layout
 
 ```
 foundry.toml                  solc 0.8.28 (pinned), evm shanghai, optimizer 200
-lib/forge-std/                forge-std v1.9.7, vendored (no git submodule)
+lib/forge-std/                forge-std v1.9.7 (gitignored; see Setup)
 src/
   RegimeRegistry.sol          on-chain US Eastern calendar (DST, holidays, early closes) + KEEPER/ADMIN overrides
   DawnOracle.sol              Morpho IOracle: Atlas adapter, uiMultiplier, regime haircuts, staleness, freeze
@@ -27,6 +27,18 @@ test/
   RegimeRegistry.t.sol        calendar boundaries, DST, holidays, overrides, roles (24 tests)
   DawnOracle.t.sol            haircuts, splits, staleness, freeze, failure modes, fuzz (27 tests)
   fork/MorphoBnbFork.t.sol    BNB mainnet fork against the Morpho singleton (2 tests)
+  DawnRouter.t.sol            router unit tests on the BNB fork (28 tests)
+  scenarios/                  ScenarioBase + 7 fork scenario tests (4 demo scenarios plus variants)
+src/DawnRouter.sol            borrow front door via Morpho setAuthorization, EIP-712 attestations, caps, targetLTV
+script/DawnDeploy.sol         shared deploy logic (script and tests); script/Deploy.s.sol writes deployments/<chainid>.json
+```
+
+## Setup
+
+`lib/` is gitignored. Install forge-std once:
+
+```sh
+forge install foundry-rs/forge-std@v1.9.7 --no-git
 ```
 
 ## Running
@@ -42,7 +54,9 @@ BSC_RPC_URL=https://your-node forge test --match-path 'test/fork/*' -vv
 
 The fork suite reads `BSC_RPC_URL` and falls back to `https://bsc-dataseed.binance.org`. If neither can be reached, the tests are skipped rather than failed.
 
-Last run (Nov 26 2026): 53 passed, 0 failed, 0 skipped. Fuzz tests run 512 runs each. The fork tests ran live against BSC mainnet.
+Last run (Nov 26 2026): 102 passed, 0 failed, 0 skipped (fork tests live against BSC mainnet; they skip if the RPC is unreachable). Fuzz tests run 512 runs each.
+
+Deploy to an anvil fork: `anvil --fork-url https://bsc-dataseed.binance.org`, then `ANVIL_FUND_USDT=true forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast` (verified Nov 26 2026; writes deployments/56.json, an anvil fork, not mainnet).
 
 ## How it works (short)
 
@@ -81,6 +95,20 @@ Last run (Nov 26 2026): 53 passed, 0 failed, 0 skipped. Fuzz tests run 512 runs 
 - Failure handling: a reverting registry or an out-of-range enum is treated as HALTED.
 - Never reverts: every external read is a bounded staticcall that checks the return size, so `price()` does not revert. The only exception is `NoPrice()` before the first valid observation.
 
+## Router (DawnRouter)
+
+- targetLTV = LLTV x (1 - h_max) - margin, h_max over OPEN/EXTENDED/CLOSED/WEEKEND (cached at listing). With placeholders: 62.5% x 85% - 2% = 51.125%. The limit is applied to oracle.price(), which already carries the current regime's haircut, so a WEEKEND flip tightens the limit by a further 15% and a position opened at the limit in any routine regime stays healthy on Morpho after a flip to any other routine regime (test_Scenario2b). Opening in a haircut regime is deliberately conservative (haircut counted twice).
+- NOT covered: HALTED (25% > h_max) can make a limit-sized position liquidatable (test_Scenario2c documents it); real price moves; the expired-freeze haircut.
+- Borrow, and withdraw while debt exists, are blocked in HALTED/CORP_ACTION, when paused, when the oracle is frozen, or when the feed is not live-fresh. The gate runs before Morpho's own check. Supply collateral and repay are always allowed.
+- Borrow needs an EIP-712 Eligibility(account, nonce, expiry) signature: expiry <= now + MAX_ATTESTATION_TTL, single-use nonce per account, domain bound to chain and router, low-s only.
+- Caps: per-market total and per-regime (checked against post-borrow totalBorrowAssets). Guardian can pause and lower caps only. Admin is two-step.
+- Bypassable by design: Morpho is permissionless, so anyone can borrow directly on the market and skip the router's rules.
+- Fixed in review: withdraw previously called Morpho first, so Morpho's health revert masked the HALTED/CORP_ACTION block.
+
+## Jump breaker (DawnOracle) - NEEDS AN OPUS-LEVEL SECURITY REVIEW
+
+With `jumpBandBps != 0` (placeholder 30%), an UPWARD feed move above lastGood x (1 + band) with unchanged multiplier and no freeze regime is not accepted: price() serves min(live, lastGood) and update() records a jump freeze. It ends when the price returns inside the band, falls below the reference, a registry/multiplier freeze supersedes it, or the admin calls forceUnfreeze after maxFreeze. Tradeoff: downward jumps are deliberately not frozen (serving a stale higher price would allow over-borrowing and delay liquidations), so a feed-first split without CORP_ACTION is still priced live at the halved value (open issue 4). A genuine large rally is delayed until the admin acts. Tests: test/DawnOracle.t.sol "Jump" group. This logic was added by an earlier agent and has not had an independent security review.
+
 ## Security notes
 
 - Rounding: every division rounds down (scaling and each haircut), so collateral is never overvalued by rounding. This gives liquidators a dust-level edge.
@@ -100,7 +128,7 @@ Last run (Nov 26 2026): 53 passed, 0 failed, 0 skipped. Fuzz tests run 512 runs 
 1. **Atlas units are unverified.** It is not known whether the Atlas price is per UI share or per raw token. The `feedPerUIShare` flag covers both, and `_readAtlas` is the only adapter that would need to change.
 2. **Atlas read access is unverified.** It is not known whether reads are open or whitelist-only. A revert is handled as "no price", and `decimals()` is checked only if it is readable at deploy time.
 3. **USDT is assumed to equal 1 USD.** The feed is assumed to be quoted in USD. A depeg is not modelled.
-4. **Split timing (no jump breaker).**
+4. **Split timing (the jump breaker is upward-only, so this still applies).**
    - If a per-UI feed switches to post-split prices before `uiMultiplier` changes, and no keeper has set CORP_ACTION, the oracle prices live at the halved value.
    - `test_Split_FeedFirstWithoutFlag_IsLiveGap` documents this.
    - Mitigation: the keeper must flag CORP_ACTION when a `UIMultiplierUpdated` event is scheduled (the event fires at scheduling time). A deviation breaker is a candidate follow-up.
