@@ -19,6 +19,7 @@ def test_joint_losses_reach_shared_suppliers():
     for stock in r.stocks: stock.price_drop=Decimal('.9')
     result=assess_shared_reserve(r)
     assert Decimal(result['aggregate_shortfall_usdt'])>200
+    assert all(s['individual_borrow_headroom_usdt']=='0' for s in result['stocks'])
     assert Decimal(result['supplier_loss_fraction'])>Decimal('.2')
 
 def test_discount_does_not_change_liquidation_health_and_halt_is_local():

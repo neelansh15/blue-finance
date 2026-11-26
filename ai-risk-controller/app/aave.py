@@ -65,7 +65,7 @@ def assess_shared_reserve(request: SharedReserveRequest):
         loss=max(Decimal(0),debt_usd-recovery)/r.usdt_price_usd
         total_loss+=loss;total_recovery+=recovery/r.usdt_price_usd
         ceiling=min(s.stock_debt_cap,r.reserve_debt_cap_usdt*r.max_stock_budget_share)
-        position_headroom=max(Decimal(0),s.collateral_usd*s.base_ltv*(1-s.borrow_discount)/r.usdt_price_usd-debt)
+        position_headroom=max(Decimal(0),stressed_value*s.base_ltv*(1-s.borrow_discount)/r.usdt_price_usd-debt)
         allowance=min(cash,global_headroom,max(Decimal(0),ceiling-debt),position_headroom) if s.permission_healthy else Decimal(0)
         stock_results.append(dict(stock=s.stock,accrued_debt_usdt=str(debt),effective_borrow_ltv=str(s.base_ltv*(1-s.borrow_discount)),
             liquidation_threshold=str(s.liquidation_threshold),
