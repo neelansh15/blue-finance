@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:ndaq="http://www.nasdaqtrader.com/">
+  <channel>
+    <title>NASDAQTrader.com</title>
+    <ndaq:numItems>4</ndaq:numItems>
+    <item>
+      <title>PFSA</title>
+      <ndaq:HaltDate>11/25/2026</ndaq:HaltDate>
+      <ndaq:HaltTime>19:50:00.000</ndaq:HaltTime>
+      <ndaq:IssueSymbol>PFSA</ndaq:IssueSymbol>
+      <ndaq:Market>NASDAQ</ndaq:Market>
+      <ndaq:ReasonCode>T1</ndaq:ReasonCode>
+      <ndaq:ResumptionDate />
+      <ndaq:ResumptionQuoteTime />
+      <ndaq:ResumptionTradeTime />
+      <description><![CDATA[<table><tr><td>x</td></tr></table>]]></description>
+    </item>
+    <item>
+      <title>TSLA</title>
+      <ndaq:HaltDate>11/24/2026</ndaq:HaltDate>
+      <ndaq:HaltTime>10:00:00.000</ndaq:HaltTime>
+      <ndaq:IssueSymbol>TSLA</ndaq:IssueSymbol>
+      <ndaq:Market>NASDAQ</ndaq:Market>
+      <ndaq:ReasonCode>LUDP</ndaq:ReasonCode>
+      <ndaq:ResumptionDate>11/24/2026</ndaq:ResumptionDate>
+      <ndaq:ResumptionQuoteTime>10:05:00.000</ndaq:ResumptionQuoteTime>
+      <ndaq:ResumptionTradeTime>10:10:00.000</ndaq:ResumptionTradeTime>
+    </item>
+    <item>
+      <title>TSLA</title>
+      <ndaq:HaltDate>11/23/2026</ndaq:HaltDate>
+      <ndaq:HaltTime>09:45:00.000</ndaq:HaltTime>
+      <ndaq:IssueSymbol>TSLA</ndaq:IssueSymbol>
+      <ndaq:Market>NASDAQ</ndaq:Market>
+      <ndaq:ReasonCode>T1</ndaq:ReasonCode>
+      <ndaq:ResumptionDate />
+      <ndaq:ResumptionQuoteTime />
+      <ndaq:ResumptionTradeTime />
+    </item>
+    <item>
+      <title>NVDA</title>
+      <ndaq:HaltDate>11/25/2026</ndaq:HaltDate>
+      <ndaq:HaltTime>11:00:00.000</ndaq:HaltTime>
+      <ndaq:IssueSymbol>NVDA</ndaq:IssueSymbol>
+      <ndaq:Market>NASDAQ</ndaq:Market>
+      <ndaq:ReasonCode>T12</ndaq:ReasonCode>
+      <ndaq:ResumptionDate />
+      <ndaq:ResumptionTradeTime />
+    </item>
+  </channel>
+</rss>
