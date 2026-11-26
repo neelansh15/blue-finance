@@ -1,12 +1,12 @@
 # Architecture v1
 
-Dawn Finance: lending against tokenized US stocks (bStocks first) on BNB Chain, built on the canonical, unmodified Morpho Blue deployment.
+Blue Finance: lending against tokenized US stocks (bStocks first) on BNB Chain, built on the canonical, unmodified Morpho Blue deployment.
 
 Document date: 2026-11-26. All web sources were fetched on 2026-11-26 unless noted otherwise. Verification pass on 2026-11-26 (see "Verification log" at the end). The newest dated sources are the DEX liquidity snapshot (pancake.xyz / tokenstock / deviation.wtf, read 2026-11-26), the Chaconne TSLAB/TSLA spread note (2026-11-25) and a tokenized-stock session study (deepidea.io, 2026-11-21). The newest issuer source is the Binance SNDKB split announcement (2026-11-11). Note: 2026-11-26 is the US Thanksgiving holiday, so the DEX snapshot was taken with US markets closed.
 
 Labels used below:
 - **[F]** verified fact, with a source.
-- **[D]** design proposal from Dawn (not a fact).
+- **[D]** design proposal from Blue (not a fact).
 - **[U]** unverified or inferred.
 
 ---
@@ -17,7 +17,7 @@ Labels used below:
 
 - **[F] Deployment.** Morpho Blue is deployed on BNB Chain at `0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a`. AdaptiveCurveIrm is at `0x7112D95cB5f6b13bF5F5B94a373bB3b2B381F979` and the ChainlinkOracleV2 factory at `0xDf2035fC15919588526dBb5560863C812F135236`. Source: https://docs.morpho.org/developers/contracts/addresses. That docs table has no chain labels. The BNB attribution is cross-checked against third-party explorers (evmquery, Oct 12 2026; gliese.io, https://gliese.io/protocols/morpho, fetched 2026-11-26), which label the same three addresses as BNB.
 - **[F] Owner.** The owner is the Morpho DAO Safe `0xeE02eEa8173455A701A2E76d917CcC32d109518F` ("BNB Smart Chain" row, https://docs.morpho.org/learn/governance/organization/, fetched 2026-11-26). Gliese labels it "Multisig, no delay" (fetched 2026-11-26). **[U]** The 5-of-9 threshold was not shown on any page fetched on 2026-11-26; read `getThreshold()` / `getOwners()` on the Safe.
-- **[F] What the owner controls.** The owner (DAO) controls `enableLltv`, `enableIrm`, `setOwner`, the fee switch (capped at 25% of borrower interest) and the fee recipient. It can enable but never disable LLTVs/IRMs. Dawn can create markets permissionlessly only from the enabled LLTV/IRM set. Sources: https://docs.morpho.org/learn/governance/organization/ and https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol (fetched 2026-11-26).
+- **[F] What the owner controls.** The owner (DAO) controls `enableLltv`, `enableIrm`, `setOwner`, the fee switch (capped at 25% of borrower interest) and the fee recipient. It can enable but never disable LLTVs/IRMs. Blue can create markets permissionlessly only from the enabled LLTV/IRM set. Sources: https://docs.morpho.org/learn/governance/organization/ and https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol (fetched 2026-11-26).
 - **[F] Market parameters are immutable.** Each market is fixed by (loanToken, collateralToken, oracle, IRM, LLTV) and none of these can change.
   - Governance-approved LLTV list: 0 / 38.5 / 62.5 / 77 / 86 / 91.5 / 94.5 / 96.5 / 98 %; the only approved IRM is AdaptiveCurveIRM (https://docs.morpho.org/learn/concepts/blue/, fetched 2026-11-26). **[U]** That docs list is not chain-specific; confirm `isLltvEnabled(625000000000000000)` on the BNB singleton before deploying.
   - LIF = min(1.15, 1/(0.3·LLTV + 0.7)).
@@ -62,7 +62,7 @@ Labels used below:
     - The token itself has **no** `isBlacklisted` view. Blacklist/allowlist state lives in the separate compliance contract. **[U]** That contract's rule set (blacklist vs allowlist) was not read.
   - **[F] Admin surface.** Roles are `DEFAULT_ADMIN_ROLE` and `ISSUER_ROLE`. Admin setters: `setCompliance`, `setPauseManager`, `setMintEnabled`, `setBurnEnabled`, `setName`, `setSymbol`, `setIdentifier`. Also emits `TransferWithUIAmount` and `UIMultiplierChangeOverwritten` (same source, 2026-11-26).
   - **Resolved discrepancy (pause):** fortunepad's "no pause switch; no share multiplier" is wrong. The implementation has both a pause manager and the ERC-8056 multiplier (BscScan verified source, 2026-11-26).
-  - **[F] Decimals = 18.** `decimals()` returns `0x12` in the implementation bytecode (BscScan, 2026-11-26). This agrees with fortunepad, tokenstock (TSLAB) and dexpaprika (NVDAB). **Contradicts** the "eight-decimal balances" reading of the prospectus, which is dropped. All Dawn math uses 18-decimal raw units.
+  - **[F] Decimals = 18.** `decimals()` returns `0x12` in the implementation bytecode (BscScan, 2026-11-26). This agrees with fortunepad, tokenstock (TSLAB) and dexpaprika (NVDAB). **Contradicts** the "eight-decimal balances" reading of the prospectus, which is dropped. All Blue math uses 18-decimal raw units.
 - **[F] Multiplier semantics (ERC-8056 / BEP-8056, also called BEP-677).**
   - `balanceOf()` returns raw units and never changes on corporate actions.
   - `uiMultiplier()` (1e18 fixed point) is display-only: UI amount = raw × m / 1e18.
@@ -123,7 +123,7 @@ Labels used below:
 
     All three have borrow cap 0, liquidation incentive 10%, and a DeviationBoundedOracle at 16.67%.
   - Venus Atlas aggregators: TSLAB `0x63950c265e7cdb4016ba60c288c46291c0148ce2`, NVDAB `0x8a44cf4e55add99eb8bac5d5db749c63106d54aa`, SPCXB `0x0072e55bff6fec200708ce82612569a1c0eb4b24`, SKHYB `0x8a87b38d4c8ef07546a1dd87a9d58f0b36b11a2b`.
-  - **[U] Discrepancy:** Venus's Atlas addresses differ from Lista's for the same tickers (e.g. TSLAB Venus `0x6395…8ce2` vs Lista `0xf569…693C`). These may be separate consumer instances or whitelists. Dawn must get its own feed address and read-access status from Atlas, not copy either one.
+  - **[U] Discrepancy:** Venus's Atlas addresses differ from Lista's for the same tickers (e.g. TSLAB Venus `0x6395…8ce2` vs Lista `0xf569…693C`). These may be separate consumer instances or whitelists. Blue must get its own feed address and read-access status from Atlas, not copy either one.
 - **[U]** No market-status flag was found in the Atlas docs (re-checked 2026-11-26: SingleFeed/MultiFeed API reference, Push/Pull integration pages, the data-quality page and atlasoracle.io).
 - **[U]** Whether Atlas bStock feeds quote **per UI share** (the post-split price) or **per raw token** (re-checked 2026-11-26). Indirect evidence points to per UI share:
   - The SNDKB notice says the post-split price "will not line up" with the pre-split price.
@@ -149,11 +149,11 @@ Labels used below:
 
 | # | Component | Where | Responsibility |
 |---|---|---|---|
-| C1 | **Morpho Blue (canonical)** | on-chain, not Dawn's | Accounting, borrow/repay, liquidation. Unmodified. |
-| C2 | **DawnOracle** (one per market, immutable address) | on-chain [D] | Implements `IOracle.price()`. Logic described below this table. |
+| C1 | **Morpho Blue (canonical)** | on-chain, not Blue's | Accounting, borrow/repay, liquidation. Unmodified. |
+| C2 | **BlueOracle** (one per market, immutable address) | on-chain [D] | Implements `IOracle.price()`. Logic described below this table. |
 | C3 | **Wrapped collateral `dX`** (optional, phase 2) | on-chain [D] | 1:1 raw wrapper of a bStock. Only the router can mint (deposit into Morpho), and `transfer` from Morpho to anyone is allowed so liquidations still work. This is what makes "router-only borrowers" enforceable. |
-| C4 | **DawnRouter** | on-chain [D] | Entry point for supplyCollateral+borrow, repay, withdraw and PreLiquidation setup. Checks the eligibility attestation (signed by C9), the per-account regime limit (a target LTV stricter than LLTV), and asset/regime caps. Uses `setAuthorization`. |
-| C5 | **Dawn Vault V2** (USDT/USD1 loan asset) | on-chain | Curated supply side. Caps per collateral id and per market. Gates for depositor KYC if needed. |
+| C4 | **BlueRouter** | on-chain [D] | Entry point for supplyCollateral+borrow, repay, withdraw and PreLiquidation setup. Checks the eligibility attestation (signed by C9), the per-account regime limit (a target LTV stricter than LLTV), and asset/regime caps. Uses `setAuthorization`. |
+| C5 | **Blue Vault V2** (USDT/USD1 loan asset) | on-chain | Curated supply side. Caps per collateral id and per market. Gates for depositor KYC if needed. |
 | C6 | **PreLiquidation instance(s)** | on-chain | Partial, gentler liquidation between preLltv and LLTV, with a small preLIF. |
 | C7 | **RegimeRegistry** | on-chain [D] | Calendar plus keeper-set state: OPEN / EXTENDED / CLOSED / WEEKEND / HALTED / CORP_ACTION. It is read by C2 and C4. |
 | C8 | **Keepers** | offchain [D] | Push regime updates and the multiplier watch (`UIMultiplierUpdated` events). Run the halt monitor. Act as sentinel bot (cap cuts). Liquidation bot (backstop). |
@@ -161,7 +161,7 @@ Labels used below:
 | C10 | **UI** | offchain | Shows balances in UI units (`balanceOfUI`). Shows regime, haircut, health in both price regimes, and corporate-action banners. |
 | C11 | **Risk/LLTV pipeline** | offchain [D] | Computes the gap distribution and haircut tables from historical data. Produces governance proposals for caps and new markets. |
 
-**DawnOracle (C2) logic:**
+**BlueOracle (C2) logic:**
 1. Read the Atlas feed.
 2. *(Backup, not implemented in this version: read the PancakeSwap TWAP and take the min of the two, see §5.1.)*
 3. Use the Atlas price as the single source in this version, with a staleness limit and a freeze if the feed fails.
@@ -176,15 +176,15 @@ Labels used below:
 
 | Actor / key | Powers | Trust assumption | Notes |
 |---|---|---|---|
-| Morpho DAO Safe | enableLltv/enableIrm, fees (max 25%, cannot touch existing market params) | Will not set a fee on Dawn markets adversely | [F] owner, multisig with no delay (docs governance page + Gliese, 2026-11-26); [U] 5-of-9 threshold |
+| Morpho DAO Safe | enableLltv/enableIrm, fees (max 25%, cannot touch existing market params) | Will not set a fee on Blue markets adversely | [F] owner, multisig with no delay (docs governance page + Gliese, 2026-11-26); [U] 5-of-9 threshold |
 | bStock issuer / Op & Tech Co | pause, blacklist, freeze, upgrade the beacon implementation, set the multiplier | Acts lawfully, keeps the multiplier correct, does not blacklist the Morpho singleton | **The largest single trust point.** The beacon upgrade can change token behavior for every holder at once. |
-| Atlas reporters / feed admin | Price and read-access whitelist | Feed stays live. Dawn's oracle is whitelisted, or the feed is open-read. | Whitelist removal makes `fetch` revert. C2 must handle this with try/catch (see §5.2). |
-| Dawn Vault Owner | Appoints curator and sentinels | Multisig [D] | |
-| Dawn Curator | Caps, adapters, gates (timelocked) | Multisig plus timelock [D] | |
-| Dawn Allocator | Moves liquidity between markets | Hot-ish key, bounded by caps | |
-| Dawn Sentinel | Cut caps, deallocate, revoke | Hot bot key plus human multisig [D] | It can only reduce risk, which is why it is safe to automate. |
+| Atlas reporters / feed admin | Price and read-access whitelist | Feed stays live. Blue's oracle is whitelisted, or the feed is open-read. | Whitelist removal makes `fetch` revert. C2 must handle this with try/catch (see §5.2). |
+| Blue Vault Owner | Appoints curator and sentinels | Multisig [D] | |
+| Blue Curator | Caps, adapters, gates (timelocked) | Multisig plus timelock [D] | |
+| Blue Allocator | Moves liquidity between markets | Hot-ish key, bounded by caps | |
+| Blue Sentinel | Cut caps, deallocate, revoke | Hot bot key plus human multisig [D] | It can only reduce risk, which is why it is safe to automate. |
 | RegimeRegistry keeper | Set HALTED/CORP_ACTION, freeze or unfreeze | Bot key with bounded powers [D] | It can only make prices more conservative or freeze, for a max duration. Unfreeze requires a price-continuity check. |
-| DawnOracle | None after deploy | Immutable code, parameters fixed at deploy | Market oracle is immutable [F]. Changing logic means deploying a new market and migrating. |
+| BlueOracle | None after deploy | Immutable code, parameters fixed at deploy | Market oracle is immutable [F]. Changing logic means deploying a new market and migrating. |
 | Eligibility signer | Signs attestations | Offchain key [D] | Compromise lets ineligible users borrow (compliance risk). It does not affect solvency. |
 
 ---
@@ -195,10 +195,10 @@ Labels used below:
 
 1. The UI collects the wallet address. C9 checks geo/IP, the Binance eligibility endpoint, sanctions, and simulates the token's `compliance.check` for the address, then returns a signed attestation (address, expiry).
 2. The user approves the bStock (raw amount computed via `fromUIAmount`) to the router (C4).
-3. C4 verifies the attestation, reads RegimeRegistry and computes `maxBorrow = collateral × DawnOracle.price() × targetLTV(regime)`. targetLTV is below the LLTV, and the haircut is already inside the price.
+3. C4 verifies the attestation, reads RegimeRegistry and computes `maxBorrow = collateral × BlueOracle.price() × targetLTV(regime)`. targetLTV is below the LLTV, and the haircut is already inside the price.
 4. Phase 1: C4 calls `Morpho.supplyCollateral(onBehalf=user)`, then `Morpho.borrow(onBehalf=user, receiver=user)`. This uses user→router `setAuthorization`.
    Phase 2 with C3: C4 wraps the token to `dX` and supplies `dX`.
-5. Morpho calls `DawnOracle.price()` and checks LTV ≤ LLTV.
+5. Morpho calls `BlueOracle.price()` and checks LTV ≤ LLTV.
 6. The token transfer into Morpho runs the bStock compliance checks. [F] (verified `_update`, 2026-11-26):
    - Morpho's `transferFrom(user→Morpho)` has `msg.sender = Morpho = to`, so the separate spender check is skipped. `from` (user, or router in phase 1 if it holds the tokens) and `to` (Morpho) are both checked.
    - Morpho must therefore pass `compliance.check` as `to` here, and as `from` on withdraw/liquidation.
@@ -207,7 +207,7 @@ Labels used below:
 
 ### 3.2 Liquidation
 
-1. The keeper (C8) watches health using `DawnOracle.price()`.
+1. The keeper (C8) watches health using `BlueOracle.price()`.
 2. If preLltv < LTV ≤ LLTV, the PreLiquidation contract is used: `preLiquidate` with a partial close at a small incentive. The bot gets the callback, sells collateral, and repays.
 3. If LTV > LLTV, `Morpho.liquidate` is called. Morpho calls the oracle, then transfers collateral from Morpho to the liquidator, which passes bStock pause and compliance. **If the token is paused, or the liquidator or Morpho is blacklisted, the transfer reverts and the liquidation fails.**
 4. Exit venues for the liquidator:
@@ -216,7 +216,7 @@ Labels used below:
      - TSLAB/USDT Pancake pool: liquidity ≈ $1.35M (≈ 723k USDT side), 24h volume ≈ $1.28M (tokenstock). ±2% depth ≈ $1.36M (livecoinwatch).
      - deviation.wtf/stocks: 33 of 34 BSC bStock pools were quoting while the market was closed.
      - Binance Research (2026-10-20): 56% of bStock volume trades outside regular hours, 7% on weekends.
-     - **[U]** Depth at the moment of a weekend or corporate-action shock, and RFQ quote size, were not measured. Pool figures are aggregator readings, not on-chain reserves read by Dawn.
+     - **[U]** Depth at the moment of a weekend or corporate-action shock, and RFQ quote size, were not measured. Pool figures are aggregator readings, not on-chain reserves read by Blue.
    - (b) Binance spot via deposit. Not atomic, and suspended during corporate actions.
    - (c) Issuer redemption via Alpaca. US hours only, suspendable, and Delivery-in is not guaranteed.
 5. During CLOSED/WEEKEND, venue (c) is unavailable and (b) may be thin. The keeper should still liquidate, take inventory risk, and unwind at the open.
@@ -261,7 +261,7 @@ Comparable regime-aware designs:
 - Chainlink 24/7 streams use perp-derived weekend prices.
 - The Defiant (Nov 19) reported an NVDA weekend price hold of about 50h on another oracle.
 
-### 5.1 DawnOracle formula [D]
+### 5.1 BlueOracle formula [D]
 
 ```
 p_atlas = Atlas per-UI price (staleness ≤ maxAge(regime), else treated as missing)
@@ -307,9 +307,9 @@ price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
   - Liquidation sends collateral Morpho → liquidator via `transfer`. [F] (verified `_update`, 2026-11-26): only `from` (Morpho) and `to` (liquidator) are checked, because `msg.sender = Morpho = from`, so the spender check is skipped. The borrower's address is never passed to compliance during liquidation, so liquidating a blacklisted borrower still works.
   - A blacklisted borrower cannot withdraw to themselves. They could withdraw to another receiver, which raises evasion concerns. The router should refuse to process actions for blacklisted addresses.
 - **Liquidator blacklisted / not eligible:** their liquidation reverts. Other liquidators can still act.
-- **Morpho singleton blacklisted or frozen:** **all** bStock collateral of that token in **every** Morpho market (Dawn's and anyone else's) becomes immovable. Liquidations revert and withdrawals revert. This is the issuer kill-switch tail risk.
+- **Morpho singleton blacklisted or frozen:** **all** bStock collateral of that token in **every** Morpho market (Blue's and anyone else's) becomes immovable. Liquidations revert and withdrawals revert. This is the issuer kill-switch tail risk.
   - The wrapper C3 does not remove it: the wrapper contract becomes the single point instead.
-  - It only isolates Dawn from *other* Morpho users' compliance problems. Dawn would hold its own wrapper address relationship with the issuer.
+  - It only isolates Blue from *other* Morpho users' compliance problems. Blue would hold its own wrapper address relationship with the issuer.
 - **Issuer upgrades the beacon implementation:** arbitrary behavior change. Unmitigable on-chain. Monitor `Upgraded` events.
 
 **Design [D]:**
@@ -319,7 +319,7 @@ price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
    - Sanctions screening.
    - Pre-flight compliance simulation instead of an `isBlacklisted` mirror. [F] The token has no `isBlacklisted` view (verified ABI, 2026-11-26). C9 reads the compliance contract address from the token (getter name to confirm against the ABI) and `eth_call`s `compliance.check(token, user)`, which reverts if the user would fail, for the user, the router and Morpho. This uses the token's own rule set whatever form it takes. **[U]** The compliance contract's own ABI and rule type.
 2. **Blacklisted borrowers:** the router denies them. Their existing positions stay liquidatable. Liquidator bots are run from a known-eligible address.
-3. **Pre-clear liquidator addresses.** Ask the issuer to confirm that the Morpho contract and Dawn liquidator addresses are compliance-clear. Morpho must pass `compliance.check` as both `to` (supply) and `from` (withdraw/liquidate), per the verified `_update`, 2026-11-26.
+3. **Pre-clear liquidator addresses.** Ask the issuer to confirm that the Morpho contract and Blue liquidator addresses are compliance-clear. Morpho must pass `compliance.check` as both `to` (supply) and `from` (withdraw/liquidate), per the verified `_update`, 2026-11-26.
    - Precedent: Venus (Core Pool, since June 2026) and Lista Moolah already hold bStocks as collateral in their own contracts, which suggests protocol contracts pass. This is an inference, not a confirmation.
    - Before launch, `eth_call` `compliance.check(token, 0x01b0Bd30…a83a)` for each listed bStock. Open question: whether that pass comes from a blacklist model or an explicit allowlist entry.
 4. **Exposure caps** per bStock and in aggregate (Vault V2 collateral-id caps) sized so that a total freeze of one issuer's tokens leaves losses within a set fraction of vault TVL. That fraction is a governance choice, not a number given here.
@@ -344,7 +344,7 @@ price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
 
 **Response [D]:**
 
-| Step | Actor | Vault V2 / Dawn role |
+| Step | Actor | Vault V2 / Blue role |
 |---|---|---|
 | Halt detected | Keeper | Sets RegimeRegistry = HALTED for the symbol |
 | Stop new risk | Router (automatic via regime) and **Sentinel** (cut caps for that collateral id to the current allocation or 0) | Sentinel: decrease caps, no timelock [F] |
@@ -389,7 +389,7 @@ price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
 
 **Morpho implications:**
 - Morpho stores raw amounts, which is correct.
-- All of Dawn's on-chain math (router limits, oracle) uses raw amounts plus price per raw token.
+- All of Blue's on-chain math (router limits, oracle) uses raw amounts plus price per raw token.
 - Event logs show raw amounts.
 
 **Frontend requirements [D]:**
@@ -431,16 +431,16 @@ Precedent: Steakhouse uses 62.5% for most Coinbase stock-token markets and 77% f
 
 - The router offers it at onboarding.
 - preLltv = LLTV − buffer, small preLIF1 → preLIF2 ≤ 1/LLTV [F constraint], and preLCF partial. This produces smaller, more frequent liquidations that the thin venues can absorb.
-- [F] Use the BNB PreLiquidationFactory `0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42` (BscScan "Morpho: PreLiquidation Factory", verified, 2026-11-26). Dawn does not need to deploy its own copy. The router calls `createPreLiquidation(marketId, params)` there and has users authorize the resulting instance.
+- [F] Use the BNB PreLiquidationFactory `0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42` (BscScan "Morpho: PreLiquidation Factory", verified, 2026-11-26). Blue does not need to deploy its own copy. The router calls `createPreLiquidation(marketId, params)` there and has users authorize the resulting instance.
 
-### Does Dawn run its own bot?
+### Does Blue run its own bot?
 
 Yes [D], as a backstop liquidator.
 - Third-party liquidators are unlikely to hold eligible addresses and bStock exit routes on day one.
 - Venus uses an operator-gated BStockLiquidator (competitor research).
-- Dawn's bot uses PreLiquidation first and Morpho `liquidate` second.
+- Blue's bot uses PreLiquidation first and Morpho `liquidate` second.
 - It holds a USDT float, and it is allowed to warehouse collateral off-hours within a set inventory limit.
-- Morpho liquidation stays permissionless. Dawn's bot is not privileged.
+- Morpho liquidation stays permissionless. Blue's bot is not privileged.
 
 ---
 
@@ -484,13 +484,13 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 
 **In the 36h demo (BSC testnet or a mainnet fork):**
 - One market: NVDAB (or a mock ERC-8056 token deployed from the bep-677 reference) as collateral and USDT as loan, at 62.5% LLTV, on the canonical Morpho at the address above (fork) or a local Morpho deploy (testnet).
-- DawnOracle v0: Atlas (or a mock implementing the Atlas interface), × uiMultiplier, regime haircut from a simple RegimeRegistry set by a keeper script, and freeze with max duration. No DEX TWAP (the Pancake TWAP is a backup, not implemented in this version).
+- BlueOracle v0: Atlas (or a mock implementing the Atlas interface), × uiMultiplier, regime haircut from a simple RegimeRegistry set by a keeper script, and freeze with max duration. No DEX TWAP (the Pancake TWAP is a backup, not implemented in this version).
 - Router v0: borrow with targetLTV(regime) and a stubbed eligibility signature.
 - Demo script:
   - (1) Borrow during OPEN.
   - (2) Flip to WEEKEND and show the borrow limit tightening and health dropping without liquidating fresh positions.
-  - (3) Simulate a 2-for-1 multiplier update. Show the naive oracle triggering mass liquidation versus Dawn's oracle staying continuous.
-  - (4) Simulate a gap. Show the liquidation by the Dawn bot.
+  - (3) Simulate a 2-for-1 multiplier update. Show the naive oracle triggering mass liquidation versus Blue's oracle staying continuous.
+  - (4) Simulate a gap. Show the liquidation by the Blue bot.
 - UI: UI-unit balances, regime badge, health "now / at weekend".
 
 **Phase 2:**
@@ -505,14 +505,14 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 - Gap-quantile pipeline and parameter governance.
 - More bStocks and Ondo GM (NAV-accumulation oracle path).
 - Dividend ex-date logic.
-- Issuer/Atlas agreements (whitelisting Dawn contracts).
+- Issuer/Atlas agreements (whitelisting Blue contracts).
 - Audits.
 
 ---
 
 ## Decision: no shorting in this version (Nov 26, 2026)
 
-**Decision.** Dawn v1 supports one direction only: stock (bStock) as collateral, stablecoin as the loan asset. Shorting, meaning stablecoin collateral with a bStock as the loan asset, is not built in this version. Morpho Blue can express it as a separate market (loan token = bStock, collateral = stablecoin) without core changes, so it stays a possible later addition. The reasons below are design reasoning, not measured data.
+**Decision.** Blue v1 supports one direction only: stock (bStock) as collateral, stablecoin as the loan asset. Shorting, meaning stablecoin collateral with a bStock as the loan asset, is not built in this version. Morpho Blue can express it as a separate market (loan token = bStock, collateral = stablecoin) without core changes, so it stays a possible later addition. The reasons below are design reasoning, not measured data.
 
 **Why not now**
 1. **Unbounded loss.** A long position's loss is capped by the stock reaching zero. A short's debt grows with the price, and an upward gap while the underlying market is closed (earnings, takeover) can pass the liquidation threshold before anyone can act. Upside tails are often fatter than downside ones.
@@ -531,7 +531,7 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 ## 14. Open questions
 
 1. Do Atlas bStock feeds quote per UI share or per raw token? What happened on-chain at SNDKB's `effectiveAt` versus the feed restart? This is decisive for §4.
-2. Is the Dawn oracle allowed to read Atlas feeds (whitelist vs. open-read) for each bStock?
+2. Is the Blue oracle allowed to read Atlas feeds (whitelist vs. open-read) for each bStock?
 3. **Partly answered 2026-11-26.**
    - Answered: the check runs on `from` and `to`, and on `msg.sender` only when the caller is neither of them. There is a separate pause manager. There is no token-level `isBlacklisted`. `decimals()` = 18.
    - Still open: the compliance contract's rule type (blacklist vs allowlist), and whether it supports a freeze distinct from the blacklist.
@@ -588,7 +588,7 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 
 **Not checked / unverified:**
 - Atlas price units (UI vs. raw), any market-status flag, and the bStock heartbeat/deviation.
-- Whether Dawn's oracle can read Atlas (whitelist status).
+- Whether Blue's oracle can read Atlas (whitelist status).
 - The compliance contract's rule type (blacklist vs allowlist), and whether Morpho actually passes `compliance.check` today.
 - Morpho DAO Safe threshold (5-of-9).
 - BNB on-chain `isLltvEnabled` set.

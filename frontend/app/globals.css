@@ -1,5 +1,5 @@
 /* =========================================================
-   Dawn Finance design system
+   Blue Finance design system
    Palette: night ridge #1E2A38, mountain slate #3E5568, mist blue #8FA3B5,
    morning haze #EEF1F4, sunrise white-yellow #FFF1B8, warm gold #F2C14E.
    Rules: gold only for the primary CTA and key numbers; pale yellow only as
@@ -319,35 +319,6 @@ ol {
 .btn-quiet:hover {
   border-color: var(--text-faint);
   background: color-mix(in srgb, var(--surface) 60%, transparent);
-}
-
-.landing-launch {
-  flex: none;
-  min-height: 44px;
-  padding-inline: 14px;
-  border-radius: 0;
-  background: light-dark(#2040bf, #a6beff);
-  color: light-dark(#fff, #0b1530);
-  white-space: nowrap;
-}
-
-.landing-launch:hover {
-  background: light-dark(#17339f, #b9caff);
-}
-
-.landing-launch svg {
-  width: 16px;
-  height: 16px;
-}
-
-@media (max-width: 440px) {
-  .landing-nav .nav-links {
-    display: none;
-  }
-
-  .landing-launch {
-    margin-inline-start: auto;
-  }
 }
 
 /* ---------- Hero ---------- */

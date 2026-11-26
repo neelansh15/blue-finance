@@ -1,10 +1,10 @@
-// Liquidation bot for one Morpho Blue market whose oracle is a DawnOracle (or any IOracle).
+// Liquidation bot for one Morpho Blue market whose oracle is a BlueOracle (or any IOracle).
 // Discovers borrowers from Borrow events plus a seed list, computes health with the on-chain oracle price(),
 // and liquidates through the LiquidatorCallback contract (no flash loan: repay from pre-funded loan token or a swap
 // of the seized collateral). DRY_RUN defaults ON; it never liquidates while the oracle isFrozen unless configured.
 import { pathToFileURL } from "node:url";
 import { encodeAbiParameters, keccak256, type PublicClient, type WalletClient } from "viem";
-import { MORPHO_BLUE_BSC, dawnOracleAbi, erc20Abi, liquidatorCallbackAbi, morphoAbi } from "./abi.js";
+import { MORPHO_BLUE_BSC, blueOracleAbi, erc20Abi, liquidatorCallbackAbi, morphoAbi } from "./abi.js";
 import { makeClients } from "./chain.js";
 import { jsonLogger, type Logger } from "./regimeKeeper.js";
 
@@ -157,7 +157,7 @@ export interface BotChain {
   market(): Promise<MarketState>;
   position(user: Addr): Promise<Position>;
   oraclePrice(): Promise<bigint>;
-  /** DawnOracle.isFrozen(); throws if the oracle does not implement it. */
+  /** BlueOracle.isFrozen(); throws if the oracle does not implement it. */
   oracleFrozen(): Promise<boolean>;
   /** Loan token held by the liquidator contract (or the wallet when no callback contract is used). */
   loanBalance(): Promise<bigint>;
@@ -267,8 +267,8 @@ export function viemBotChain(cfg: BotConfig, pub: PublicClient, wallet: WalletCl
       const p = await pub.readContract({ address: cfg.morpho, abi: morphoAbi, functionName: "position", args: [id, user] });
       return { borrowShares: p[1], collateral: p[2] };
     },
-    oraclePrice: () => pub.readContract({ address: cfg.market.oracle, abi: dawnOracleAbi, functionName: "price" }),
-    oracleFrozen: () => pub.readContract({ address: cfg.market.oracle, abi: dawnOracleAbi, functionName: "isFrozen" }),
+    oraclePrice: () => pub.readContract({ address: cfg.market.oracle, abi: blueOracleAbi, functionName: "price" }),
+    oracleFrozen: () => pub.readContract({ address: cfg.market.oracle, abi: blueOracleAbi, functionName: "isFrozen" }),
     loanBalance: () => pub.readContract({ address: cfg.market.loanToken, abi: erc20Abi, functionName: "balanceOf", args: [cfg.liquidator] }),
     async simulate(p) {
       await pub.simulateContract({ ...call(p), account: wallet?.account });

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createDawnClient, type DawnClient, type DawnSnapshot } from "../../../src/lib/dawn/client";
+import { createBlueClient, type BlueClient, type BlueSnapshot } from "../../../src/lib/blue/client";
 
 /** Creates the data-layer client once and keeps a snapshot in React state. */
-export function useDawn(): { client: DawnClient; snapshot: DawnSnapshot | null; error: string | null } {
-  const client = useMemo(() => createDawnClient(), []);
-  const [snapshot, setSnapshot] = useState<DawnSnapshot | null>(null);
+export function useBlue(): { client: BlueClient; snapshot: BlueSnapshot | null; error: string | null } {
+  const client = useMemo(() => createBlueClient(), []);
+  const [snapshot, setSnapshot] = useState<BlueSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

@@ -4,12 +4,12 @@ pragma solidity 0.8.28;
 import {Script, console2} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
 import {Id} from "../src/interfaces/IMorpho.sol";
-import {DawnDeploy} from "./DawnDeploy.sol";
+import {BlueDeploy} from "./BlueDeploy.sol";
 
 /// @title DeployMainnet
-/// @notice BNB Chain mainnet (chain id 56) deployment of one Dawn market on a REAL bStock and its REAL Atlas feed,
-///         using the same DawnDeploy helpers as script/Deploy.s.sol. Deploys RegimeRegistry, DawnOracle (per raw
-///         token feed, 2h live staleness) and DawnRouter, creates the bStock/USDT market on Morpho Blue
+/// @notice BNB Chain mainnet (chain id 56) deployment of one Blue market on a REAL bStock and its REAL Atlas feed,
+///         using the same BlueDeploy helpers as script/Deploy.s.sol. Deploys RegimeRegistry, BlueOracle (per raw
+///         token feed, 2h live staleness) and BlueRouter, creates the bStock/USDT market on Morpho Blue
 ///         (62.5% LLTV, AdaptiveCurveIrm) and lists it with LOW placeholder caps. No mocks, no demo signer, no seed.
 ///
 /// Required env: ATLAS_FEED, BSTOCK, ELIGIBILITY_SIGNER, GUARDIAN (must differ from the deployer; it can pause and
@@ -24,7 +24,7 @@ import {DawnDeploy} from "./DawnDeploy.sol";
 ///
 /// ALL RISK PARAMETERS ARE UNCALIBRATED PLACEHOLDERS. Caps are deliberately tiny; raise them only through
 /// router.setCaps (admin) after review.
-contract DeployMainnet is Script, DawnDeploy {
+contract DeployMainnet is Script, BlueDeploy {
     using stdJson for string;
 
     // Total borrow cap and per-regime caps on market totalBorrowAssets (USDT, 18 decimals).
@@ -69,7 +69,7 @@ contract DeployMainnet is Script, DawnDeploy {
             seedSupply: vm.envOr("SEED_SUPPLY", uint256(0)),
             initialPrice: 0 // unused with a real feed
         });
-        d = _deployDawn(p);
+        d = _deployBlue(p);
         vm.stopBroadcast();
 
         // Post-conditions (simulated before broadcast, checked again in the dry run).
@@ -78,8 +78,8 @@ contract DeployMainnet is Script, DawnDeploy {
         require(address(d.feed) == address(0), "mock feed deployed");
 
         console2.log("RegimeRegistry", address(d.registry));
-        console2.log("DawnOracle    ", address(d.oracle));
-        console2.log("DawnRouter    ", address(d.router));
+        console2.log("BlueOracle    ", address(d.oracle));
+        console2.log("BlueRouter    ", address(d.router));
         console2.log("MarketId");
         console2.logBytes32(Id.unwrap(d.marketId));
         console2.log("admin (deployer)", deployer);

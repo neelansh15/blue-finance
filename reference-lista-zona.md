@@ -21,7 +21,7 @@ Standing instruction (Alki, Nov 26): when lost on a design question, consult Lis
 - Zero LTV = no new borrow, liquidation threshold and bonus unchanged. One collateral asset per account; shared debt ceiling per collateral; supply/borrow caps (USDG 125k each).
 - Audit: Beosin.
 
-## Takeaways for Dawn
+## Takeaways for Blue
 1. Zona's separate borrow gate with one-way guardian and 30-min recovery maps to our HALTED/CORP_ACTION keeper; consider an expiring borrow permission (fail-closed on keeper silence).
 2. Zona keeps liquidation live on a 24h-old last price; Lista halts everything (revert) when closed. Ours: haircut + freeze sits between them.
 3. Lista's bound validator vs pivot (APRO 2%) is a jump-breaker analogue; ours is upward-only.

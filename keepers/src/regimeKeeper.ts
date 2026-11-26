@@ -2,7 +2,7 @@
 // calls setOverride / clearOverride. DRY_RUN defaults ON: intended txs are logged, none are sent.
 import { pathToFileURL } from "node:url";
 import type { PublicClient, WalletClient } from "viem";
-import { Regime, conservativeness, dawnOracleAbi, moreConservative, regimeName, regimeRegistryAbi, type RegimeName } from "./abi.js";
+import { Regime, conservativeness, blueOracleAbi, moreConservative, regimeName, regimeRegistryAbi, type RegimeName } from "./abi.js";
 import { makeClients } from "./chain.js";
 import { loadConfig, type KeeperAsset, type KeeperConfig } from "./config.js";
 import { HaltCombiner, type CombinedState, type Decision } from "./halt/combiner.js";
@@ -122,7 +122,7 @@ export interface KeeperChain {
   /** Only setOverride / clearOverride are sent; "wait" is never a tx. */
   send(action: PlannedAction, asset: KeeperAsset): Promise<string>;
   readOracle(oracle: `0x${string}`): Promise<OracleStatus>;
-  /** DawnOracle.update(), permissionless. */
+  /** BlueOracle.update(), permissionless. */
   updateOracle(oracle: `0x${string}`): Promise<string>;
 }
 
@@ -150,15 +150,15 @@ export function viemKeeperChain(registry: `0x${string}`, pub: PublicClient, wall
     },
     async readOracle(oracle) {
       const [price, frozen, since] = await Promise.all([
-        pub.readContract({ address: oracle, abi: dawnOracleAbi, functionName: "price" }),
-        pub.readContract({ address: oracle, abi: dawnOracleAbi, functionName: "isFrozen" }),
-        pub.readContract({ address: oracle, abi: dawnOracleAbi, functionName: "frozenSince" }),
+        pub.readContract({ address: oracle, abi: blueOracleAbi, functionName: "price" }),
+        pub.readContract({ address: oracle, abi: blueOracleAbi, functionName: "isFrozen" }),
+        pub.readContract({ address: oracle, abi: blueOracleAbi, functionName: "frozenSince" }),
       ]);
       return { price, frozen, frozenSince: Number(since) };
     },
     async updateOracle(oracle) {
       if (!wallet?.account) throw new Error("no wallet configured");
-      const hash = await wallet.writeContract({ address: oracle, abi: dawnOracleAbi, functionName: "update", account: wallet.account, chain: wallet.chain });
+      const hash = await wallet.writeContract({ address: oracle, abi: blueOracleAbi, functionName: "update", account: wallet.account, chain: wallet.chain });
       await pub.waitForTransactionReceipt({ hash });
       return hash;
     },

@@ -5,7 +5,7 @@ import {IRegimeRegistry, RegimeLib} from "./interfaces/IRegimeRegistry.sol";
 import {EasternCalendar} from "./libraries/EasternCalendar.sol";
 
 /// @title RegimeRegistry
-/// @notice Market-regime source for DawnOracle and DawnRouter.
+/// @notice Market-regime source for BlueOracle and BlueRouter.
 ///         Calendar part: US Eastern sessions with on-chain DST, an admin-set holiday table and early closes.
 ///         Override part: a keeper can push an asset (or all assets via address(0)) into a more conservative
 ///         regime for a bounded duration. The effective regime is the most conservative of calendar and

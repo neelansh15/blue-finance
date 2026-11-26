@@ -3,13 +3,13 @@
 //   regime clear <asset|global>            (registry: admin always, keeper only if keeperCanClear)
 //   multiplier <mockBStock> <value> [--at <unix ts>]   e.g. 2 or 1.000725 (18-dec); --raw for a raw integer.
 //                                          without --at: setUIMultiplierNow, with --at: setUIMultiplier(value, ts)
-//   oracle update <dawnOracle>             permissionless heartbeat
+//   oracle update <blueOracle>             permissionless heartbeat
 //   price <mockFeed> <value> [--decimals 8]  e.g. 245.5
 // Env: RPC_URL, CHAIN_ID(56), REGIME_REGISTRY (regime cmds), DEMO_PRIVATE_KEY or KEEPER_PRIVATE_KEY
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { parseUnits, type Hex } from "viem";
-import { REGIME_NAMES, Regime, dawnOracleAbi, mockAtlasFeedAbi, mockBStockAbi, regimeRegistryAbi, type RegimeName } from "./abi.js";
+import { REGIME_NAMES, Regime, blueOracleAbi, mockAtlasFeedAbi, mockBStockAbi, regimeRegistryAbi, type RegimeName } from "./abi.js";
 import { makeClients } from "./chain.js";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
@@ -20,7 +20,7 @@ export type DemoCall =
   | { address: `0x${string}`; abi: typeof regimeRegistryAbi; functionName: "clearOverride"; args: readonly [`0x${string}`] }
   | { address: `0x${string}`; abi: typeof mockBStockAbi; functionName: "setUIMultiplierNow"; args: readonly [bigint] }
   | { address: `0x${string}`; abi: typeof mockBStockAbi; functionName: "setUIMultiplier"; args: readonly [bigint, bigint] }
-  | { address: `0x${string}`; abi: typeof dawnOracleAbi; functionName: "update"; args: readonly [] }
+  | { address: `0x${string}`; abi: typeof blueOracleAbi; functionName: "update"; args: readonly [] }
   | { address: `0x${string}`; abi: typeof mockAtlasFeedAbi; functionName: "setAnswer"; args: readonly [bigint] };
 
 /** Pure: argv + registry -> the call to make. */
@@ -54,8 +54,8 @@ export function buildCall(argv: string[], registry?: string): DemoCall {
     return { address: a, abi: mockBStockAbi, functionName: "setUIMultiplierNow", args: [m] };
   }
   if (cmd === "oracle") {
-    if (a !== "update" || !isAddr(b)) throw new Error("usage: oracle update <dawnOracle>");
-    return { address: b, abi: dawnOracleAbi, functionName: "update", args: [] };
+    if (a !== "update" || !isAddr(b)) throw new Error("usage: oracle update <blueOracle>");
+    return { address: b, abi: blueOracleAbi, functionName: "update", args: [] };
   }
   if (cmd === "price") {
     if (!isAddr(a) || !b) throw new Error("usage: price <mockFeed> <value> [--decimals 8]");

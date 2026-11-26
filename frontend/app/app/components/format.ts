@@ -1,4 +1,4 @@
-import { wadToNumber } from "../../../src/lib/dawn/client";
+import { wadToNumber } from "../../../src/lib/blue/client";
 
 export const usd = (n: number) =>
   n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });

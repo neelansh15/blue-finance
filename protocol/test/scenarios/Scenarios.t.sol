@@ -4,11 +4,11 @@ pragma solidity 0.8.28;
 import {ScenarioBase, IERC20T} from "./ScenarioBase.sol";
 import {MarketParams, MarketParamsLib} from "../../src/interfaces/IMorpho.sol";
 import {IRegimeRegistry} from "../../src/interfaces/IRegimeRegistry.sol";
-import {DawnRouter} from "../../src/DawnRouter.sol";
+import {BlueRouter} from "../../src/BlueRouter.sol";
 import {NaiveOracle} from "../../src/mocks/NaiveOracle.sol";
 
 /// The four demo scenarios on a BNB Chain fork against the real Morpho Blue singleton, deployed with the same
-/// DawnDeploy code as script/Deploy.s.sol (placeholder haircuts: OPEN 0, EXTENDED 4%, CLOSED 10%, WEEKEND 15%,
+/// BlueDeploy code as script/Deploy.s.sol (placeholder haircuts: OPEN 0, EXTENDED 4%, CLOSED 10%, WEEKEND 15%,
 /// HALTED 25%, CORP_ACTION 10%, margin 2%, LLTV 62.5% => targetLTV 51.125%).
 contract ScenariosForkTest is ScenarioBase {
     using MarketParamsLib for MarketParams;
@@ -32,9 +32,9 @@ contract ScenariosForkTest is ScenarioBase {
         assertApproxEqRel(_health(d.marketParams, borrower), 1.2225e18, 1e14);
 
         // One more wei is above the router's limit (Morpho itself would still allow it).
-        DawnRouter.Attestation memory a = _attest(borrower);
+        BlueRouter.Attestation memory a = _attest(borrower);
         vm.prank(borrower);
-        vm.expectRevert(abi.encodeWithSelector(DawnRouter.AboveTargetLtv.selector, amount + 1, amount));
+        vm.expectRevert(abi.encodeWithSelector(BlueRouter.AboveTargetLtv.selector, amount + 1, amount));
         d.router.supplyCollateralAndBorrow(d.marketParams, 0, 1, borrower, a);
     }
 
@@ -54,9 +54,9 @@ contract ScenariosForkTest is ScenarioBase {
         uint256 limit = d.router.borrowLimit(d.marketId, borrower);
         assertEq(limit, 869.125e18);
         assertLt(limit, amount);
-        DawnRouter.Attestation memory a = _attest(borrower);
+        BlueRouter.Attestation memory a = _attest(borrower);
         vm.prank(borrower);
-        vm.expectRevert(abi.encodeWithSelector(DawnRouter.AboveTargetLtv.selector, amount + 1, limit));
+        vm.expectRevert(abi.encodeWithSelector(BlueRouter.AboveTargetLtv.selector, amount + 1, limit));
         d.router.supplyCollateralAndBorrow(d.marketParams, 0, 1, borrower, a);
 
         // Health drops by exactly the haircut, but stays above 1: not liquidatable.
@@ -100,7 +100,7 @@ contract ScenariosForkTest is ScenarioBase {
 
     // ------------------------------------------------------------ 3. 2-for-1 multiplier update
 
-    function test_Scenario3_SplitNaiveOracleLiquidatesDawnDoesNot() public onlyFork {
+    function test_Scenario3_SplitNaiveOracleLiquidatesBlueDoesNot() public onlyFork {
         // Baseline market: same tokens and LLTV, NaiveOracle (feed as-is, no multiplier handling).
         NaiveOracle naive = new NaiveOracle(address(d.feed), 18, 18, 8);
         MarketParams memory nmp = MarketParams({
@@ -138,7 +138,7 @@ contract ScenariosForkTest is ScenarioBase {
         vm.stopPrank();
         assertEq(seized, COLL, "naive position liquidated by the split alone");
 
-        // Dawn before anyone calls update(): multiplier changed => frozen last good, CORP_ACTION 10% haircut.
+        // Blue before anyone calls update(): multiplier changed => frozen last good, CORP_ACTION 10% haircut.
         assertTrue(d.oracle.isFrozen());
         assertEq(d.oracle.price(), 180e36);
         assertFalse(_liquidatable(d.marketParams, borrower));

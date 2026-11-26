@@ -1,8 +1,10 @@
 <div align="center">
 
-# Dawn Finance
+# Blue Finance
 
 **Lending against tokenized US stocks on BNB Chain, with a risk layer that knows when the stock market is open.**
+
+_Formerly Dawn Finance._
 
 ![BNB Chain](https://img.shields.io/badge/chain-BNB%20Chain-F0B90B?logo=binance&logoColor=white)
 ![Morpho Blue](https://img.shields.io/badge/built%20on-Morpho%20Blue%20(unmodified)-2470FF)
@@ -22,7 +24,7 @@
 
 - [Short description](#short-description)
 - [The problem](#the-problem)
-- [How Dawn works](#how-dawn-works)
+- [How Blue works](#how-blue-works)
   - [Regimes](#regimes)
   - [Components](#components)
   - [The four demo scenarios](#the-four-demo-scenarios)
@@ -36,7 +38,7 @@
 
 ## Short description
 
-Dawn Finance lets users borrow stablecoins against tokenized US stocks (Binance bStocks) on BNB Chain. It runs on the canonical, unmodified Morpho Blue singleton and adds one thing Morpho does not have: awareness of the US market clock. Borrowing limits, oracle prices and liquidations all react to whether the underlying stock is trading, closed for the weekend, halted, or in the middle of a corporate action.
+Blue Finance lets users borrow stablecoins against tokenized US stocks (Binance bStocks) on BNB Chain. It runs on the canonical, unmodified Morpho Blue singleton and adds one thing Morpho does not have: awareness of the US market clock. Borrowing limits, oracle prices and liquidations all react to whether the underlying stock is trading, closed for the weekend, halted, or in the middle of a corporate action.
 
 ## The problem
 
@@ -49,7 +51,7 @@ A tokenized stock trades on-chain 24/7, but the stock behind it does not. That m
 | Trading halt | The price is not trustworthy, yet liquidations keep firing. |
 | Eligibility | Tokenized stocks carry compliance rules that a generic market ignores. |
 
-## How Dawn works
+## How Blue works
 
 Every asset is always in exactly one **regime**. The regime sets a price haircut and a borrowing limit, so risk tightens before a gap can happen, not after.
 
@@ -75,19 +77,19 @@ Keepers can only move an asset to a more conservative regime, for a bounded time
                  Regime keeper  ------------>  RegimeRegistry (on-chain)
                        |                                    |
         multiplier watcher                                  v
-                       |                  +-------- DawnOracle (Morpho IOracle)
+                       |                  +-------- BlueOracle (Morpho IOracle)
    Atlas price feed ---+--------------->  |   uiMultiplier, regime haircut,
                                           |   staleness, freeze + continuity
                                           v
-   User --> DawnRouter --> Morpho Blue (unmodified) <-- Liquidation bot
+   User --> BlueRouter --> Morpho Blue (unmodified) <-- Liquidation bot
             (targetLTV, EIP-712 eligibility, caps)       (Morpho callback)
 ```
 
 | Component | Role |
 |---|---|
 | **RegimeRegistry** | On-chain US Eastern calendar (DST, holidays, early closes) plus bounded keeper overrides. |
-| **DawnOracle** | Implements Morpho's `IOracle`. Reads the Atlas feed, applies `uiMultiplier` and the regime haircut, enforces per-regime staleness, freezes on a multiplier change or an upward price jump, and unfreezes only after a continuity check. |
-| **DawnRouter** | Borrow front door through Morpho `setAuthorization`. Enforces `targetLTV(regime) = LLTV x (1 - hMax) - margin`, an EIP-712 eligibility attestation, per-asset and per-regime caps, and blocks borrow and withdraw in `HALTED` and `CORP_ACTION`. |
+| **BlueOracle** | Implements Morpho's `IOracle`. Reads the Atlas feed, applies `uiMultiplier` and the regime haircut, enforces per-regime staleness, freezes on a multiplier change or an upward price jump, and unfreezes only after a continuity check. |
+| **BlueRouter** | Borrow front door through Morpho `setAuthorization`. Enforces `targetLTV(regime) = LLTV x (1 - hMax) - margin`, an EIP-712 eligibility attestation, per-asset and per-regime caps, and blocks borrow and withdraw in `HALTED` and `CORP_ACTION`. |
 | **Keepers** | Regime keeper, halt monitor, multiplier watcher, demo control, and a liquidation bot that uses the Morpho callback so no flash loan is needed. |
 | **Frontend** | Next.js demo: balances in UI units, regime badge, health "now" and "at weekend", corporate-action banner, borrow form with a `targetLTV` preview. |
 
@@ -97,7 +99,7 @@ Each is a Foundry fork test and a demo script.
 
 1. **Borrow in `OPEN`.** Open a position at the normal limit.
 2. **Flip to `WEEKEND`.** The limit tightens, and a fresh position is not liquidatable by the regime change alone.
-3. **2-for-1 split.** A naive oracle would liquidate. `DawnOracle` stays continuous and freezes.
+3. **2-for-1 split.** A naive oracle would liquidate. `BlueOracle` stays continuous and freezes.
 4. **Price gap.** The price drops and the liquidation bot closes the position through Morpho.
 
 ## Tech stack
@@ -147,11 +149,11 @@ forge test                                  # 102 tests, fork tests use the publ
 forge test --no-match-path 'test/fork/*'    # offline only
 ```
 
-Last run Nov 26, 2026: 116 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, DawnOracle, DawnRouter, LiquidatorCallback, Morpho BNB fork, and the scenarios.
+Last run Nov 26, 2026: 116 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, BlueOracle, BlueRouter, LiquidatorCallback, Morpho BNB fork, and the scenarios.
 
 ## Parameters that need manual tuning
 
-Every value below is a **placeholder** until it is calibrated. Source: `protocol/script/DawnDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/dawn/params.ts`.
+Every value below is a **placeholder** until it is calibrated. Source: `protocol/script/BlueDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/blue/params.ts`.
 
 ### What `targetLTV` is
 
@@ -175,13 +177,13 @@ Set when the market is created. Morpho Blue is unmodified, and market parameters
 |---|---|---|---|---|
 | Loan token / collateral token | USDT / bStock | Morpho market | The asset pair | Pick listed bStocks and the loan asset |
 | LLTV | 62.5% | Morpho market | Liquidation threshold | Must be enabled on the Morpho deployment. Pick with the haircuts so `targetLTV` stays useful |
-| IRM | AdaptiveCurveIrm | Morpho market | Interest rate model | Must be enabled on Morpho. Not tuned by Dawn |
-| Oracle | `DawnOracle` | Morpho market | Price source for the market | Dawn's own contract, see below |
-| Protocol fee | set by Morpho governance | Morpho singleton | Share of interest taken by the Morpho DAO | Not controlled by Dawn |
+| IRM | AdaptiveCurveIrm | Morpho market | Interest rate model | Must be enabled on Morpho. Not tuned by Blue |
+| Oracle | `BlueOracle` | Morpho market | Price source for the market | Blue's own contract, see below |
+| Protocol fee | set by Morpho governance | Morpho singleton | Share of interest taken by the Morpho DAO | Not controlled by Blue |
 
-#### Dawn parameters
+#### Blue parameters
 
-Everything Dawn adds around Morpho: the oracle, the regime registry, the router and the keepers.
+Everything Blue adds around Morpho: the oracle, the regime registry, the router and the keepers.
 
 | Parameter | Placeholder | Where | What it controls | How to tune |
 |---|---|---|---|---|
@@ -206,10 +208,10 @@ Everything Dawn adds around Morpho: the oracle, the regime registry, the router 
 
 ## Design choices and limits
 
-- **Unmodified Morpho Blue.** Dawn adds an oracle, a registry and a router around the canonical singleton instead of forking it. The cost: the router is bypassable, because anyone can borrow on Morpho directly. A wrapper token is the planned fix.
+- **Unmodified Morpho Blue.** Blue adds an oracle, a registry and a router around the canonical singleton instead of forking it. The cost: the router is bypassable, because anyone can borrow on Morpho directly. A wrapper token is the planned fix.
 - **Haircut gap.** The `HALTED` haircut (25%) exceeds the `targetLTV` hMax (15%), so a position at the limit can become liquidatable in a halt. This is documented by a test.
 - **Jump breaker.** The oracle's upward-jump freeze is new and needs a security review.
-- **Atlas adapter.** The real Atlas feeds on BSC revert on `latestTimestamp()`, so `DawnOracle` reads them through `latestRoundData()`. The oracle change needs an Opus-level security review.
+- **Atlas adapter.** The real Atlas feeds on BSC revert on `latestTimestamp()`, so `BlueOracle` reads them through `latestRoundData()`. The oracle change needs an Opus-level security review.
 - **Unverified.** Per-share or per-token units of the feed, and live behaviour of `ASSET_PAUSED` on a real corporate action.
 - **Placeholders.** Haircuts, margin (2%), and continuity band (5%) are illustrative until a gap-risk model is calibrated.
 

@@ -1,6 +1,6 @@
 # Protocol
 
-Dawn Finance smart-contract core: lending against tokenized US stocks (bStocks) on BNB Chain, on unmodified Morpho Blue.
+Blue Finance smart-contract core: lending against tokenized US stocks (bStocks) on BNB Chain, on unmodified Morpho Blue.
 
 - Design: [architecture-v1.md](../architecture-v1.md)
 - Shared names: [INTERFACES.md](INTERFACES.md), with deviations listed under "Changes"
@@ -14,7 +14,7 @@ foundry.toml                  solc 0.8.28 (pinned), evm shanghai, optimizer 200
 lib/forge-std/                forge-std v1.9.7 (gitignored; see Setup)
 src/
   RegimeRegistry.sol          on-chain US Eastern calendar (DST, holidays, early closes) + KEEPER/ADMIN overrides
-  DawnOracle.sol              Morpho IOracle: Atlas adapter, uiMultiplier, regime haircuts, staleness, freeze
+  BlueOracle.sol              Morpho IOracle: Atlas adapter, uiMultiplier, regime haircuts, staleness, freeze
   libraries/EasternCalendar.sol  civil-date math (Hinnant), US DST rule, ET conversion
   interfaces/IMorpho.sol      minimal vendored Morpho Blue interface, MarketParams, MarketParamsLib.id
   interfaces/IOracle.sol      Morpho IOracle
@@ -25,12 +25,12 @@ src/
   mocks/MockBStock.sol        ERC20 with scheduled uiMultiplier, for tests and the demo
 test/
   RegimeRegistry.t.sol        calendar boundaries, DST, holidays, overrides, roles (24 tests)
-  DawnOracle.t.sol            haircuts, splits, staleness, freeze, failure modes, fuzz (27 tests)
+  BlueOracle.t.sol            haircuts, splits, staleness, freeze, failure modes, fuzz (27 tests)
   fork/MorphoBnbFork.t.sol    BNB mainnet fork against the Morpho singleton (2 tests)
-  DawnRouter.t.sol            router unit tests on the BNB fork (28 tests)
+  BlueRouter.t.sol            router unit tests on the BNB fork (28 tests)
   scenarios/                  ScenarioBase + 7 fork scenario tests (4 demo scenarios plus variants)
-src/DawnRouter.sol            borrow front door via Morpho setAuthorization, EIP-712 attestations, caps, targetLTV
-script/DawnDeploy.sol         shared deploy logic (script and tests); script/Deploy.s.sol writes deployments/<chainid>.json
+src/BlueRouter.sol            borrow front door via Morpho setAuthorization, EIP-712 attestations, caps, targetLTV
+script/BlueDeploy.sol         shared deploy logic (script and tests); script/Deploy.s.sol writes deployments/<chainid>.json
 ```
 
 ## Setup
@@ -97,7 +97,7 @@ Deploy to an anvil fork: `anvil --fork-url https://bsc-dataseed.binance.org`, th
 
 ## Atlas feed findings (BSC mainnet, probed 2026-11-26 13:59-14:05 UTC, public RPC)
 
-**Oracle read-path change: NEEDS AN OPUS-LEVEL SECURITY REVIEW.** `DawnOracle._readFeed` (new, replaces the `latestAnswer` + `latestTimestamp` reads) is hand-written assembly decoding `latestRoundData()`. Review: the return buffer, range checks, the `answeredInRound >= roundId` rule, and the changed staleness semantics (updatedAt).
+**Oracle read-path change: NEEDS AN OPUS-LEVEL SECURITY REVIEW.** `BlueOracle._readFeed` (new, replaces the `latestAnswer` + `latestTimestamp` reads) is hand-written assembly decoding `latestRoundData()`. Review: the return buffer, range checks, the `answeredInRound >= roundId` rule, and the changed staleness semantics (updatedAt).
 
 - **Interface (94 feeds from the Lista bStock page, 5 probed in detail):** `description()` ("SingleFeed TSLAB/USD"), `decimals()` = 8, `latestAnswer()`, `latestRoundData()` exist. `latestTimestamp()`, `latestRound()` and `version()` REVERT. `getRoundData(1)` returns the same single round. No public logs available on the free RPC.
 - **Round fields:** one round only. `roundId == answeredInRound`, either 1 (68 feeds) or 0 (26 feeds). `startedAt` is updatedAt or updatedAt - 1. So the adapter requires `answeredInRound >= roundId` but not `roundId > 0`.
@@ -108,7 +108,7 @@ Deploy to an anvil fork: `anvil --fork-url https://bsc-dataseed.binance.org`, th
 - **Fork tests** (`test/fork/AtlasRealFeedFork.t.sol`): live bands, so they assert sanity, not exact prices. The registry used there has no holidays seeded, so the regime shown is the plain calendar one.
 - **multiplier moves:** SNDKB at 8 suggests a split happened; the feed and multiplier relationship around a change is unobserved.
 
-## Router (DawnRouter)
+## Router (BlueRouter)
 
 - targetLTV = LLTV x (1 - h_max) - margin, h_max over OPEN/EXTENDED/CLOSED/WEEKEND (cached at listing). With placeholders: 62.5% x 85% - 2% = 51.125%. The limit is applied to oracle.price(), which already carries the current regime's haircut, so a WEEKEND flip tightens the limit by a further 15% and a position opened at the limit in any routine regime stays healthy on Morpho after a flip to any other routine regime (test_Scenario2b). Opening in a haircut regime is deliberately conservative (haircut counted twice).
 - NOT covered: HALTED (25% > h_max) can make a limit-sized position liquidatable (test_Scenario2c documents it); real price moves; the expired-freeze haircut.
@@ -118,9 +118,9 @@ Deploy to an anvil fork: `anvil --fork-url https://bsc-dataseed.binance.org`, th
 - Bypassable by design: Morpho is permissionless, so anyone can borrow directly on the market and skip the router's rules.
 - Fixed in review: withdraw previously called Morpho first, so Morpho's health revert masked the HALTED/CORP_ACTION block.
 
-## Jump breaker (DawnOracle) - NEEDS AN OPUS-LEVEL SECURITY REVIEW
+## Jump breaker (BlueOracle) - NEEDS AN OPUS-LEVEL SECURITY REVIEW
 
-With `jumpBandBps != 0` (placeholder 30%), an UPWARD feed move above lastGood x (1 + band) with unchanged multiplier and no freeze regime is not accepted: price() serves min(live, lastGood) and update() records a jump freeze. It ends when the price returns inside the band, falls below the reference, a registry/multiplier freeze supersedes it, or the admin calls forceUnfreeze after maxFreeze. Tradeoff: downward jumps are deliberately not frozen (serving a stale higher price would allow over-borrowing and delay liquidations), so a feed-first split without CORP_ACTION is still priced live at the halved value (open issue 4). A genuine large rally is delayed until the admin acts. Tests: test/DawnOracle.t.sol "Jump" group. This logic was added by an earlier agent and has not had an independent security review.
+With `jumpBandBps != 0` (placeholder 30%), an UPWARD feed move above lastGood x (1 + band) with unchanged multiplier and no freeze regime is not accepted: price() serves min(live, lastGood) and update() records a jump freeze. It ends when the price returns inside the band, falls below the reference, a registry/multiplier freeze supersedes it, or the admin calls forceUnfreeze after maxFreeze. Tradeoff: downward jumps are deliberately not frozen (serving a stale higher price would allow over-borrowing and delay liquidations), so a feed-first split without CORP_ACTION is still priced live at the halved value (open issue 4). A genuine large rally is delayed until the admin acts. Tests: test/BlueOracle.t.sol "Jump" group. This logic was added by an earlier agent and has not had an independent security review.
 
 ## Security notes
 
@@ -158,7 +158,7 @@ With `jumpBandBps != 0` (placeholder 30%), an UPWARD feed move above lastGood x 
 
 ## Mainnet deploy
 
-`script/DeployMainnet.s.sol` deploys one market on BNB Chain (chain id 56, asserted) for a REAL bStock and its REAL Atlas feed: registry, DawnOracle (per raw token, 2h live staleness), router, Morpho market (62.5% LLTV, AdaptiveCurveIrm) and listing. No mocks, no demo signer, no seed supply unless `SEED_SUPPLY` is set. All parameters are uncalibrated placeholders.
+`script/DeployMainnet.s.sol` deploys one market on BNB Chain (chain id 56, asserted) for a REAL bStock and its REAL Atlas feed: registry, BlueOracle (per raw token, 2h live staleness), router, Morpho market (62.5% LLTV, AdaptiveCurveIrm) and listing. No mocks, no demo signer, no seed supply unless `SEED_SUPPLY` is set. All parameters are uncalibrated placeholders.
 
 Env: `ATLAS_FEED`, `BSTOCK`, `ELIGIBILITY_SIGNER`, `GUARDIAN` (required, must differ from the deployer); `KEEPER` (default deployer), `SEED_SUPPLY` (optional, USDT 18 dec).
 
@@ -173,4 +173,4 @@ Verify after deploy: `router.admin()`, `router.guardian()`, `router.marketConfig
 
 ### Real bStock compatibility (TSLAB, fork test `test/fork/RealBStockFork.t.sol`, 2026-11-26)
 
-On a BSC fork with the real TSLAB token, real Atlas feed and real Morpho, the full cycle works both directly on Morpho and through DawnRouter: supplyCollateral, borrow USDT, repay, withdrawCollateral. Nothing reverted. TSLAB is a beacon proxy; `transfer`/`transferFrom` call a pause check (`isTokenPaused`) and a compliance contract (`checkIsCompliant(token, address)`) for both sides, and both passed for Morpho, DawnRouter and a fresh holder at that block. Caveats: the holder balance was set with `deal()`, the router test mocks only the feed timestamp (to pass the staleness gate after warping to an OPEN session), and `uiMultiplier` was 1e18 (SNDKB, multiplier 8, was not cycled). The issuer can still pause the token or add compliance rules at any time, which would block Morpho transfers (and so repay, withdraw and liquidation); that risk is outside the protocol's control.
+On a BSC fork with the real TSLAB token, real Atlas feed and real Morpho, the full cycle works both directly on Morpho and through BlueRouter: supplyCollateral, borrow USDT, repay, withdrawCollateral. Nothing reverted. TSLAB is a beacon proxy; `transfer`/`transferFrom` call a pause check (`isTokenPaused`) and a compliance contract (`checkIsCompliant(token, address)`) for both sides, and both passed for Morpho, BlueRouter and a fresh holder at that block. Caveats: the holder balance was set with `deal()`, the router test mocks only the feed timestamp (to pass the staleness gate after warping to an OPEN session), and `uiMultiplier` was 1e18 (SNDKB, multiplier 8, was not cycled). The issuer can still pause the token or add compliance rules at any time, which would block Morpho transfers (and so repay, withdraw and liquidation); that risk is outside the protocol's control.

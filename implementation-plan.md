@@ -1,10 +1,10 @@
-# Dawn Finance: implementation plan (v1)
+# Blue Finance: implementation plan (v1)
 
 Plan to build the design in [architecture-v1.md](architecture-v1.md): lending for tokenized US stocks on BNB Chain, on top of unmodified Morpho Blue. Section references (§) point to that document. Items marked **[U]** are unverified.
 
 ## 1. Scope
 
-**Demo (BNB Bangkok, demo Nov 27, 2026):** one market (bStock collateral, USDT loan, 62.5% LLTV), DawnOracle v0, RegimeRegistry, Router v0, keeper script, liquidation bot, and a UI with UI-unit balances, a regime badge and health "now / at weekend" (§13).
+**Demo (BNB Bangkok, demo Nov 27, 2026):** one market (bStock collateral, USDT loan, 62.5% LLTV), BlueOracle v0, RegimeRegistry, Router v0, keeper script, liquidation bot, and a UI with UI-unit balances, a regime badge and health "now / at weekend" (§13).
 
 **Later:** wrapper C3, real eligibility service, Vault V2, PreLiquidation onboarding, halt monitor, production keepers, gap-quantile pipeline, dividend ex-date logic, audits (§13 phases 2 and 3).
 
@@ -14,7 +14,7 @@ Plan to build the design in [architecture-v1.md](architecture-v1.md): lending fo
 
 ```
 protocol/
-  src/        DawnOracle, RegimeRegistry, DawnRouter, mocks (MockAtlasFeed, MockBStock)
+  src/        BlueOracle, RegimeRegistry, BlueRouter, mocks (MockAtlasFeed, MockBStock)
   test/       Foundry tests and fork tests
   script/     deploy and market creation
 keepers/      regime keeper, multiplier watcher, liquidation bot (TypeScript)
@@ -40,7 +40,7 @@ Toolchain: Foundry (Solidity), viem for scripts, Next.js for the UI.
 
 **Tests:** every calendar boundary (Friday close, Monday pre-market, holiday), override expiry, role limits.
 
-### WS3. DawnOracle (C2)
+### WS3. BlueOracle (C2)
 1. Implements Morpho's `IOracle.price()` (scale 1e36 adjusted for the token decimals).
 2. Steps (§1): read Atlas, apply `uiMultiplier()` if the feed quotes per UI share, apply `(1 − h[regime])`, enforce a staleness limit per regime, return the last good price during a freeze, never revert in the normal path.
 3. `h[regime]` is immutable per market. Values are placeholders until the gap-quantile work (§11); the landing-page numbers (4% / 10% / 15%) are illustrative only.
@@ -51,7 +51,7 @@ Toolchain: Foundry (Solidity), viem for scripts, Next.js for the UI.
 
 **Tests:** price continuity across a 2-for-1 multiplier update, haircut applied per regime, staleness fallback, freeze expiry, no revert when the feed reverts.
 
-### WS4. DawnRouter (C4)
+### WS4. BlueRouter (C4)
 1. `supplyCollateralAndBorrow`, `repay`, `withdraw`, using Morpho `setAuthorization`.
 2. Borrow limit `targetLTV(regime) = LLTV × (1 − h_max) − margin`, so a regime switch alone never makes a fresh position liquidatable (§5).
 3. Eligibility attestation check (EIP-712 signature, short expiry). Stub signer for the demo.
@@ -89,7 +89,7 @@ Toolchain: Foundry (Solidity), viem for scripts, Next.js for the UI.
 ### WS8. Demo scenarios (§13)
 1. Borrow during OPEN.
 2. Flip to WEEKEND: borrow limit tightens, health drops, fresh positions are not liquidated.
-3. 2-for-1 multiplier update: a naive oracle triggers mass liquidation, DawnOracle stays continuous.
+3. 2-for-1 multiplier update: a naive oracle triggers mass liquidation, BlueOracle stays continuous.
 4. Gap: price drops, the liquidation bot closes the position.
 
 Each scenario is one script plus one fork test, so the demo and the tests share code.
@@ -100,9 +100,9 @@ Each scenario is one script plus one fork test, so the demo and the tests share 
 |---|---|---|
 | 1 | WS1 environment and fork | none |
 | 2 | WS2 RegimeRegistry, WS5 mock token | 1 |
-| 3 | WS3 DawnOracle | 2 |
+| 3 | WS3 BlueOracle | 2 |
 | 4 | WS5 market deploy script | 3 |
-| 5 | WS4 DawnRouter | 2, 4 |
+| 5 | WS4 BlueRouter | 2, 4 |
 | 6 | WS6 keepers and liquidation bot | 4, 5 |
 | 7 | WS8 scenario scripts and tests | 5, 6 |
 | 8 | WS7 UI wired to the demo | 5 (can start on mocked data earlier) |
@@ -113,7 +113,7 @@ WS7 UI work can run in parallel with steps 2 to 6 using mocked numbers.
 
 - Unit tests per contract (Foundry).
 - Fork tests against the canonical Morpho singleton for market creation, borrow, and liquidation.
-- Invariants: DawnOracle price is continuous across a multiplier update of the same value; a position opened at or under targetLTV is never liquidatable by a regime switch alone.
+- Invariants: BlueOracle price is continuous across a multiplier update of the same value; a position opened at or under targetLTV is never liquidatable by a regime switch alone.
 - Scenario tests mirror the four demo scenarios.
 
 ## 6. Risks to the plan
@@ -132,7 +132,7 @@ See §14 in architecture-v1.md: Atlas units and access (1, 2), compliance rule t
 
 ## 8. Definition of done for the demo
 
-- Market created on the fork with DawnOracle and RegimeRegistry.
+- Market created on the fork with BlueOracle and RegimeRegistry.
 - All four scenarios run end to end from scripts and pass as tests.
 - UI shows balances in UI units, the regime badge, and health now and at weekend.
 - Placeholder parameters and unverified items are labeled in the UI notes and in this document.

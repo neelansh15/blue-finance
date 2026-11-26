@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
-import {DawnOracle} from "../src/DawnOracle.sol";
+import {BlueOracle} from "../src/BlueOracle.sol";
 import {RegimeRegistry} from "../src/RegimeRegistry.sol";
 import {IRegimeRegistry} from "../src/interfaces/IRegimeRegistry.sol";
 import {MockAtlasFeed} from "../src/mocks/MockAtlasFeed.sol";
@@ -65,7 +65,7 @@ contract ShortFeed {
     }
 }
 
-contract DawnOracleTest is Test {
+contract BlueOracleTest is Test {
     uint8 constant OPEN = 0;
     uint8 constant EXTENDED = 1;
     uint8 constant CLOSED = 2;
@@ -81,21 +81,21 @@ contract DawnOracleTest is Test {
     MockBStock stock;
     AssetStub assetStub;
     RegimeStub regStub;
-    DawnOracle oracle;
+    BlueOracle oracle;
 
     function setUp() public {
         vm.warp(T0);
         feed = new MockAtlasFeed(8, 100e8);
-        stock = new MockBStock("Dawn bAAPL", "bAAPL");
+        stock = new MockBStock("Blue bAAPL", "bAAPL");
         assetStub = new AssetStub();
         regStub = new RegimeStub(admin);
-        oracle = new DawnOracle(_cfg(address(feed), address(regStub), address(stock), 18, true));
+        oracle = new BlueOracle(_cfg(address(feed), address(regStub), address(stock), 18, true));
     }
 
     function _cfg(address f, address r, address a, uint8 loanDec, bool perUI)
         internal
         pure
-        returns (DawnOracle.Config memory c)
+        returns (BlueOracle.Config memory c)
     {
         c.atlasFeed = f;
         c.registry = r;
@@ -146,7 +146,7 @@ contract DawnOracleTest is Test {
     }
 
     function test_DecimalsScaling() public {
-        DawnOracle o6 = new DawnOracle(_cfg(address(feed), address(regStub), address(stock), 6, true));
+        BlueOracle o6 = new BlueOracle(_cfg(address(feed), address(regStub), address(stock), 6, true));
         assertEq(o6.price(), 100e24, "USDC-style 6-dec loan token");
         assertEq(o6.SCALE_DIV(), 100);
         assertEq(oracle.SCALE_MUL(), 1e10);
@@ -165,7 +165,7 @@ contract DawnOracleTest is Test {
 
     function test_WithRealRegistry() public {
         RegimeRegistry reg = new RegimeRegistry(admin, address(this), 1 days, false);
-        DawnOracle o = new DawnOracle(_cfg(address(feed), address(reg), address(stock), 18, true));
+        BlueOracle o = new BlueOracle(_cfg(address(feed), address(reg), address(stock), 18, true));
         assertEq(o.price(), P100, "Mon 10:30 ET OPEN");
 
         vm.warp(1_795_280_400 + 1 weeks); // Sat Nov 28 12:00 ET
@@ -228,13 +228,13 @@ contract DawnOracleTest is Test {
 
     /// Feed quoting per raw token: split does not move the raw price; freeze and unfreeze in one update().
     function test_Split_PerRawFeedUnfreezesInOneCall() public {
-        DawnOracle o = new DawnOracle(_cfg(address(feed), address(regStub), address(stock), 18, false));
+        BlueOracle o = new BlueOracle(_cfg(address(feed), address(regStub), address(stock), 18, false));
         stock.setUIMultiplierNow(2e18);
         assertEq(o.price(), 88e36);
         vm.expectEmit(address(o));
-        emit DawnOracle.Frozen(uint64(T0));
+        emit BlueOracle.Frozen(uint64(T0));
         vm.expectEmit(address(o));
-        emit DawnOracle.Unfrozen(P100);
+        emit BlueOracle.Unfrozen(P100);
         o.update();
         assertEq(o.price(), P100);
         assertEq(o.lastMultiplier(), 2e18);
@@ -329,23 +329,23 @@ contract DawnOracleTest is Test {
         assertTrue(oracle.isFrozen());
 
         vm.prank(admin);
-        vm.expectRevert(DawnOracle.FreezeNotExpired.selector);
+        vm.expectRevert(BlueOracle.FreezeNotExpired.selector);
         oracle.forceUnfreeze();
 
         vm.warp(T0 + 12 hours + 1);
         feed.setAnswer(150e8);
-        vm.expectRevert(DawnOracle.Unauthorized.selector);
+        vm.expectRevert(BlueOracle.Unauthorized.selector);
         oracle.forceUnfreeze();
 
         regStub.set(HALTED);
         vm.prank(admin);
-        vm.expectRevert(DawnOracle.StillFreezeRegime.selector);
+        vm.expectRevert(BlueOracle.StillFreezeRegime.selector);
         oracle.forceUnfreeze();
 
         regStub.set(OPEN);
         feed.setReverting(true);
         vm.prank(admin);
-        vm.expectRevert(DawnOracle.LivePriceUnavailable.selector);
+        vm.expectRevert(BlueOracle.LivePriceUnavailable.selector);
         oracle.forceUnfreeze();
 
         feed.setReverting(false);
@@ -358,7 +358,7 @@ contract DawnOracleTest is Test {
     function test_ForceUnfreezeRequiresFreeze() public {
         vm.warp(T0 + 1 days);
         vm.prank(admin);
-        vm.expectRevert(DawnOracle.FreezeNotExpired.selector);
+        vm.expectRevert(BlueOracle.FreezeNotExpired.selector);
         oracle.forceUnfreeze();
     }
 
@@ -391,8 +391,8 @@ contract DawnOracleTest is Test {
 
     function test_ShortReturnFeed() public {
         ShortFeed sf = new ShortFeed();
-        DawnOracle o = new DawnOracle(_cfg(address(sf), address(regStub), address(stock), 18, true));
-        vm.expectRevert(DawnOracle.NoPrice.selector);
+        BlueOracle o = new BlueOracle(_cfg(address(sf), address(regStub), address(stock), 18, true));
+        vm.expectRevert(BlueOracle.NoPrice.selector);
         o.price();
         o.update(); // no revert
         assertEq(o.lastGoodPrice(), 0);
@@ -400,9 +400,9 @@ contract DawnOracleTest is Test {
 
     function test_NoPriceBeforeFirstObservation() public {
         feed.setReverting(true);
-        DawnOracle o = new DawnOracle(_cfg(address(feed), address(regStub), address(stock), 18, true));
+        BlueOracle o = new BlueOracle(_cfg(address(feed), address(regStub), address(stock), 18, true));
         assertEq(o.lastGoodPrice(), 0);
-        vm.expectRevert(DawnOracle.NoPrice.selector);
+        vm.expectRevert(BlueOracle.NoPrice.selector);
         o.price();
         feed.setReverting(false);
         assertEq(o.price(), P100, "live path needs no history");
@@ -421,7 +421,7 @@ contract DawnOracleTest is Test {
     }
 
     function test_MultiplierFailureFreezes() public {
-        DawnOracle o = new DawnOracle(_cfg(address(feed), address(regStub), address(assetStub), 18, true));
+        BlueOracle o = new BlueOracle(_cfg(address(feed), address(regStub), address(assetStub), 18, true));
         assetStub.setReverting(true);
         assertEq(o.price(), 88e36, "unreadable multiplier => CORP haircut on last good");
         o.update();
@@ -439,50 +439,50 @@ contract DawnOracleTest is Test {
     // ------------------------------------------------------------ constructor validation
 
     function test_ConstructorValidation() public {
-        DawnOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
+        BlueOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
 
         c.atlasFeed = makeAddr("eoa");
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.feedDecimals = 18; // feed reports 8
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.haircutsBps[2] = 200; // CLOSED below EXTENDED
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.haircutsBps[4] = 1100; // HALTED below CORP_ACTION
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.haircutsBps[4] = 5001;
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.stalenessSec[3] = 0;
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.continuityBandBps = 0;
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.maxFreeze = 0;
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
 
         c = _cfg(address(feed), address(regStub), address(stock), 37, true);
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
     }
 
     // ------------------------------------------------------------ fuzz
@@ -491,7 +491,7 @@ contract DawnOracleTest is Test {
     function testFuzz_MonotoneInRegime(uint256 answer, uint256 mult) public {
         answer = bound(answer, 1, 1e20);
         mult = bound(mult, 1e9, 1e27);
-        DawnOracle o = new DawnOracle(_cfg(address(feed), address(regStub), address(assetStub), 18, true));
+        BlueOracle o = new BlueOracle(_cfg(address(feed), address(regStub), address(assetStub), 18, true));
         assetStub.set(mult);
         feed.setAnswer(int256(answer));
         o.update(); // unfreezes if continuous, else stays frozen; either way the checks below must hold
@@ -509,7 +509,7 @@ contract DawnOracleTest is Test {
     function testFuzz_NeverReverts(int256 answer, uint256 ts, uint256 regimeVal, uint256 mult, uint256 dt, bool rev)
         public
     {
-        DawnOracle o = new DawnOracle(_cfg(address(feed), address(regStub), address(assetStub), 18, true));
+        BlueOracle o = new BlueOracle(_cfg(address(feed), address(regStub), address(assetStub), 18, true));
         dt = bound(dt, 0, 3650 days);
         vm.warp(block.timestamp + dt);
         feed.setAnswerAt(answer, ts);
@@ -527,10 +527,10 @@ contract DawnOracleTest is Test {
 
     // ------------------------------------------------------------ upward jump breaker
 
-    function _jumpOracle() internal returns (DawnOracle o) {
-        DawnOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
+    function _jumpOracle() internal returns (BlueOracle o) {
+        BlueOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.jumpBandBps = 3000; // +30%
-        o = new DawnOracle(c);
+        o = new BlueOracle(c);
     }
 
     function test_Jump_DisabledByDefault() public {
@@ -540,7 +540,7 @@ contract DawnOracleTest is Test {
     }
 
     function test_Jump_WithinBandIsLive() public {
-        DawnOracle o = _jumpOracle();
+        BlueOracle o = _jumpOracle();
         feed.setAnswer(129e8);
         assertFalse(o.isFrozen());
         assertEq(o.price(), 129e36);
@@ -549,13 +549,13 @@ contract DawnOracleTest is Test {
     }
 
     function test_Jump_UpwardHeldThenContinuousUnfreeze() public {
-        DawnOracle o = _jumpOracle();
+        BlueOracle o = _jumpOracle();
         feed.setAnswer(140e8); // +40%, e.g. feed-first reverse split or a bad print
         assertTrue(o.isFrozen(), "pending jump reported");
         assertEq(o.price(), P100, "pending jump never served");
 
         vm.expectEmit(address(o));
-        emit DawnOracle.JumpRejected(140e36, P100);
+        emit BlueOracle.JumpRejected(140e36, P100);
         o.update();
         assertTrue(o.jumpFrozen());
         assertTrue(o.isFrozen());
@@ -577,7 +577,7 @@ contract DawnOracleTest is Test {
     }
 
     function test_Jump_FallBelowReferenceUnfreezes() public {
-        DawnOracle o = _jumpOracle();
+        BlueOracle o = _jumpOracle();
         feed.setAnswer(140e8);
         o.update();
         feed.setAnswer(60e8); // downward moves are accepted even from a jump freeze
@@ -588,7 +588,7 @@ contract DawnOracleTest is Test {
     }
 
     function test_Jump_DownwardNeverFrozen() public {
-        DawnOracle o = _jumpOracle();
+        BlueOracle o = _jumpOracle();
         feed.setAnswer(40e8); // -60% gap: must stay live so liquidations work
         assertFalse(o.isFrozen());
         assertEq(o.price(), 40e36);
@@ -598,11 +598,11 @@ contract DawnOracleTest is Test {
     }
 
     function test_Jump_ForceUnfreezeAfterMaxFreeze() public {
-        DawnOracle o = _jumpOracle();
+        BlueOracle o = _jumpOracle();
         feed.setAnswer(140e8);
         o.update();
         vm.prank(admin);
-        vm.expectRevert(DawnOracle.FreezeNotExpired.selector);
+        vm.expectRevert(BlueOracle.FreezeNotExpired.selector);
         o.forceUnfreeze();
         vm.warp(T0 + 12 hours + 1);
         feed.setAnswer(140e8);
@@ -614,7 +614,7 @@ contract DawnOracleTest is Test {
     }
 
     function test_Jump_SupersededByRegistryFreeze() public {
-        DawnOracle o = _jumpOracle();
+        BlueOracle o = _jumpOracle();
         feed.setAnswer(140e8);
         o.update();
         regStub.set(HALTED);
@@ -629,20 +629,20 @@ contract DawnOracleTest is Test {
     }
 
     function test_Jump_ConstructorValidation() public {
-        DawnOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
+        BlueOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
         c.jumpBandBps = 500; // must exceed the continuity band
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
         c.jumpBandBps = 1_000_001;
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
         c.jumpBandBps = 501;
-        new DawnOracle(c);
+        new BlueOracle(c);
     }
 
     /// Fuzz: with the breaker on, price() never exceeds the last good price by more than the band.
     function testFuzz_Jump_NeverServesAboveBand(uint256 answer, bool doUpdate) public {
-        DawnOracle o = _jumpOracle();
+        BlueOracle o = _jumpOracle();
         answer = bound(answer, 1, 1e12);
         feed.setAnswer(int256(answer));
         if (doUpdate) o.update();
@@ -655,9 +655,9 @@ contract DawnOracleTest is Test {
     /// must not lower the haircut: the calendar regime acts as a floor.
     function test_CalendarFloor_CorpActionBelowWeekend() public {
         RegimeRegistry reg = new RegimeRegistry(admin, address(this), 1 days, false);
-        DawnOracle.Config memory c = _cfg(address(feed), address(reg), address(stock), 18, true);
+        BlueOracle.Config memory c = _cfg(address(feed), address(reg), address(stock), 18, true);
         c.haircutsBps = [uint16(0), 400, 1000, 1500, 2500, 1000];
-        DawnOracle o = new DawnOracle(c);
+        BlueOracle o = new BlueOracle(c);
 
         vm.warp(1_795_280_400 + 1 weeks); // Sat Nov 28 12:00 ET
         feed.setAnswer(100e8);
@@ -670,7 +670,7 @@ contract DawnOracleTest is Test {
         assertEq(o.price(), 85e36, "still floored once frozen");
 
         c.haircutsBps = [uint16(0), 400, 1000, 900, 2500, 1000]; // WEEKEND below CLOSED still rejected
-        vm.expectRevert(DawnOracle.InvalidConfig.selector);
-        new DawnOracle(c);
+        vm.expectRevert(BlueOracle.InvalidConfig.selector);
+        new BlueOracle(c);
     }
 }

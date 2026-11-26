@@ -4,8 +4,8 @@
 //   close                                      repay all and withdraw all (best effort)
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { RealDawnClient, readEnv } from "../frontend/src/lib/dawn/real";
-import { WAD } from "../frontend/src/lib/dawn/types";
+import { RealBlueClient, readEnv } from "../frontend/src/lib/blue/real";
+import { WAD } from "../frontend/src/lib/blue/types";
 
 const txt = readFileSync(resolve(__dirname, "../frontend/.env.local"), "utf8");
 const env: Record<string, string> = {};
@@ -13,7 +13,7 @@ for (const l of txt.split("\n")) {
   const m = /^([A-Z0-9_]+)=(.*)$/.exec(l.trim());
   if (m) env[m[1]] = m[2];
 }
-const c = new RealDawnClient(readEnv(env));
+const c = new RealBlueClient(readEnv(env));
 
 async function snap() {
   const s = await c.getSnapshot();

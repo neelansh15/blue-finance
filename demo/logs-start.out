@@ -1,0 +1,5 @@
+anvil up (pid 11757), chain 56
+chain time warped to 1796137200
+liquidator callback: 0xD5C9e655a66aC1652f4daC3E92E8593A067e0245
+deployed: registry=0x2e39B31f6CbB0E71501a2B0c97f97458e5107638 oracle=0x5EAdf61cAD25c3afdeFF19A519171ccd12102691 router=0x343fB27D0334d6C6bD8Bc88BEb0EF3f969394bEf token=0x2cB923220Bdf5cB4f059dCd158272B2389C1229b market=0xb7308d9e098cbb72d01a3c52d43d5c7bb842ddb16488f46614ab2d48799dd1d3
+wrote protocol/deployments/56.json frontend/.env.local keepers/.env.anvil

@@ -1,6 +1,6 @@
-import { derivePosition, wadToNumber, type DawnSnapshot } from "../../../src/lib/dawn/client";
+import { derivePosition, wadToNumber, type BlueSnapshot } from "../../../src/lib/blue/client";
 
-export default function CorpActionBanner({ s }: { s: DawnSnapshot }) {
+export default function CorpActionBanner({ s }: { s: BlueSnapshot }) {
   const p = derivePosition(s);
   if (s.regime === "HALTED") {
     return (
