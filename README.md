@@ -1,6 +1,6 @@
 # Dawn
 
-Working name for a lending product for tokenized US stocks (RWAs) on BNB Chain, built for BNB Bangkok (Nov 25-27, 2026). Research lives as markdown files at the repo root. Edit freely.
+Working name for a lending product for tokenized US stocks (RWAs) on BNB Chain, built for BNB Bangkok (Nov 25-27, 2026). Research lives as markdown files at the repo root.
 
 ## Direction (draft)
 
@@ -14,4 +14,4 @@ Isolated-market lending for tokenized equities and RWAs, stablecoin borrow only 
 - [ideas-brainstorm.md](ideas-brainstorm.md): shortlist of ideas
 - [liquidity-protocol-ideas.md](liquidity-protocol-ideas.md): hooks and prop AMM research
 
-Imported Nov 26, 2026 from the wiki (wiki.superd.app, Public Programs > BNB Bangkok). The wiki copies are the older versions from now on; edit here.
+Compiled Nov 2026.
