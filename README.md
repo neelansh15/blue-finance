@@ -14,3 +14,7 @@ Isolated-market lending for tokenized equities and RWAs, stablecoin borrow only 
 - [architecture-v1.md](architecture-v1.md): architecture on top of unmodified Morpho Blue (splits, market hours, pause/whitelist, halts, dividends, ScaledUI)
 
 Compiled Nov 2026.
+
+## AI Risk Controller
+
+The standalone [AI Risk Controller](ai-risk-controller/README.md) provides a FastAPI backend for collateral risk, market sessions, recoverable liquidation value, lending recommendations and borrower stress simulation. Its end-to-end weekend demo uses explicitly simulated NVDA data and requires no API keys. It does not execute transactions or change the lending protocol.
