@@ -22,7 +22,6 @@ export async function readLiveState(client: PublicClient, account?: Address) {
       { ...controlsContract, functionName: "keeper" },
       { ...controlsContract, functionName: "signer" },
       { ...poolContract, functionName: "debtStock", args: [viewer] },
-      { ...dataProviderContract, functionName: "getReserveData", args: [BLUE.usdt] },
     ] }),
     client.multicall({ contracts: liveStocks.map(stock => ({
       ...oracleContract, functionName: "getAssetPrice", args: [stock.address],
@@ -46,7 +45,7 @@ export async function readLiveState(client: PublicClient, account?: Address) {
     } as const)) }),
   ]);
 
-  const [liquidity, caps, user, keeper, signer, debtStock, sharedReserve] = overview;
+  const [liquidity, caps, user, keeper, signer, debtStock] = overview;
   if (liquidity.status !== "success" || caps.status !== "success" ||
       keeper.status !== "success" || signer.status !== "success" ||
       debtStock.status !== "success" || balances.some(read => read.status !== "success") ||
@@ -57,12 +56,6 @@ export async function readLiveState(client: PublicClient, account?: Address) {
   return {
     liquidity: liquidity.result,
     caps: caps.result,
-    sharedReserve: sharedReserve.result ? {
-      supplied: sharedReserve.result[2],
-      borrowed: sharedReserve.result[4],
-      supplyRate: sharedReserve.result[5],
-      borrowRate: sharedReserve.result[6],
-    } : undefined,
     keeper: keeper.result,
     signer: signer.result,
     debtStock: debtStock.result,

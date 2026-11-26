@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import LiveApp from "../LiveApp";
+import RiskWorkspace from "./RiskWorkspace";
 
-export const metadata: Metadata = { title: "Pool risk | Blue Finance" };
-
-export default function Page() {
-  return <LiveApp view="risk" />;
-}
+export const metadata: Metadata = { title: "Advisory risk | Blue Finance" };
+export default function RiskPage() { return <RiskWorkspace />; }

@@ -19,7 +19,7 @@
 
 ### Working demo
 
-Run the frontend and open `/app` for the live pool. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, supply liquidity and configure the [keeper and eligibility service](keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). The borrower registers eligibility from the live app. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
+Run the frontend and open `/app` for the live pool. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, supply liquidity and configure the [keeper and eligibility service](keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). The restored frontend uses the manual operator flow while the eligibility proxy is being reintegrated. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
 
 Open `/app/simulator` for a pre-funded walkthrough of lending, borrowing, a halt and repayment without wallet transactions.
 

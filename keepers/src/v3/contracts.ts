@@ -1,5 +1,5 @@
 import { getAddress, parseAbi } from "viem";
-import deployment from "../../../frontend/src/lib/blue/bsc-mainnet.json";
+import deployment from "./bsc-mainnet.json";
 
 export const chainId = deployment.chainId;
 export const pool = getAddress(deployment.pool);

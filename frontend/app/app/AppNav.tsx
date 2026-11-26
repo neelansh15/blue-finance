@@ -8,10 +8,6 @@ import WalletButton from "./WalletButton";
 
 export default function AppNav() {
   const path = usePathname();
-  const simulator = path.startsWith("/app/simulator");
-  const preview = simulator || path.startsWith("/app/research");
-  const base = simulator ? "/app/simulator" : "/app";
-  const overview = path === base || path === `${base}/dashboard`;
 
   return (
     <header className="nav">
@@ -20,13 +16,16 @@ export default function AppNav() {
           <BrandLogo />
         </Link>
         <div className="app-nav-links">
-          <Link href={base} aria-current={overview ? "page" : undefined}>Overview</Link>
-          <Link href={`${base}/earn`} aria-current={path === `${base}/earn` ? "page" : undefined}>Earn</Link>
-          <Link href={`${base}/borrow`} aria-current={path === `${base}/borrow` ? "page" : undefined}>Borrow</Link>
-          <Link href={`${base}/simplified`} aria-current={path === `${base}/simplified` ? "page" : undefined}>Simplified</Link>
+          <Link href="/app" aria-current={path === "/app" ? "page" : undefined}>Onchain</Link>
+          <Link href="/app/simulator" aria-current={path === "/app/simulator" ? "page" : undefined}>Simulator</Link>
+          <Link href="/app/simplified" aria-current={path === "/app/simplified" ? "page" : undefined}>Simplified</Link>
+          <Link href="/app/dashboard" aria-current={path === "/app/dashboard" ? "page" : undefined}>Dashboard</Link>
+          <Link href="/app/earn" aria-current={path === "/app/earn" ? "page" : undefined}>Earn</Link>
+          <Link href="/app/borrow" aria-current={path === "/app/borrow" ? "page" : undefined}>Borrow</Link>
+          <Link href="/app/risk" aria-current={path === "/app/risk" ? "page" : undefined}>Risk</Link>
         </div>
         <div className="app-nav-actions">
-          <span className="app-demo-label app-nav-simulation">{preview ? "Simulation" : "BNB Mainnet"}</span>
+          <span className="app-demo-label app-nav-simulation">{path === "/app" ? "BNB Mainnet" : "Simulation"}</span>
           <ThemeToggle />
           <WalletButton />
         </div>

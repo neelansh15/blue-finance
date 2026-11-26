@@ -23,8 +23,8 @@ export default function Dashboard() {
           <div className="app-heading">
             <h1 id="dashboard-title">Your <em>dashboard.</em></h1>
             <div className="dashboard-actions">
-              <Link className="btn" href="/app/simulator/earn">Supply USDT</Link>
-              <Link className="btn dashboard-secondary" href="/app/simulator/borrow">Borrow USDT</Link>
+              <Link className="btn" href="/app/earn">Supply USDT</Link>
+              <Link className="btn dashboard-secondary" href="/app/borrow">Borrow USDT</Link>
             </div>
           </div>
           <dl className="app-summary app-summary-overview">
@@ -57,15 +57,15 @@ export default function Dashboard() {
                 </dl>
                 <div className="dashboard-position-actions">
                   {account.debt > 0 && (
-                    <Link href={`/app/simulator/borrow?market=${stock}&action=repay#manage-market`} aria-label={`Repay USDT borrowed against ${stock}`}>Repay</Link>
+                    <Link href={`/app/borrow?market=${stock}&action=repay#manage-market`} aria-label={`Repay USDT borrowed against ${stock}`}>Repay</Link>
                   )}
-                  <Link href={`/app/simulator/borrow?market=${stock}&action=borrow#manage-market`} aria-label={`Borrow USDT against ${stock}`}>Borrow</Link>
-                  <Link href={`/app/simulator/borrow?market=${stock}&action=deposit#manage-market`} aria-label={`Add ${stock} collateral`}>Add collateral</Link>
+                  <Link href={`/app/borrow?market=${stock}&action=borrow#manage-market`} aria-label={`Borrow USDT against ${stock}`}>Borrow</Link>
+                  <Link href={`/app/borrow?market=${stock}&action=deposit#manage-market`} aria-label={`Add ${stock} collateral`}>Add collateral</Link>
                 </div>
               </li>
             ) : (
               <li><p>No collateral or debt yet.</p><div className="dashboard-position-actions">
-                <Link href="/app/simulator/borrow?action=deposit#manage-market">Supply collateral</Link>
+                <Link href="/app/borrow?action=deposit#manage-market">Supply collateral</Link>
               </div></li>
             )}
           </ul>
@@ -86,13 +86,13 @@ export default function Dashboard() {
                   <div><dt>Utilisation</dt><dd>{percent(pool.utilisation, 1)}</dd></div>
                 </dl>
                 <div className="dashboard-position-actions">
-                  <Link href="/app/simulator/earn?action=lend#manage-market" aria-label="Supply USDT to the pool">Supply</Link>
-                  <Link href="/app/simulator/earn?action=redeem#manage-market" aria-label="Withdraw USDT from the pool">Withdraw</Link>
+                  <Link href="/app/earn?action=lend#manage-market" aria-label="Supply USDT to the pool">Supply</Link>
+                  <Link href="/app/earn?action=redeem#manage-market" aria-label="Withdraw USDT from the pool">Withdraw</Link>
                 </div>
               </li>
             ) : (
               <li><p>No USDT supplied yet.</p><div className="dashboard-position-actions">
-                <Link href="/app/simulator/earn#manage-market">Supply USDT</Link>
+                <Link href="/app/earn#manage-market">Supply USDT</Link>
               </div></li>
             )}
           </ul>
