@@ -10,5 +10,6 @@ Isolated-market lending for tokenized equities and RWAs, stablecoin borrow only 
 
 - [architecture-v0.md](architecture-v0.md): lending architecture draft
 - [idea-progression.md](idea-progression.md): how the idea evolved and why
+- [morpho-blue.md](morpho-blue.md): Morpho Blue research (market model, oracle, liquidation, vaults, tokenized-stock markets)
 
 Compiled Nov 2026.
