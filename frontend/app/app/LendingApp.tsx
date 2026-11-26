@@ -3,6 +3,8 @@
 import { useSearchParams } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { useDemoAccount } from "./DemoAccount";
+import RiskPanel from "./risk/RiskPanel";
+import { lendingPosition } from "../../src/lib/risk/adapter";
 import { health, money, quantity } from "./format";
 import TokenIcon from "../components/TokenIcon";
 import { ILLUSTRATIVE_HAIRCUT, REGIME_LABEL, type Regime } from "../components/regimes";
@@ -52,6 +54,7 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
   const amountField = useRef<HTMLInputElement>(null);
 
   const position = positions[market.id];
+  const riskPosition = lendingPosition(market, position);
   const isLender = mode === "earn";
   const definition = ACTIONS[action];
   const symbol = definition.collateral ? market.symbol : "USDT";
@@ -284,6 +287,10 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
           </div>
         </section>
       </div>
+      {!isLender && <details className="wrap risk-embedded">
+        <summary>Assess this position with the risk backend</summary>
+        <RiskPanel key={JSON.stringify(riskPosition)} position={riskPosition} />
+      </details>}
       <p className="wrap app-footnote">Sample rates and balances. Simulated actions reset on refresh.</p>
     </main>
   );

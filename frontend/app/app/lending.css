@@ -733,7 +733,7 @@
   display: none;
 }
 
-@media (max-width: 680px) {
+@media (max-width: 840px) {
   .app-nav-simulation {
     display: none;
   }
@@ -751,6 +751,7 @@
   .app-nav-links {
     order: 1;
     width: 100%;
+    overflow-x: auto;
   }
 
   .app-mobile-status {
@@ -807,4 +808,48 @@
   .app-positions dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.risk-workspace { padding-top: 28px; padding-bottom: 64px; }
+.risk-workspace select, .risk-controls select {
+  background: var(--blue-app-paper); color: var(--blue-app-ink); border: 1px solid var(--rule);
+  border-radius: 0; padding: 10px 12px; font: inherit; max-width: 100%;
+}
+.risk-panel { margin-top: 28px; border-top: 1px solid var(--rule); padding-top: 24px; }
+.risk-panel .app-section-heading { flex-wrap: wrap; gap: 8px; }
+.risk-panel button.btn { min-height: 44px; border: 1px solid var(--blue-app-blue); border-radius: 0; background: var(--blue-app-blue); color: var(--on-blue); cursor: pointer; }
+.risk-panel button.btn:hover { background: var(--blue-app-blue); }
+.risk-panel button.dashboard-secondary { background: var(--blue-app-paper); color: var(--blue-app-blue); }
+.risk-panel button:disabled { opacity: .65; cursor: wait; }
+.risk-panel h3 { font-size: 1.05rem; margin: 28px 0 12px; }
+.risk-intro, .risk-live > p, .risk-result > p { max-width: 76ch; line-height: 1.6; }
+.risk-account, .risk-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin: 24px 0; }
+.risk-account dt, .risk-metrics dt, .risk-audit dt { color: var(--blue-app-muted); font-size: .82rem; margin-bottom: 8px; }
+.risk-account dd, .risk-metrics dd, .risk-audit dd { margin: 0; overflow-wrap: anywhere; }
+.risk-metrics > div { padding: 16px 0; border-top: 1px solid var(--rule); }
+.risk-metrics dd { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.risk-metrics small { font-size: .85rem; color: var(--blue-app-muted); }
+.risk-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 24px 0; }
+.risk-controls .btn { margin: 0; }
+.risk-evidence-state { font-size: .85rem; font-weight: 600; }
+.risk-note, .risk-metrics dd.risk-note { font-size: .82rem; line-height: 1.6; color: var(--blue-app-muted); }
+.risk-table-scroll { overflow-x: auto; }
+.risk-table { border-collapse: collapse; width: 100%; text-align: left; font-size: .875rem; }
+.risk-table th, .risk-table td { border-bottom: 1px solid var(--rule); padding: 14px 16px 14px 0; }
+.risk-table th { font-weight: 500; }
+.risk-table td { font-variant-numeric: tabular-nums; }
+.risk-table caption { text-align: left; caption-side: bottom; color: var(--blue-app-muted); font-size: .8rem; padding: 12px 0; line-height: 1.6; }
+.risk-panel details { border-top: 1px solid var(--rule); padding: 18px 0; }
+.risk-panel summary, .risk-embedded > summary { cursor: pointer; font-size: .9rem; }
+.risk-panel li { line-height: 1.6; margin: 10px 0; }
+.risk-event { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.risk-event blockquote { margin: 12px 0; padding-left: 16px; border-left: 2px solid var(--rule); overflow-wrap: anywhere; line-height: 1.6; }
+.risk-audit > div { margin: 18px 0; }
+.risk-live { border-top: 1px solid var(--rule); margin-top: 24px; padding-top: 4px; }
+.risk-embedded { margin-top: 28px; margin-bottom: 28px; padding-top: 20px; border-top: 1px solid var(--rule); }
+@media (max-width: 700px) {
+  .risk-account, .risk-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .risk-controls { align-items: stretch; flex-direction: column; gap: 10px; }
+  .risk-controls .btn { align-self: flex-start; }
+  .risk-table { min-width: 520px; }
 }
