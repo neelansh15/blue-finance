@@ -1,128 +1,90 @@
-"use client";
+import { AnimatedValue } from "./AnimatedValue";
+import TokenIcon from "./TokenIcon";
+import { ILLUSTRATIVE_HAIRCUT } from "./regimes";
 
-import { useId, useState } from "react";
-import { ILLUSTRATIVE_HAIRCUT, REGIME_LABEL, REGIME_NOTE, type Regime } from "./regimes";
-
-// Illustrative mock position. Not real data, not protocol parameters.
+// Example position and the proposed liquidation LTV from architecture-v1, section 13.
 const COLLATERAL_UNITS = 50;
-const COLLATERAL_VALUE = 10_000; // USD, illustrative round number
-const DEBT = 3_600; // USDT, illustrative
-const LLTV = 0.625; // proposed LLTV for the demo market (architecture-v1, section 13)
+const COLLATERAL_VALUE = 10_000;
+const DEBT = 3_600;
+const LIQUIDATION_LTV = 0.625;
+const REGULAR_CEILING = COLLATERAL_VALUE * LIQUIDATION_LTV;
+const WEEKEND_HEALTH = (REGULAR_CEILING * (1 - ILLUSTRATIVE_HAIRCUT.weekend)) / DEBT;
+const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-const usd = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
-
-const OPTIONS: Regime[] = ["open", "extended", "closed", "weekend"];
-
-function metrics(r: Regime) {
-  const h = ILLUSTRATIVE_HAIRCUT[r];
-  const adjusted = COLLATERAL_VALUE * (1 - h);
-  const limit = adjusted * LLTV;
-  const health = limit / DEBT;
-  return { h, adjusted, limit, health, available: Math.max(0, limit - DEBT) };
+function amounts(haircut: number) {
+  const adjusted = COLLATERAL_VALUE * (1 - haircut);
+  const ceiling = adjusted * LIQUIDATION_LTV;
+  const reduction = REGULAR_CEILING - ceiling;
+  return {
+    adjusted: currency.format(adjusted),
+    ceiling: currency.format(ceiling),
+    health: `${(ceiling / DEBT).toFixed(2)}×`,
+    comparison: reduction >= 0.005
+      ? `−${currency.format(reduction)} vs. regular session`
+      : "Regular-session baseline",
+  };
 }
 
-export default function PositionPreview() {
-  const [regime, setRegime] = useState<Regime>("open");
-  const name = useId();
-  const m = metrics(regime);
-  const wk = metrics("weekend");
-  // Bar: share of borrow limit used by debt.
-  const used = Math.min(1, DEBT / m.limit);
-  const status = m.health >= 1.5 ? "healthy" : m.health >= 1.15 ? "caution" : "risk";
+export default function PositionPreview({
+  haircut,
+  animatedHaircut,
+  id,
+}: {
+  haircut: number;
+  animatedHaircut: number;
+  id: string;
+}) {
+  const actual = amounts(haircut);
+  const visual = amounts(animatedHaircut);
 
   return (
-    <div className="preview" aria-labelledby={`${name}-title`} role="group">
-      <div className="preview-head">
+    <div className="position" role="group" aria-labelledby={id}>
+      <header className="position-head">
         <div>
-          <p className="preview-kicker">Position simulator</p>
-          <h2 className="preview-title" id={`${name}-title`}>
+          <p>Example position</p>
+          <h3 id={id}>
             NVDAB <span aria-hidden="true">/</span>
             <span className="sr-only"> collateral, borrowing </span> USDT
-          </h2>
+          </h3>
         </div>
-        <span className={`pill pill-${regime}`} aria-live="polite">
-          <span className="pill-dot" aria-hidden="true" />
-          Market {REGIME_LABEL[regime].toLowerCase()}
-        </span>
-      </div>
+        <div className="position-icons">
+          <TokenIcon symbol="NVDAB" />
+          <TokenIcon symbol="USDT" />
+        </div>
+      </header>
 
-      <fieldset className="segmented">
-        <legend className="sr-only">Preview the position in a market regime</legend>
-        {OPTIONS.map((r) => (
-          <label key={r} className="segmented-opt">
-            <input
-              type="radio"
-              name={name}
-              value={r}
-              checked={regime === r}
-              onChange={() => setRegime(r)}
-            />
-            <span>{REGIME_LABEL[r]}</span>
-          </label>
-        ))}
-      </fieldset>
-
-      <dl className="preview-stats">
-        <div>
-          <dt>Collateral</dt>
-          <dd>
-            <span className="num">{COLLATERAL_UNITS.toFixed(2)}</span> <span className="unit">NVDAB</span>
-            <span className="sub num">{usd(COLLATERAL_VALUE)}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Regime haircut</dt>
-          <dd>
-            <span className="num">{(m.h * 100).toFixed(1)}%</span>
-            <span className="sub num">Priced at {usd(m.adjusted)}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Borrowed</dt>
-          <dd>
-            <span className="num">{DEBT.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>{" "}
-            <span className="unit">USDT</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Borrow limit</dt>
-          <dd>
-            <span className="num key">{usd(m.limit)}</span>
-            <span className="sub num">{usd(m.available)} available</span>
-          </dd>
-        </div>
+      <dl className="position-ceiling">
+        <dt>Illustrative borrowing ceiling</dt>
+        <dd className="num" aria-live="polite">
+          <AnimatedValue value={actual.ceiling}>{visual.ceiling}</AnimatedValue>
+        </dd>
+        <dd><AnimatedValue value={actual.comparison}>{visual.comparison}</AnimatedValue></dd>
       </dl>
 
-      <div className="health">
-        <div className="health-row">
-          <span>Health</span>
-          <span className={`health-val status-${status}`}>
-            <span className="num">{m.health.toFixed(2)}</span>
-            <span className="health-word">{status === "healthy" ? "Healthy" : status === "caution" ? "Caution" : "At risk"}</span>
-          </span>
+      <dl className="position-metrics">
+        <div>
+          <dt>Collateral · {COLLATERAL_UNITS} NVDAB</dt>
+          <dd className="num">{currency.format(COLLATERAL_VALUE)}</dd>
         </div>
-        <div
-          className="meter"
-          role="meter"
-          aria-label="Share of borrow limit used"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(used * 100)}
-          aria-valuetext={`${Math.round(used * 100)}% of borrow limit used`}
-        >
-          <span style={{ width: `${used * 100}%` }} />
+        <div>
+          <dt>Value after haircut</dt>
+          <dd className="num"><AnimatedValue value={actual.adjusted}>{visual.adjusted}</AnimatedValue></dd>
         </div>
-        <p className="health-foot">
-          <span>Weekend health</span>
-          <span className="num">{wk.health.toFixed(2)}</span>
-        </p>
-      </div>
-
-      <p className="preview-note">{REGIME_NOTE[regime]}</p>
-      <p className="illustrative">
-        <span className="illustrative-tag">Illustrative</span>
-        Simulated values. The proposed demo liquidation LTV is 62.5%.
+        <div>
+          <dt>Debt</dt>
+          <dd className="num">{DEBT.toLocaleString("en-US")} USDT</dd>
+        </div>
+        <div>
+          <dt>Liquidation health</dt>
+          <dd className="num"><AnimatedValue value={actual.health}>{visual.health}</AnimatedValue></dd>
+        </div>
+        <div>
+          <dt>Weekend health</dt>
+          <dd className="num">{WEEKEND_HEALTH.toFixed(2)}×</dd>
+        </div>
+      </dl>
+      <p className="position-note">
+        Example uses a {LIQUIDATION_LTV * 100}% liquidation LTV. Dawn’s router would cap new borrowing below this ceiling.
       </p>
     </div>
   );
