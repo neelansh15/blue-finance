@@ -149,12 +149,53 @@ forge test --no-match-path 'test/fork/*'    # offline only
 
 Last run Nov 26, 2026: 102 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, DawnOracle, DawnRouter, LiquidatorCallback, Morpho BNB fork, and the scenarios.
 
+## Parameters that need manual tuning
+
+Every value below is a **placeholder** until it is calibrated. Source: `protocol/script/DawnDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/dawn/params.ts`.
+
+### What `targetLTV` is
+
+Morpho liquidates at the LLTV (62.5%). If a borrower opened right at the LLTV on Friday, a regime flip to `WEEKEND` would cut the oracle price by the weekend haircut and put them underwater with no price move. So the router caps new borrowing at
+
+```
+targetLTV(regime) = LLTV x (1 - hMax) - margin
+hMax = largest haircut over OPEN, EXTENDED, CLOSED, WEEKEND   (HALTED and CORP_ACTION block borrowing instead)
+example: 62.5% x (1 - 15%) - 2% = 51.1%
+```
+
+A position opened at or under `targetLTV` survives any routine regime change without a price move. Cost: users borrow about 11 points less than the LLTV allows. `hMax` and `margin` are the two tuning knobs.
+
+### Parameter list
+
+| Parameter | Placeholder | Where | What it controls | How to tune |
+|---|---|---|---|---|
+| Haircut OPEN / EXTENDED / CLOSED / WEEKEND | 0 / 4 / 10 / 15 % | oracle (immutable per market) | Price cut applied in each regime | Gap-risk model: quantile of the stock's open-to-open gap for each closure type |
+| Haircut HALTED | 25% | oracle | Price cut during a halt | Historical post-halt move distribution. Currently above hMax, see limits |
+| Haircut CORP_ACTION | 10% | oracle | Price cut while a split or dividend settles | Typical feed lag around multiplier changes |
+| LLTV | 62.5% | Morpho market | Liquidation threshold | Must be enabled on Morpho. Pick with the haircuts so `targetLTV` stays useful |
+| Margin | 2% | router, adjustable by admin (max 50%) | Extra buffer under `LLTV x (1 - hMax)` | Intraday volatility on top of the gap |
+| Total borrow cap | set at deploy | router | Max market `totalBorrowAssets` | Liquidity depth, liquidator capacity |
+| Per-regime caps | set at deploy | router (guardian can only lower) | Max borrow per regime (0 disables) | Tighter in `CLOSED` and `WEEKEND` |
+| Eligibility attestation TTL | 15 min (hard max 1 h) | router | How long a signed approval lives | Compliance service latency |
+| Staleness per regime | 1h / 1h / 4h / 6h / 1h / 1h | oracle | Max feed age before the oracle falls back | Atlas heartbeat and market hours |
+| Continuity band | 5% | oracle, keepers | Max price move allowed when unfreezing | Typical split-adjusted noise |
+| Jump band | +30% | oracle | Upward move held as suspect (0 disables) | Largest legitimate one-block rise. Needs security review |
+| Max freeze | 12 h | oracle | Longest freeze before admin can force unfreeze | Operational response time |
+| Expired-freeze haircut | 10% | oracle | Extra cut once a freeze outlasts `maxFreeze` | Worst loss while frozen |
+| Max override | 3 days | registry | Longest keeper regime override | Ops coverage |
+| Keeper can clear | off | registry | Whether a keeper may clear an override | Trust in keeper |
+| Holidays and early closes | 2026-2027 | registry and keepers | Calendar exceptions | Update yearly |
+| Override duration and refresh margin | 1 h / 10 min | keepers | Length of a halt override and when to renew | Poll period |
+| Unknown-source timeout | 10 min | keepers | How long an unreachable source is tolerated before `HALTED` | Source reliability |
+| Poll interval | 30 s (Nasdaq 60 s) | keepers | Halt monitor frequency | API rate limits |
+
 ## Design choices and limits
 
 - **Unmodified Morpho Blue.** Dawn adds an oracle, a registry and a router around the canonical singleton instead of forking it. The cost: the router is bypassable, because anyone can borrow on Morpho directly. A wrapper token is the planned fix.
 - **Haircut gap.** The `HALTED` haircut (25%) exceeds the `targetLTV` hMax (15%), so a position at the limit can become liquidatable in a halt. This is documented by a test.
 - **Jump breaker.** The oracle's upward-jump freeze is new and needs a security review.
-- **Unverified.** Atlas feed units and read access, and live behaviour of `ASSET_PAUSED` on a real corporate action.
+- **Atlas adapter mismatch.** The real Atlas feed on BSC has `decimals()`, `latestAnswer()` and `latestRoundData()`, but `latestTimestamp()` reverts, which `DawnOracle` calls. The oracle needs a `latestRoundData` adapter before it can read real Atlas feeds.
+- **Unverified.** Per-share or per-token units of the feed, and live behaviour of `ASSET_PAUSED` on a real corporate action.
 - **Placeholders.** Haircuts, margin (2%), and continuity band (5%) are illustrative until a gap-risk model is calibrated.
 
 ## Documentation
