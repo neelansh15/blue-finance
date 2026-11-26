@@ -186,7 +186,7 @@ export default function RegimeExplorer() {
         </div>
         <p className="plot-note">
           {regime === "open" && h > 0
-            ? "The example begins reducing borrowing power 30 minutes before the regular session closes."
+            ? "This simulation starts reducing borrowing power 30 minutes before the close. The fork contracts change discounts at session boundaries."
             : REGIME_NOTE[regime]}
         </p>
       </div>

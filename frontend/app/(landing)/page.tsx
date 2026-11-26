@@ -26,19 +26,19 @@ const BSTOCK_EXAMPLES = [
 const STEPS = [
   {
     title: "Check eligibility",
-    body: "The eligibility service checks your address and issues a short-lived attestation for the Dawn router.",
+    body: "The fork demo uses a test signature. The planned eligibility service will check whether your wallet can borrow.",
   },
   {
     title: "Supply a tokenized stock",
-    body: "Post a bStock as collateral in an isolated Morpho Blue market on BNB Chain.",
+    body: "Deposit a tokenized stock as collateral in its own Morpho Blue market on BNB Chain.",
   },
   {
-    title: "Borrow stablecoins",
-    body: "The router checks how much you can borrow using the oracle price, market regime and a target loan-to-value ratio below the liquidation threshold.",
+    title: "Borrow USDT",
+    body: "Your loan limit depends on what Dawn values your collateral at during that session. The router sets the limit below Morpho’s liquidation threshold.",
   },
   {
     title: "Monitor your position",
-    body: "Track your borrow limit and weekend health so you can see how the position would hold up when the market closes.",
+    body: "Compare your loan’s distance from liquidation during regular hours and over the weekend.",
   },
 ];
 
@@ -46,32 +46,32 @@ const FEATURES = [
   {
     icon: <IconRegime />,
     title: "Adjustments for market hours",
-    body: "A regime registry tracks market hours, halts and corporate actions. The oracle starts adjusting collateral value before the close to reduce the impact of a sudden change.",
+    body: "Dawn discounts collateral more when the underlying stock market is closed. In the fork demo, those discounts change at session boundaries.",
   },
   {
     icon: <IconOracle />,
     title: "Conservative collateral pricing",
-    body: "Dawn’s oracle design uses the Atlas price feed and applies a regime-specific haircut. It can fall back to the last good price for a limited time if the feed fails.",
+    body: "If the feed is stale or unavailable, the oracle can use its last recorded price with an additional discount as that price ages. The router requires a fresh price for new loans.",
   },
   {
     icon: <IconSplit />,
-    title: "Stock splits and dividends",
-    body: "The oracle accounts for changes to the bStock display multiplier. That protects against false price jumps when splits or dividends change the displayed balance.",
+    title: "Stock splits",
+    body: "A 2-for-1 split can halve the displayed share price while doubling the number of shares shown. Dawn uses the token’s share multiplier and can hold the last recorded price while the feed and token update.",
   },
   {
     icon: <IconHalt />,
     title: "Trading halts and token pauses",
-    body: "Keepers monitor halt and pause signals. Dawn’s design cuts market caps, restricts new borrows through the router and can freeze the oracle price with a haircut.",
+    body: "A halt override blocks new loans through the router. The oracle can hold the last recorded price and apply a larger discount.",
   },
   {
     icon: <IconShield />,
     title: "Eligibility checks",
-    body: "The router requires a short-lived attestation based on location, sanctions screening and the bStock’s address-level compliance rules.",
+    body: "The router checks a short-lived signature before allowing a loan. The service that would verify borrower eligibility is planned.",
   },
   {
     icon: <IconSteps />,
-    title: "Partial liquidations",
-    body: "Opt-in PreLiquidation allows smaller partial closes before the market’s liquidation threshold. Morpho Blue liquidations remain permissionless.",
+    title: "Liquidation on Morpho",
+    body: "Morpho can liquidate a loan when debt exceeds the market’s limit for its collateral. Smaller, opt-in repayments before that threshold are planned through PreLiquidation.",
   },
 ];
 
@@ -80,7 +80,7 @@ const ROADMAP = [
     tag: "Now",
     title: "Prototype",
     items: [
-      "One NVDAB / USDT market on a testnet or fork",
+      "One mock stock / USDT market on a local BNB Chain fork",
       "Regime-based collateral pricing and borrow limits",
     ],
     now: true,
@@ -88,7 +88,7 @@ const ROADMAP = [
   {
     tag: "Phase 2",
     title: "Production controls",
-    items: ["Wrapped collateral and eligibility service", "Vault caps, halt monitoring and opt-in PreLiquidation"],
+    items: ["Wrapped collateral and eligibility service", "Vault caps, production halt monitoring and opt-in PreLiquidation"],
   },
   {
     tag: "Phase 3",
@@ -121,14 +121,14 @@ export default function Home() {
             <div className="hero-copy">
               <p className="eyebrow">Tokenized stock lending on BNB Chain</p>
               <h1 id="hero-title">
-                The stock market closes. <em>Collateral keeps trading.</em>
+                Borrow against tokenized stocks. <em>Keep your stock exposure.</em>
               </h1>
               <p className="lead">
-                Borrow stablecoins against tokenized US stocks. Dawn adjusts borrowing power to account for the
-                risk of price gaps when the underlying market reopens.
+                Dawn is building USDT loans backed by tokenized US stocks. When the stock market closes, Dawn lends
+                against a smaller share of your collateral value to account for price gaps at the next open.
               </p>
               <div className="ctas">
-                <a className="btn" href="#regimes">Explore the simulator <IconArrow /></a>
+                <a className="btn" href="#regimes">Try the loan simulator <IconArrow /></a>
                 <Link className="text-link" href="/docs/markets">Read the architecture <IconArrow /></Link>
               </div>
             </div>
@@ -171,8 +171,8 @@ export default function Home() {
         <section className="wrap market-demo" id="regimes" aria-labelledby="regimes-title" tabIndex={-1}>
           <div className="demo-heading">
             <div>
-              <h2 id="regimes-title">One position, through the trading week</h2>
-              <p>Choose a session or scrub the timeline to see what changes for the same loan.</p>
+              <h2 id="regimes-title">How a weekend changes your loan</h2>
+              <p>Pick a session or drag the timeline to see how the borrowing ceiling and liquidation health change for the same position.</p>
             </div>
             <span className="demo-caption">Illustrative · US Eastern</span>
           </div>
@@ -182,10 +182,9 @@ export default function Home() {
         <section className="wrap editorial-section" id="how" aria-labelledby="how-title" tabIndex={-1}>
           <div className="editorial-intro">
             <p className="eyebrow">How it works</p>
-            <h2 id="how-title">From stock collateral to a stablecoin loan</h2>
+            <h2 id="how-title">How a stock-backed USDT loan works</h2>
             <p>
-              Morpho Blue handles lending in isolated markets. Dawn adds a router and oracle to manage the risks
-              specific to tokenized stocks.
+              Lenders supply USDT and borrowers put up tokenized stock. Morpho handles the loan, while Dawn sets the collateral price and checks the borrowing limit.
             </p>
             <figure className="collateral-figure">
               <Image
@@ -223,10 +222,9 @@ export default function Home() {
           <div className="wrap editorial-section">
             <div className="editorial-intro">
               <p className="eyebrow">Risk design</p>
-              <h2 id="risk-title">Built for the way stocks trade</h2>
+              <h2 id="risk-title">What can change your loan limit</h2>
               <p>
-                Each collateral and loan pair has its own market. Dawn’s risk layer also accounts for events
-                that affect the token or the underlying stock.
+                US stock exchanges close while tokenized shares can keep trading. A price gap at reopening, a stock split or a trading halt can change how much a position can borrow.
               </p>
               <a className="text-link" href={`${REPO}/architecture-v1.md#12-per-risk-table`}>
                 Read the risk analysis <IconArrow />
