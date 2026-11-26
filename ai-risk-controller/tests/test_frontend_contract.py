@@ -21,6 +21,9 @@ def test_advisory_uses_explicit_account_and_one_evidence_snapshot():
             assert result['recommendation']['simulation']['total_positions'] == 1
             assert result['recommendation']['simulated'] is True
             assert result['recommendation']['approval_status'] == 'PENDING_REVIEW'
+            assert result['dawn_proposal']['executable'] is False
+            assert result['dawn_proposal']['evidence_hash'] == result['assessment']['evidence_hash']
+            assert result['dawn_proposal']['router']['regime_order'] == ['OPEN','EXTENDED','CLOSED','WEEKEND','HALTED','CORP_ACTION']
             assert len(result['simulations']) == 8
             assert all(s['positions'][0]['borrower_id'] == 'demo-position' for s in result['simulations'])
             empty = client.post('/risk/advisory/NVDA', json={'scenario': 'friday', 'borrowers': []}).json()

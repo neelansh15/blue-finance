@@ -110,6 +110,25 @@ export default function RiskPanel({ position }: { position: RiskPosition }) {
           </dl>
           {result.assessment.score.data_quality.length > 0 && <p className="app-message">Data quality: {result.assessment.score.data_quality.join("; ")}</p>}
           <p className="risk-note">Caps are total market policy targets, not your remaining borrowing allowance. Configured router limits are checked by the model; deployed contract limits must be verified separately.</p>
+          <details><summary>Dawn parameter proposal · review required</summary>
+            <p>Uncalibrated, unsigned proposal for admin review. Oracle settings and keeper controls below are declared configuration, not verified live contract reads. These values cannot be executed from this app.</p>
+            <dl className="risk-account">
+              <div><dt>Proposed router margin</dt><dd>{result.dawn_proposal.margin_bps} bps</dd></div>
+              <div><dt>Resulting router target LTV</dt><dd>{percent(result.dawn_proposal.target_ltv)}</dd></div>
+              <div><dt>Proposed total borrow cap</dt><dd>{usd(result.dawn_proposal.total_borrow_cap_usd)}</dd></div>
+            </dl>
+            <div className="risk-table-scroll"><table className="risk-table">
+              <caption>Profile: {result.dawn_proposal.profile}. The advisory model's current oracle freshness limit is {result.dawn_proposal.oracle_freshness_seconds} seconds; it can be stricter than the declared oracle setting.</caption>
+              <thead><tr><th scope="col">Dawn regime</th><th scope="col">Declared haircut</th><th scope="col">Declared staleness</th><th scope="col">Proposed borrow cap</th></tr></thead>
+              <tbody>{result.dawn_proposal.regimes.map(row => <tr key={row.regime}>
+                <th scope="row">{label(row.regime)}</th><td>{row.haircut_bps} bps</td><td>{row.staleness_seconds / 3600} h</td><td>{usd(row.proposed_cap_usd)}</td>
+              </tr>)}</tbody>
+            </table></div>
+            <p>Controls retained for manual review: {result.dawn_proposal.unchanged_controls.join("; ")}.</p>
+            <ul>{result.dawn_proposal.reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul>
+            <p><a download="dawn-parameter-proposal.json" href={`data:application/json;charset=utf-8,${encodeURIComponent(result.dawn_proposal.export_json)}`}>Download proposal for review</a></p>
+            <p className="risk-note">Configuration: {result.dawn_proposal.configuration_hash}<br />Proposal: {result.dawn_proposal.proposal_hash}</p>
+          </details>
           <h3>Borrower stress scenarios</h3>
           {result.recommendation.simulation.total_positions === 0 ? <p>No collateral position to stress-test. Your empty account was sent explicitly.</p> :
             <div className="risk-table-scroll"><table className="risk-table">

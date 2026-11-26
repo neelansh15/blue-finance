@@ -8,7 +8,7 @@
 ![Morpho Blue](https://img.shields.io/badge/built%20on-Morpho%20Blue%20(unmodified)-2470FF)
 ![Solidity](https://img.shields.io/badge/solidity-0.8.28-363636?logo=solidity&logoColor=white)
 ![Foundry](https://img.shields.io/badge/tests-Foundry-orange)
-![Forge tests](https://img.shields.io/badge/forge%20tests-102%20passing-brightgreen)
+![Forge tests](https://img.shields.io/badge/forge%20tests-116%20passing-brightgreen)
 ![Next.js](https://img.shields.io/badge/frontend-Next.js-000000?logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/keepers-TypeScript-3178C6?logo=typescript&logoColor=white)
 ![Status](https://img.shields.io/badge/status-hackathon%20demo-yellow)
@@ -143,7 +143,7 @@ Deploying to a local BNB fork: see [protocol/README.md](protocol/README.md).
 
 ```sh
 cd protocol
-forge test                                  # 102 tests, fork tests use the public BSC RPC
+forge test                                  # fork tests use the public BSC RPC
 forge test --no-match-path 'test/fork/*'    # offline only
 ```
 
@@ -192,7 +192,7 @@ Everything Dawn adds around Morpho: the oracle, the regime registry, the router 
 | Total borrow cap | set at deploy | router | Max market `totalBorrowAssets` | Liquidity depth, liquidator capacity |
 | Per-regime caps | set at deploy | router (guardian can only lower) | Max borrow per regime (0 disables) | Tighter in `CLOSED` and `WEEKEND` |
 | Eligibility attestation TTL | 15 min (hard max 1 h) | router | How long a signed approval lives | Compliance service latency |
-| Staleness per regime | 1h / 1h / 4h / 6h / 1h / 1h | oracle | Max feed age before the oracle falls back | Atlas heartbeat and market hours |
+| Staleness per regime | mock: 1h / 1h / 4h / 6h / 1h / 1h; real Atlas: OPEN/EXTENDED 2h | oracle | Max feed age before the oracle falls back | Atlas heartbeat and market hours |
 | Continuity band | 5% | oracle, keepers | Max price move allowed when unfreezing | Typical split-adjusted noise |
 | Jump band | +30% | oracle | Upward move held as suspect (0 disables) | Largest legitimate one-block rise. Needs security review |
 | Max freeze | 12 h | oracle | Longest freeze before admin can force unfreeze | Operational response time |
@@ -210,7 +210,7 @@ Everything Dawn adds around Morpho: the oracle, the regime registry, the router 
 - **Haircut gap.** The `HALTED` haircut (25%) exceeds the `targetLTV` hMax (15%), so a position at the limit can become liquidatable in a halt. This is documented by a test.
 - **Jump breaker.** The oracle's upward-jump freeze is new and needs a security review.
 - **Atlas adapter.** The real Atlas feeds on BSC revert on `latestTimestamp()`, so `DawnOracle` reads them through `latestRoundData()`. The oracle change needs an Opus-level security review.
-- **Unverified.** Per-share or per-token units of the feed, and live behaviour of `ASSET_PAUSED` on a real corporate action.
+- **Units and corporate actions.** Atlas probes support per-raw-token units (see protocol/README.md). Feed/multiplier ordering around corporate actions and live `ASSET_PAUSED` behaviour still need verification.
 - **Placeholders.** Haircuts, margin (2%), and continuity band (5%) are illustrative until a gap-risk model is calibrated.
 
 ## Documentation
@@ -221,6 +221,10 @@ Everything Dawn adds around Morpho: the oracle, the regime registry, the router 
 - [reference-lista-zona.md](reference-lista-zona.md): notes on Lista and Zona
 - [idea-progression.md](idea-progression.md) and [architecture-v0.md](architecture-v0.md): earlier drafts
 - [protocol/INTERFACES.md](protocol/INTERFACES.md): shared contract names
+
+## Advisory risk coverage
+
+The off-chain controller now produces review-only Dawn margin and six-regime borrowing-cap proposals. Oracle haircuts, freshness, freeze controls, eligibility TTL and keeper controls are included as declared settings for review, not automatically tuned. Settings are unverified against deployments and remain uncalibrated. See [the requirement-by-requirement coverage](docs/risk-parameter-coverage.md) and [controller configuration](ai-risk-controller/README.md#dawn-parameter-proposals). Supply-cap advice requires a separate vault/wrapper; it is not enforced by DawnRouter. No proposal executes a transaction.
 
 ## Roadmap
 

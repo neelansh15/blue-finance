@@ -18,6 +18,7 @@ class Policy(Model):
     min_history_points: int = Field(default=20, ge=3)
     history_max_age_hours: Positive = 120
     oracle_max_age_seconds: Positive = 300
+    oracle_max_age_by_regime: dict[str, Positive] | None = None
     market_max_age_seconds: Positive = 300
     max_price_divergence: Ratio = .10
     volatility_stress_z: Positive = 2.33
@@ -45,6 +46,8 @@ class Policy(Model):
 
     @model_validator(mode="after")
     def valid_policy(self):
+        if self.oracle_max_age_by_regime is not None and set(self.oracle_max_age_by_regime) != {'OPEN', 'EXTENDED', 'CLOSED', 'WEEKEND', 'HALTED', 'CORP_ACTION'}:
+            raise ValueError('Per-regime oracle freshness requires all six Dawn regimes')
         if set(self.weights) != {"volatility", "liquidity", "issuer", "oracle", "concentration"}:
             raise ValueError("Exactly five known risk weights are required")
         if abs(sum(self.weights.values()) - 1) > 1e-9:

@@ -2,6 +2,8 @@
 // None of these haircuts are protocol parameters. Real values would come from
 // the gap-quantile pipeline described in architecture-v1.md, section 11.
 
+import { DAWN_PARAMS } from "../../src/lib/dawn/params";
+
 export type Regime = "open" | "extended" | "closed" | "weekend";
 
 export const REGIME_LABEL: Record<Regime, string> = {
@@ -15,15 +17,15 @@ export const REGIME_NOTE: Record<Regime, string> = {
   open: "Regular US session. Full borrowing power.",
   extended: "Pre-market or after-hours. Thinner primary price discovery, small haircut.",
   closed: "Overnight. The token still trades, the stock does not. Larger haircut.",
-  weekend: "No primary market until Monday pre-market. Largest routine haircut.",
+  weekend: "Friday 20:00 to Sunday 20:00 ET. Largest routine haircut.",
 };
 
 /** Illustrative haircut per regime (fraction of collateral value). */
 export const ILLUSTRATIVE_HAIRCUT: Record<Regime, number> = {
-  open: 0,
-  extended: 0.04,
-  closed: 0.1,
-  weekend: 0.15,
+  open: DAWN_PARAMS.haircut.OPEN,
+  extended: DAWN_PARAMS.haircut.EXTENDED,
+  closed: DAWN_PARAMS.haircut.CLOSED,
+  weekend: DAWN_PARAMS.haircut.WEEKEND,
 };
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -37,9 +39,8 @@ export function regimeAt(step: number): Regime {
   const day = Math.floor(step / STEPS_PER_DAY); // 0 = Mon
   const t = (step % STEPS_PER_DAY) / 2; // hour of day, 0..23.5
   const weekday = day <= 4;
-  if (!weekday) return "weekend";
+  if (!weekday) return day === 6 && t >= 20 ? "closed" : "weekend";
   if (day === 4 && t >= 20) return "weekend"; // Friday evening onward
-  if (day === 0 && t < 4) return "weekend"; // until Monday pre-market
   if (t >= 9.5 && t < 16) return "open";
   if ((t >= 4 && t < 9.5) || (t >= 16 && t < 20)) return "extended";
   return "closed";

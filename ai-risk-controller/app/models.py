@@ -1,6 +1,7 @@
 """Validated service contracts. Money is USD; quantities are raw normalized tokens."""
 from datetime import datetime
 from enum import StrEnum
+import math
 from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
@@ -54,13 +55,23 @@ class OracleObservation(Model):
     published_at: AwareDatetime | None = None
     basis_risk: Ratio = 0
     smoothing_lag_seconds: NonNegative = 0
+    price_unit: Literal['PER_NORMALIZED_TOKEN', 'PER_RAW_TOKEN'] = 'PER_NORMALIZED_TOKEN'
+    ui_multiplier: Annotated[float, Field(ge=1e-9, le=1e9)] | None = None
     source: Source
 
     @model_validator(mode="after")
     def publication_order(self):
+        if self.price_unit == 'PER_RAW_TOKEN' and self.ui_multiplier is None:
+            raise ValueError('Raw-token oracle prices require an explicit UI multiplier')
+        if self.price is not None and (not math.isfinite(self.normalized_price) or self.normalized_price <= 0):
+            raise ValueError('Normalized oracle price must be finite and positive')
         if self.observed_at and self.published_at and self.observed_at > self.published_at:
             raise ValueError("Observation cannot postdate publication")
         return self
+
+    @property
+    def normalized_price(self):
+        return self.price / self.ui_multiplier if self.price is not None and self.price_unit == 'PER_RAW_TOKEN' else self.price
 
 
 class MarketData(Model):

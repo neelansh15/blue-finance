@@ -28,7 +28,7 @@ def simulate(assessment: Assessment, snapshot: Snapshot, borrowers: list[Borrowe
     total_quantity = sum(b.collateral_quantity for b in borrowers)
     _, issuer_haircut, _ = issuer_risk(a.events, p)
     base_session = adjustment(a.session, p)
-    base_oracle_price = snapshot.oracle.price or snapshot.market.underlying_price
+    base_oracle_price = snapshot.oracle.normalized_price or snapshot.market.underlying_price
     market_age = ((a.as_of - snapshot.market.market_observed_at).total_seconds()
                   if snapshot.market.market_observed_at else float("inf"))
     base_liquidity = 0 if market_age > p.market_max_age_seconds else 1

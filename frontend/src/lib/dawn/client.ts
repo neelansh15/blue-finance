@@ -1,4 +1,4 @@
-import { ILLUSTRATIVE_HAIRCUT } from "../../../app/components/regimes";
+import { DAWN_PARAMS } from "./params";
 import {
   derivePosition, liquidationOutcome, numberToWad, validateBorrow, wadToNumber,
   type DawnSnapshot, type Regime,
@@ -34,17 +34,8 @@ function startingSnapshot(): DawnSnapshot {
     symbol: "NVDAb",
     loanSymbol: "USDT",
     params: {
-      lltv: 0.625,
-      margin: 0.02,
-      haircut: {
-        OPEN: ILLUSTRATIVE_HAIRCUT.open,
-        EXTENDED: ILLUSTRATIVE_HAIRCUT.extended,
-        CLOSED: ILLUSTRATIVE_HAIRCUT.closed,
-        WEEKEND: ILLUSTRATIVE_HAIRCUT.weekend,
-        HALTED: ILLUSTRATIVE_HAIRCUT.weekend,
-        CORP_ACTION: ILLUSTRATIVE_HAIRCUT.weekend,
-      },
-      continuityBand: 0.05,
+      ...DAWN_PARAMS,
+      haircut: { ...DAWN_PARAMS.haircut },
     },
     regime: "OPEN",
     feedPricePerUI: 200,
@@ -53,6 +44,8 @@ function startingSnapshot(): DawnSnapshot {
     debt: 700,
     pendingMultiplier: null,
     frozenPricePerRaw: null,
+    calendarRegime: "OPEN",
+    frozenHaircut: null,
   };
 }
 
@@ -73,6 +66,8 @@ export function createDawnClient(): DawnClient {
       regime,
       pendingMultiplier,
       frozenPricePerRaw: specialRegime(regime) ? derivePosition(snapshot).oracle.pricePerRaw : null,
+      calendarRegime: specialRegime(regime) ? snapshot.calendarRegime ?? "OPEN" : regime as DawnSnapshot["calendarRegime"],
+      frozenHaircut: specialRegime(regime) ? Math.max(snapshot.frozenHaircut ?? 0, snapshot.params.haircut[regime]) : null,
     });
   }
 

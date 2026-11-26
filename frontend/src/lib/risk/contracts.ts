@@ -38,6 +38,25 @@ function simulation(value: unknown) {
   };
 }
 
+const DAWN_REGIMES = ["OPEN", "EXTENDED", "CLOSED", "WEEKEND", "HALTED", "CORP_ACTION"] as const;
+function dawnProposal(value: unknown, assessment: Record<string, unknown>, recommendation: Record<string, unknown>) {
+  const d = object(value), router = object(d.router), config = object(d.configured);
+  if (d.evidence_hash !== assessment.evidence_hash || d.recommendation_id !== recommendation.recommendation_id ||
+      d.expires_at !== recommendation.expires_at || d.asset !== assessment.asset || d.executable !== false ||
+      d.approval_required !== true || d.approval_status !== "PENDING_REVIEW" || d.calibration_status !== "UNCALIBRATED" ||
+      d.signing_status !== "UNSIGNED" || JSON.stringify(router.regime_order) !== JSON.stringify(DAWN_REGIMES)) return invalid();
+  const caps = object(router.regime_caps_usd), haircuts = object(config.haircuts_bps), stale = object(config.staleness_seconds);
+  return { margin_bps: number(router.margin_bps, 5000), target_ltv: number(router.target_ltv, 1),
+    total_borrow_cap_usd: number(router.total_borrow_cap_usd), profile: text(config.profile),
+    oracle_freshness_seconds: number(d.advisory_oracle_max_age_seconds),
+    regimes: DAWN_REGIMES.map(regime => ({ regime, haircut_bps: number(haircuts[regime], 5000),
+      staleness_seconds: number(stale[regime]), proposed_cap_usd: number(caps[regime]) })),
+    unchanged_controls: list(d.unchanged_controls, text), reasons: list(d.reasons, text),
+    configuration_hash: text(d.configuration_hash), proposal_hash: text(d.proposal_hash),
+    export_json: JSON.stringify(d, null, 2),
+  };
+}
+
 export function parseAdvisory(value: unknown) {
   const root = object(value), a = object(root.assessment), r = object(root.recommendation);
   const score = object(a.score), session = object(a.session), recovery = object(a.recovery), oracle = object(a.oracle);
@@ -68,6 +87,7 @@ export function parseAdvisory(value: unknown) {
       reasoning: list(r.reasoning, text), simulation: simulation(r.simulation),
     },
     simulations: list(root.simulations, simulation),
+    dawn_proposal: dawnProposal(root.dawn_proposal, a, r),
   };
 }
 export type Advisory = ReturnType<typeof parseAdvisory>;

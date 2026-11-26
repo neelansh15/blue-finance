@@ -80,7 +80,8 @@ class RiskService:
             quality.append("Provider reports degraded market data")
         vol = historical_volatility(prices) if not any("history" in q.lower() or "cadence" in q for q in quality) else None
         session = detect_session(m.as_of, p, halted=m.halted, degraded=m.data_degraded or market_stale)
-        oracle_health = assess_oracle(oracle, m.as_of, p)
+        freshness = (p.oracle_max_age_by_regime or {}).get(session.protocol_regime, p.oracle_max_age_seconds)
+        oracle_health = assess_oracle(oracle, m.as_of, p, freshness)
         if not oracle_health.available:
             quality.append("Oracle observation unavailable")
         events = self.agent.analyse(snapshot.asset, snapshot.documents)
@@ -95,9 +96,10 @@ class RiskService:
                                     evidence=f"observed_at={oracle.observed_at}; published_at={oracle.published_at}",
                                     simulated=oracle.source.simulated))
         token_mid = (m.token_bid + m.token_ask) / 2
-        reference = min(m.underlying_price, token_mid, oracle.price or m.underlying_price)
+        oracle_price = oracle.normalized_price
+        reference = min(m.underlying_price, token_mid, oracle_price or m.underlying_price)
         token_divergence = price_divergence(token_mid, m.underlying_price)
-        oracle_divergence = price_divergence(oracle.price, reference) if oracle.price else 1
+        oracle_divergence = price_divergence(oracle_price, reference) if oracle_price else 1
         if max(token_divergence, oracle_divergence) > p.max_price_divergence:
             quality.append("Oracle/token reference divergence exceeds policy tolerance")
         oracle_health.risk_score = max(oracle_health.risk_score, min(100, oracle_divergence * 500))
@@ -107,7 +109,7 @@ class RiskService:
                           depth_usd=0 if market_stale else market_depth(m.bids),
                           expected_liquidation_slippage=execution.slippage, executable_fraction=execution.fraction,
                           price_divergence=token_divergence, oracle_price_divergence=oracle_divergence,
-                          reference_to_protocol_price=min(1, reference / oracle.price) if oracle.price else 0,
+                          reference_to_protocol_price=min(1, reference / oracle_price) if oracle_price else 0,
                           liquidity_deterioration=deterioration(m))
         issuer_score, issuer_haircut, _ = issuer_risk(events, p)
         score = score_risk(metrics, issuer_score, oracle_health, m.concentration, quality, p)

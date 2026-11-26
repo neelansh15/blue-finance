@@ -1,6 +1,6 @@
 # Dawn Finance frontend
 
-Next.js (App Router, TypeScript) landing page for the Dawn Finance draft. Static content, no backend.
+Next.js (App Router, TypeScript) landing page, lending demo and optional advisory risk backend integration for Dawn Finance.
 
 ```
 npm install
@@ -46,3 +46,7 @@ Validation:
 npm test
 npm run build
 ```
+
+Dawn placeholder parameters now live in `src/lib/dawn/params.ts`. The demo uses the README's HALTED 25% / CORP_ACTION 10% values and computes hMax from the four routine regimes only. Calendar and freeze floors prevent a lower corporate-action haircut from relaxing an existing weekend/halt freeze. The NVDAb lending ticket uses the same 51.125% default router ceiling.
+
+“Dawn parameter proposal” shows the proposed router margin and six borrowing caps alongside declared oracle haircuts/staleness and retained controls. Downloadable JSON is an audit/review artifact, not executable calldata. All values remain uncalibrated; declared deployment settings and the effective advisory freshness policy are shown separately.

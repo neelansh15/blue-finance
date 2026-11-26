@@ -1,10 +1,11 @@
 import { ILLUSTRATIVE_HAIRCUT, type Regime } from "../components/regimes";
+import { targetLtv } from "../../src/lib/dawn/params";
 
 export const TOKENS_PER_UNIT = 10_000;
 export const CENTS_PER_USDT = 100;
 
 export const MARKETS = [
-  { id: "NVDAB", symbol: "NVDAb", name: "NVIDIA", price: 20_000, maxLtv: 0.50, liquidationLtv: 0.625, liquidity: 120_000_000, borrowApr: 5.2, supplyApr: 3.1, balance: 40 * TOKENS_PER_UNIT },
+  { id: "NVDAB", symbol: "NVDAb", name: "NVIDIA", price: 20_000, maxLtv: targetLtv(), liquidationLtv: 0.625, liquidity: 120_000_000, borrowApr: 5.2, supplyApr: 3.1, balance: 40 * TOKENS_PER_UNIT },
   { id: "QQQB", symbol: "QQQb", name: "Invesco QQQ", price: 51_000, maxLtv: 0.57, liquidationLtv: 0.70, liquidity: 85_000_000, borrowApr: 4.4, supplyApr: 2.6, balance: 20 * TOKENS_PER_UNIT },
   { id: "SPCXB", symbol: "SPCXb", name: "SpaceX", price: 13_000, maxLtv: 0.44, liquidationLtv: 0.55, liquidity: 42_000_000, borrowApr: 7.1, supplyApr: 4.2, balance: 60 * TOKENS_PER_UNIT },
 ] as const;

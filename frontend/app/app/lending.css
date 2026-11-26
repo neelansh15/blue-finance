@@ -836,6 +836,7 @@
 .risk-controls .btn { margin: 0; }
 .risk-evidence-state { font-size: .85rem; font-weight: 600; }
 .risk-note, .risk-metrics dd.risk-note { font-size: .82rem; line-height: 1.6; color: var(--secondary); }
+.risk-panel .risk-note { overflow-wrap: anywhere; }
 .risk-table-scroll { overflow-x: auto; }
 .risk-table { border-collapse: collapse; width: 100%; text-align: left; font-size: .875rem; }
 .risk-table th, .risk-table td { border-bottom: 1px solid var(--rule); padding: 14px 16px 14px 0; }

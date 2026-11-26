@@ -13,6 +13,7 @@ from app.integrations.market_status import LiveMarketStatusProvider
 from app.agents.issuer_agent import IssuerAgent, OpenAICompatibleProvider
 from app.api.risk import router
 from app.config import load_policy
+from app.dawn import load_dawn_config
 from app.models import Model, SimulateRequest
 from app.services.risk_service import RiskService, UnsupportedAsset
 from app.services.store import AuditStore
@@ -61,6 +62,7 @@ def create_app(injected_service: RiskService | None = None, status_provider: Liv
                 raise ValueError("Unknown ISSUER_PROVIDER")
             app.state.service = RiskService(load_policy(), AuditStore(os.getenv("RISK_DB_PATH", "risk.sqlite3")), agent=agent)
         app.state.routing_policy = load_routing_policy()
+        app.state.dawn_config = load_dawn_config()
         app.state.market_status = status_provider or LiveMarketStatusProvider(app.state.service.store)
         interval = float(os.getenv("RISK_POLL_SECONDS", "0"))
         if interval != 0 and (not 10 <= interval <= 86400):

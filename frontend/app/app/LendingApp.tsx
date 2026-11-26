@@ -278,7 +278,7 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
                 {!isLender && (
                   <>
                     <div><dt>Weekend health{canSubmit && " after action"}</dt><dd>{health(weekendHealth)}</dd></div>
-                    <div><dt>Target / liquidation LTV</dt><dd>{(market.maxLtv * 100).toFixed(0)}% / {(market.liquidationLtv * 100).toLocaleString("en-US")}%</dd></div>
+                    <div><dt>Target / liquidation LTV</dt><dd>{(market.maxLtv * 100).toFixed(3)}% / {(market.liquidationLtv * 100).toLocaleString("en-US")}%</dd></div>
                   </>
                 )}
               </dl>

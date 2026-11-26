@@ -40,5 +40,6 @@
   "issuer_restriction_haircut": 0.25,
   "near_close_minutes": 60.0,
   "router_hmax": 0.15,
-  "router_margin": 0.02
+  "router_margin": 0.02,
+  "oracle_max_age_by_regime": null
 }
