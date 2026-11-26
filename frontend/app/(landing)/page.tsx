@@ -4,6 +4,7 @@ import RegimeExplorer from "../components/RegimeExplorer";
 import SiteNav from "../components/SiteNav";
 import BrandLogo from "../components/BrandLogo";
 import TokenIcon from "../components/TokenIcon";
+import BStockPrices from "../components/BStockPrices";
 import {
   IconArrow,
   IconDoc,
@@ -16,12 +17,6 @@ import {
 } from "../components/Icons";
 
 const REPO = "https://github.com/neelansh15/blue-finance/blob/main";
-
-const BSTOCK_EXAMPLES = [
-  { name: "NVIDIA", symbol: "NVDAB" },
-  { name: "Tesla", symbol: "TSLAB" },
-  { name: "Apple", symbol: "AAPLB" },
-] as const;
 
 const STEPS = [
   {
@@ -153,17 +148,7 @@ export default function Home() {
                   </div>
                 </div>
               </figure>
-              <div className="stock-strip">
-                <p id="stock-examples">Examples of bStocks</p>
-                <ul aria-labelledby="stock-examples">
-                  {BSTOCK_EXAMPLES.map(({ name, symbol }) => (
-                    <li key={symbol}>
-                      <TokenIcon symbol={symbol} />
-                      <span><strong>{name}</strong><small>{symbol}</small></span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <BStockPrices />
             </div>
           </div>
         </section>
