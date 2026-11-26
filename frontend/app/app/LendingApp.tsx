@@ -211,12 +211,10 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
 
           <div className="app-ticket-body">
             <form onSubmit={submit}>
-              <fieldset className="market-action-picker">
+              <fieldset className="market-action-picker app-action-rail">
                 <legend className="sr-only">{isLender ? "Earn action" : "Borrow market action"}</legend>
                 {groups.map(group => (
-                  <div className={group.label ? "market-action-pair market-action-pair-labeled" : "market-action-pair"}
-                    key={group.label ?? "earn"}>
-                    {group.label && <span className="market-action-label" aria-hidden="true">{group.label}</span>}
+                  <div className="market-action-pair" key={group.label ?? "earn"}>
                     {group.actions.map(next => (
                       <label key={next}>
                         <input type="radio" name="market-action" value={next} checked={action === next}

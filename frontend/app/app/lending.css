@@ -85,22 +85,19 @@
 }
 
 .app-session {
-  width: min(100%, 380px);
-  gap: 6px;
-  padding: 8px;
-  background: var(--paper);
+  width: min(100%, 344px);
 }
 
 .app-session-head {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding-inline: 4px;
+  margin-bottom: 2px;
 }
 
 .app-session-options {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  justify-content: space-between;
   gap: 4px;
 }
 
@@ -402,30 +399,30 @@
 }
 
 .market-action-picker {
-  display: grid;
-  gap: 4px;
   min-inline-size: 0;
   margin: 0;
-  padding: 4px;
-  border: 1px solid var(--rule-strong);
-  background: var(--sheet);
+  padding: 0;
+  border: 0;
+}
+
+.app-action-rail {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 1.4vw, 14px);
 }
 
 .market-action-pair {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.market-action-pair-labeled {
-  grid-template-columns: 64px repeat(2, minmax(0, 1fr));
+  display: flex;
   align-items: center;
+  gap: clamp(2px, 0.6vw, 8px);
 }
 
-.market-action-label {
-  padding-inline: 5px;
-  color: var(--secondary);
-  font-size: 0.75rem;
+.market-action-pair + .market-action-pair::before {
+  content: "";
+  inline-size: 1px;
+  block-size: 16px;
+  margin-inline-end: clamp(2px, 0.6vw, 8px);
+  background: var(--rule-strong);
 }
 
 .market-action-picker label {
@@ -445,20 +442,28 @@
 .market-action-picker label span {
   display: grid;
   place-items: center;
+  min-width: 44px;
   min-height: 44px;
-  padding-inline: 8px;
-  border: 1px solid transparent;
+  padding-inline: clamp(4px, 0.8vw, 10px);
+  font-size: 0.875rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.market-action-picker input:hover + span {
-  border-color: var(--rule-strong);
-}
-
+.market-action-picker input:hover + span,
 .market-action-picker input:checked + span {
-  border-color: var(--blue);
-  background: var(--blue);
-  color: var(--on-blue);
+  color: var(--blue);
+}
+
+.market-action-picker input:checked + span::after {
+  content: "";
+  position: absolute;
+  inset-block-end: 3px;
+  inset-inline-start: 50%;
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  transform: translateX(-50%);
 }
 
 .market-action-picker input:focus-visible + span {
@@ -611,12 +616,6 @@
 @media (max-width: 620px), (min-width: 921px) and (max-width: 1060px) {
   .app-market-ledger .app-market-liquidity {
     display: none;
-  }
-}
-
-@media (max-width: 410px) {
-  .app-session-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
