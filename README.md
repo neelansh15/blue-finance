@@ -1,6 +1,6 @@
-# Dawn
+# Dawn Finance
 
-Working name for a lending product for tokenized US stocks (RWAs) on BNB Chain, built for BNB Bangkok (Nov 25-27, 2026). Research lives as markdown files at the repo root.
+Dawn Finance is the working name for a lending product for tokenized US stocks (RWAs) on BNB Chain, built for BNB Bangkok (Nov 25-27, 2026). Research lives as markdown files at the repo root.
 
 ## Direction (draft)
 
