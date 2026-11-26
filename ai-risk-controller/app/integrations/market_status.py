@@ -2,7 +2,8 @@
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from threading import RLock
-from typing import Any, Literal
+import subprocess
+from typing import Any, Callable, Literal
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
@@ -23,6 +24,7 @@ Status = Literal['OPEN', 'CLOSED', 'PRE_MARKET', 'AFTER_HOURS', 'HALTED', 'PAUSE
 class StatusObservation(Model):
     status: Status = 'UNKNOWN'
     source: str
+    http_status: int | None = None
     fetched_at: AwareDatetime
     published_at: AwareDatetime | None = None
     detail: str = ''
@@ -99,17 +101,55 @@ def parse_bstock(body: dict) -> tuple[Status, dict]:
     return status, data
 
 
+def fetch_nasdaq_market() -> httpx.Response:
+    """Use the verified system HTTP client for Nasdaq's public website JSON.
+
+    Fixed HTTPS URL; no shell, credentials, redirects, TLS override or browser
+    impersonation. Bound the subprocess time and response size. Docker installs curl.
+    """
+    try:
+        result = subprocess.run([
+            'curl', '-q', '--http1.1', '--silent', '--show-error', '--proto', '=https',
+            '--connect-timeout', '5', '--max-time', '10', '--max-filesize', '2000000',
+            '--user-agent', 'DawnFinance/0.1', '--write-out', '\n%{http_code}', NASDAQ_MARKET,
+        ], capture_output=True, timeout=12, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise httpx.TransportError('Nasdaq curl transport unavailable or timed out') from exc
+    if result.returncode != 0:
+        raise httpx.TransportError(f'Nasdaq curl transport failed (exit {result.returncode})')
+    try:
+        body, code = result.stdout.rsplit(b'\n', 1)
+        if len(body) > 2000000:
+            raise ValueError('Oversize Nasdaq response')
+        return httpx.Response(int(code), content=body, request=httpx.Request('GET', NASDAQ_MARKET))
+    except (ValueError, TypeError) as exc:
+        raise httpx.TransportError('Invalid Nasdaq HTTP response') from exc
+
+
+def status_failures(status: AssetMarketStatus, now: datetime | None = None) -> list[str]:
+    """Valid data and a real upstream 200/201 are both required for availability."""
+    at = now or datetime.now(timezone.utc)
+    sources = [('nasdaq_market', status.nasdaq_market), ('underlying_halt', status.underlying_halt),
+               ('binance_bstock', status.binance_bstock)]
+    if status.binance_spot: sources.append(('binance_spot', status.binance_spot))
+    return [f'{name}: HTTP {o.http_status}, status {o.status}' for name, o in sources
+            if o.http_status not in {200, 201} or o.status == 'UNKNOWN' or
+            not 0 <= (at - o.fetched_at).total_seconds() <= 300]
+
+
 class LiveMarketStatusProvider:
     """Shared 60s cache (including failures); no Nasdaq RSS polling above once/minute.
 
     Halt state persists in the audit store and clears only after an explicit, effective
     resumption newer than the latched halt. Feed disappearance does not clear it.
     """
-    def __init__(self, store: AuditStore, client: httpx.Client | None = None, clock=None):
+    def __init__(self, store: AuditStore, client: httpx.Client | None = None, clock=None,
+                 market_fetch: Callable[[], httpx.Response] | None = None):
         self.store = store
         self.client = client or httpx.Client(timeout=10, headers={
             'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json, application/xml, text/xml',
             'Accept-Encoding': 'identity'}, follow_redirects=False)
+        self.market_fetch = market_fetch or fetch_nasdaq_market
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self._cache = {}
         self._lock = RLock()
@@ -123,33 +163,37 @@ class LiveMarketStatusProvider:
             now = self.clock()
             if key in self._cache and (now - self._cache[key][0]).total_seconds() < 60:
                 return self._cache[key]
+            http_status = None
             try:
-                response = self.client.get(url, params=params)
+                response = self.market_fetch() if url == NASDAQ_MARKET else self.client.get(url, params=params)
+                http_status = response.status_code
                 response.raise_for_status()
+                if http_status not in {200, 201}:
+                    raise ValueError(f'Unexpected HTTP {http_status}; expected 200/201')
                 value = response.text if xml else response.json()
                 error = ''
             except httpx.HTTPStatusError as exc:
                 value, error = None, f'HTTP {exc.response.status_code}: source unavailable'
             except (httpx.HTTPError, ValueError) as exc:
                 value, error = None, f'{type(exc).__name__}: source unavailable or invalid response'
-            result = (now, value, error)
+            result = (now, value, error, http_status)
             self._cache[key] = result
             return result
 
     def market(self) -> StatusObservation:
-        fetched, body, error = self._read(NASDAQ_MARKET)
+        fetched, body, error, http_status = self._read(NASDAQ_MARKET)
         try:
             if error: raise ValueError(error)
             status, raw = parse_market(body, self.clock())
-            return StatusObservation(status=status, source=NASDAQ_MARKET, fetched_at=fetched,
+            return StatusObservation(status=status, source=NASDAQ_MARKET, fetched_at=fetched, http_status=http_status,
                                      detail=str(raw.get('marketIndicator', '')), raw=raw)
         except (ValueError, KeyError, TypeError, AttributeError) as exc:
-            return StatusObservation(source=NASDAQ_MARKET, fetched_at=fetched, detail=str(exc))
+            return StatusObservation(source=NASDAQ_MARKET, fetched_at=fetched, http_status=http_status, detail=str(exc))
 
     def halt(self, ticker: str | None) -> StatusObservation:
         if not ticker:
             return StatusObservation(source=NASDAQ_HALTS, fetched_at=self.clock(), detail='Ticker mapping missing')
-        fetched, xml, error = self._read(NASDAQ_HALTS, xml=True)
+        fetched, xml, error, http_status = self._read(NASDAQ_HALTS, xml=True)
         try:
             if error: raise ValueError(error)
             rows, published = parse_halts(xml)
@@ -167,46 +211,46 @@ class LiveMarketStatusProvider:
                 resumed = resumed_at is not None and halted_at <= resumed_at <= self.clock()
                 # An older resumed entry cannot clear a more recent remembered halt.
                 if latched and halted_at < datetime.fromisoformat(latched['halted_at']):
-                    return StatusObservation(status='HALTED', source=NASDAQ_HALTS, fetched_at=fetched,
+                    return StatusObservation(status='HALTED', source=NASDAQ_HALTS, fetched_at=fetched, http_status=http_status,
                                              published_at=published, detail='Retained newer halt', raw=latched['record'])
                 self.store.put('underlying_halt', ticker.upper(), self.clock().isoformat(),
                                {'active': not resumed, 'halted_at': halted_at.isoformat(), 'record': latest})
                 return StatusObservation(status='RESUMED' if resumed else 'HALTED', source=NASDAQ_HALTS,
-                                         fetched_at=fetched, published_at=published, raw=latest,
+                                         fetched_at=fetched, http_status=http_status, published_at=published, raw=latest,
                                          detail='Trade resumption effective' if resumed else 'Halted/paused; no effective trade resumption')
             if latched:
-                return StatusObservation(status='HALTED', source=NASDAQ_HALTS, fetched_at=fetched,
+                return StatusObservation(status='HALTED', source=NASDAQ_HALTS, fetched_at=fetched, http_status=http_status,
                                          published_at=published, detail='Halt retained until explicit resumption', raw=latched['record'])
-            return StatusObservation(status='NO_ACTIVE_HALT', source=NASDAQ_HALTS, fetched_at=fetched,
+            return StatusObservation(status='NO_ACTIVE_HALT', source=NASDAQ_HALTS, fetched_at=fetched, http_status=http_status,
                                      published_at=published, detail='No entry in current feed; not proof of unrestricted trading')
         except (ValueError, KeyError, TypeError, ET.ParseError) as exc:
-            return StatusObservation(source=NASDAQ_HALTS, fetched_at=fetched, detail=str(exc))
+            return StatusObservation(source=NASDAQ_HALTS, fetched_at=fetched, http_status=http_status, detail=str(exc))
 
     def bstock(self, chain_id: int, token: str | None) -> StatusObservation:
         url = BINANCE_RWA + '/asset/market/status/ai'
         if not token:
             return StatusObservation(source=url, fetched_at=self.clock(), detail='Collateral-token address mapping missing')
-        fetched, body, error = self._read(url, {'chainId': chain_id, 'contractAddress': token})
+        fetched, body, error, http_status = self._read(url, {'chainId': chain_id, 'contractAddress': token})
         try:
             if error: raise ValueError(error)
             status, raw = parse_bstock(body)
-            return StatusObservation(status=status, source=url, fetched_at=fetched,
+            return StatusObservation(status=status, source=url, fetched_at=fetched, http_status=http_status,
                                      detail=str(raw.get('reasonCode', '')), raw=raw)
         except (ValueError, TypeError, AttributeError) as exc:
-            return StatusObservation(source=url, fetched_at=fetched, detail=str(exc))
+            return StatusObservation(source=url, fetched_at=fetched, http_status=http_status, detail=str(exc))
 
     def spot(self, symbol: str | None) -> StatusObservation | None:
         if not symbol: return None
         url = 'https://api.binance.com/api/v3/exchangeInfo'
-        fetched, body, error = self._read(url, {'symbol': symbol})
+        fetched, body, error, http_status = self._read(url, {'symbol': symbol})
         try:
             if error: raise ValueError(error)
             row = next(r for r in body['symbols'] if r['symbol'] == symbol)
             status = {'TRADING': 'TRADING', 'HALT': 'HALTED', 'BREAK': 'PAUSED',
                       'CANCEL_ONLY': 'LIMITED'}.get(row.get('status'), 'UNKNOWN')
-            return StatusObservation(status=status, source=url, fetched_at=fetched, raw=row)
+            return StatusObservation(status=status, source=url, fetched_at=fetched, http_status=http_status, raw=row)
         except (ValueError, KeyError, TypeError, StopIteration) as exc:
-            return StatusObservation(source=url, fetched_at=fetched, detail=error or 'Spot symbol unavailable')
+            return StatusObservation(source=url, fetched_at=fetched, http_status=http_status, detail=error or 'Spot symbol unavailable')
 
     def get(self, target) -> AssetMarketStatus:
         market, halt = self.market(), self.halt(target.underlying_ticker)

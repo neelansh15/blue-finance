@@ -53,7 +53,9 @@ def setup():
         if data == 'timeout': raise httpx.ReadTimeout('fixture timeout')
         if data == 'rate_limit': return httpx.Response(429)
         return httpx.Response(200, json=data)
-    provider = LiveMarketStatusProvider(store, httpx.Client(transport=httpx.MockTransport(handler)), clock=lambda: state['now'])
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    provider = LiveMarketStatusProvider(store, client, clock=lambda: state['now'],
+                                        market_fetch=lambda: client.get(NASDAQ_MARKET))
     yield RiskService(Policy(), store), provider, state
     provider.close()
     store.close()
@@ -127,7 +129,7 @@ def test_halt_survives_restart_and_disappearance_then_effective_resumption_clear
     state['rss'] = rss(ticker='NVDA')
     assert provider.halt('NVDA').status == 'HALTED'
     # New provider, same durable store, no halt entry: cannot silently clear.
-    restarted = LiveMarketStatusProvider(service.store, provider.client, provider.clock)
+    restarted = LiveMarketStatusProvider(service.store, provider.client, provider.clock, market_fetch=provider.market_fetch)
     state['rss'] = rss()
     assert restarted.halt('NVDA').status == 'HALTED'
     state['now'] += timedelta(seconds=61)
@@ -238,8 +240,57 @@ def test_api_closure_overrides_calendar_open_and_no_bstock_transfer_claim(setup)
 def test_nasdaq_403_is_explicit_unknown_and_not_calendar_fallback(setup):
     service, _, _ = setup
     with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(403))) as client:
-        provider = LiveMarketStatusProvider(service.store, client, lambda: AT)
+        provider = LiveMarketStatusProvider(service.store, client, lambda: AT, market_fetch=lambda: client.get(NASDAQ_MARKET))
         result = provider.get(demo_policy().targets[0])
         assert result.nasdaq_market.status == 'UNKNOWN'
         assert 'HTTP 403' in result.nasdaq_market.detail
         assert result.underlying_halt.status == result.binance_bstock.status == 'UNKNOWN'
+
+
+@pytest.mark.parametrize('response', ['timeout', 'rate_limit', {}])
+def test_api_and_strict_live_gate_fail_on_unavailable_source(setup, response, capsys):
+    from scripts.market_status_smoke import verify
+    service, provider, state = setup
+    state['bstock'] = response
+    with TestClient(create_app(service, provider)) as client:
+        result = client.get('/risk/market-status/NVDA')
+        assert result.status_code == 503
+        assert result.json()['observations'][0]['binance_bstock']['status'] == 'UNKNOWN'
+        assert verify(client, ['NVDA']) == 1
+    assert '503' in capsys.readouterr().out
+
+
+def test_strict_live_gate_passes_valid_data_and_reports_upstream_status(setup, capsys):
+    from scripts.market_status_smoke import verify
+    service, provider, _ = setup
+    with TestClient(create_app(service, provider)) as client:
+        assert verify(client, ['NVDA']) == 0
+        result = client.get('/risk/market-status/NVDA')
+        assert result.status_code == 200
+        for name in ['nasdaq_market', 'underlying_halt', 'binance_bstock']:
+            assert result.json()[0][name]['http_status'] == 200
+    assert '200' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('code', [200, 201, 403])
+def test_nasdaq_system_transport_preserves_actual_http_status(monkeypatch, code):
+    import subprocess
+    from app.integrations.market_status import fetch_nasdaq_market
+    import json
+    def run(args, **kwargs):
+        assert args[0:2] == ['curl', '-q']
+        assert args[-1] == NASDAQ_MARKET
+        assert '--insecure' not in args
+        assert not kwargs.get('shell')
+        return subprocess.CompletedProcess(args, 0, stdout=json.dumps(market()).encode() + f'\n{code}'.encode())
+    monkeypatch.setattr('app.integrations.market_status.subprocess.run', run)
+    assert fetch_nasdaq_market().status_code == code
+
+
+def test_nasdaq_transport_failure_never_fabricates_success(monkeypatch):
+    import subprocess
+    from app.integrations.market_status import fetch_nasdaq_market
+    monkeypatch.setattr('app.integrations.market_status.subprocess.run', lambda *a, **k:
+                        subprocess.CompletedProcess(a, 28, stdout=b'\n000'))
+    with pytest.raises(httpx.TransportError):
+        fetch_nasdaq_market()

@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 
 from app.models import (Assessment, AssessRequest, Model, Recommendation, RiskEvent, RiskScore,
                         SimulateRequest, SimulationResult)
 from app.services.risk_service import RiskService
-from app.integrations.market_status import AssetMarketStatus
+from app.integrations.market_status import AssetMarketStatus, status_failures
 from app.routing.engine import route_markets
 from app.routing.models import RoutingDecision, RoutingRequest
 
@@ -106,4 +107,10 @@ def market_status(asset: str, request: Request):
     observations = [request.app.state.market_status.get(t) for t in matches]
     for status in observations:
         service(request).store.put('market_status', canonical, status.as_of.isoformat(), status.model_dump(mode='json'))
+    failures = [failure for status in observations
+                for failure in status_failures(status, request.app.state.market_status.clock())]
+    if failures:
+        return JSONResponse(status_code=503, content={
+            'detail': 'Live market status unavailable; upstream 200/201 and valid fresh data required',
+            'failures': failures, 'observations': [s.model_dump(mode='json') for s in observations]})
     return observations
