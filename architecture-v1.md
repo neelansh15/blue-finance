@@ -2,7 +2,7 @@
 
 Dawn Finance: lending against tokenized US stocks (bStocks first) on BNB Chain, built on the canonical, unmodified Morpho Blue deployment.
 
-Document date: 2026-11-26. All web sources were fetched on 2026-11-26 unless noted otherwise. The newest dated source is the Binance SNDKB split announcement (2026-11-11), along with the Atlas SNDKB feed notice covering Nov 19-20, 2026 (summarized from earlier research notes; see Checked / Not checked).
+Document date: 2026-11-26. All web sources were fetched on 2026-11-26 unless noted otherwise. Verification pass on 2026-11-26 (see "Verification log" at the end). The newest dated sources are the DEX liquidity snapshot (pancake.xyz / tokenstock / deviation.wtf, read 2026-11-26), the Chaconne TSLAB/TSLA spread note (2026-11-25) and a tokenized-stock session study (deepidea.io, 2026-11-21). The newest issuer source is the Binance SNDKB split announcement (2026-11-11). Note: 2026-11-26 is the US Thanksgiving holiday, so the DEX snapshot was taken with US markets closed.
 
 Labels used below:
 - **[F]** verified fact, with a source.
@@ -15,11 +15,11 @@ Labels used below:
 
 ### Morpho Blue on BNB Chain
 
-- **[F] Deployment.** Morpho Blue is deployed on BNB Chain at `0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a`. AdaptiveCurveIrm is at `0x7112D95cB5f6b13bF5F5B94a373bB3b2B381F979` and the ChainlinkOracleV2 factory at `0xDf2035fC15919588526dBb5560863C812F135236`. Source: https://docs.morpho.org/developers/contracts/addresses. That docs table has no chain labels. The BNB attribution is cross-checked against third-party explorers (evmquery, Oct 12 2026; gliese.io), which list the same address.
-- **[F] Owner.** The owner is the Morpho DAO Safe `0xeE02eEa8173455A701A2E76d917CcC32d109518F`, per the Morpho docs governance page. **[U]** Gliese reports it as a 5-of-9 Safe with no timelock.
-- **[F] What the owner controls.** The owner (DAO) controls `enableLltv`, `enableIrm` and fee settings. Dawn can create markets permissionlessly only from the enabled LLTV/IRM set.
+- **[F] Deployment.** Morpho Blue is deployed on BNB Chain at `0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a`. AdaptiveCurveIrm is at `0x7112D95cB5f6b13bF5F5B94a373bB3b2B381F979` and the ChainlinkOracleV2 factory at `0xDf2035fC15919588526dBb5560863C812F135236`. Source: https://docs.morpho.org/developers/contracts/addresses. That docs table has no chain labels. The BNB attribution is cross-checked against third-party explorers (evmquery, Oct 12 2026; gliese.io, https://gliese.io/protocols/morpho, fetched 2026-11-26), which label the same three addresses as BNB.
+- **[F] Owner.** The owner is the Morpho DAO Safe `0xeE02eEa8173455A701A2E76d917CcC32d109518F` ("BNB Smart Chain" row, https://docs.morpho.org/learn/governance/organization/, fetched 2026-11-26). Gliese labels it "Multisig, no delay" (fetched 2026-11-26). **[U]** The 5-of-9 threshold was not shown on any page fetched on 2026-11-26; read `getThreshold()` / `getOwners()` on the Safe.
+- **[F] What the owner controls.** The owner (DAO) controls `enableLltv`, `enableIrm`, `setOwner`, the fee switch (capped at 25% of borrower interest) and the fee recipient. It can enable but never disable LLTVs/IRMs. Dawn can create markets permissionlessly only from the enabled LLTV/IRM set. Sources: https://docs.morpho.org/learn/governance/organization/ and https://github.com/morpho-org/morpho-blue/blob/main/src/Morpho.sol (fetched 2026-11-26).
 - **[F] Market parameters are immutable.** Each market is fixed by (loanToken, collateralToken, oracle, IRM, LLTV) and none of these can change.
-  - LLTV list: 38.5 / 62.5 / 77 / 86 / 91.5 / 94.5 / 96.5 / 98 %.
+  - Governance-approved LLTV list: 0 / 38.5 / 62.5 / 77 / 86 / 91.5 / 94.5 / 96.5 / 98 %; the only approved IRM is AdaptiveCurveIRM (https://docs.morpho.org/learn/concepts/blue/, fetched 2026-11-26). **[U]** That docs list is not chain-specific; confirm `isLltvEnabled(625000000000000000)` on the BNB singleton before deploying.
   - LIF = min(1.15, 1/(0.3·LLTV + 0.7)).
   - There is no close factor. A position can be liquidated in full in one call.
   - Bad debt is socialized to that market's suppliers.
@@ -30,8 +30,7 @@ Labels used below:
 ### PreLiquidation
 
 - **[F] Mechanism.** It is an opt-in periphery contract. The borrower authorizes it, and its parameters are `preLltv < LLTV`, `preLCF1 ≤ preLCF2`, and `1 ≤ preLIF1 ≤ preLIF2 ≤ 1/LLTV`. It can use a different oracle from the market oracle. It has a callback, so liquidators do not need flash loans. Source: https://github.com/morpho-org/pre-liquidation (archived; now at morpho-blue `src/periphery/pre-liquidation`).
-- **[F] Factory deployments.** The README says the PreLiquidationFactory is deployed "on Ethereum and Base".
-- **[U]** Whether a PreLiquidationFactory exists on BNB.
+- **[F] Factory deployments.** The archived README says the PreLiquidationFactory is deployed "on Ethereum and Base". **That is out of date for BNB:** BscScan labels `0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42` "Morpho: PreLiquidation Factory" on BNB Chain, with verified source, created 2025-07-17 (https://bscscan.com/address/0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42, fetched 2026-11-26). Cross-check: morpho-org/sdks commit 2ef0e9a "add preliquidationfactory addresses for all network" (fetched 2026-11-26).
 
 ### Morpho Vault V2
 
@@ -41,19 +40,35 @@ Labels used below:
 - **[F] Gates.** Gates cover receipt-token transfers, deposits and withdrawals. They are timelocked.
 - **[F] Exit path.** `forceDeallocate` gives in-kind exit, with a penalty of up to 2%.
 - Source: https://docs.morpho.org/learn/concepts/vault-v2/
-- **[U]** The BNB Vault V2 factory address was not identified.
+- **[F] BNB periphery addresses** (Morpho addresses page row matched to the BNB prefixes on Gliese, both fetched 2026-11-26; https://docs.morpho.org/developers/contracts/addresses, https://gliese.io/protocols/morpho):
+  - VaultV2Factory `0x29955201601630f686beAF47b0B03be7b86d160F`
+  - MorphoMarketV1AdapterV2Factory `0x18c1b03ac8007224FE86442a91fEE3135ba767CD`
+  - MorphoVaultV1AdapterFactory `0x5DEA489f90C9DEb49c4aD209f93043Ad13DBCe27`
+  - MorphoRegistry `0x705A9Df14b294E6d4E673520369f289bd48C4cCB`
+  - Blue Public Allocator (Vault V2) `0x0254e254f50fD4c4A8F38fAAB735487FD5Fe1BD5`
+  - V1 PublicAllocator `0x842bEccF8eBC11006c4bE96DEfE09b60326D0495`, labelled "Morpho: Public Allocator" on BscScan (fetched 2026-11-26).
+  - **[U]** The docs table carries no chain labels. The VaultV2Factory and MorphoRegistry rows are matched by Gliese's truncated BNB prefixes (`0x2995…160f`, `0x705a…4ccb`); the other rows are taken from the same docs row. Confirm each on BscScan before use.
 
 ### bStocks
 
 - **[F] Issuer and wrapper.** bStocks are issued by BTech Holdings (ADGM prospectus, Binance group affiliate). They are "Certificates", not shares. Source: Binance SNDKB announcement, 2026-11-11 (mirrors: binancehub.co.kr/en/notice/289695, api.eqn.news/public/archive/bn-2304).
 - **[F] Contract structure (NVDAB example).** NVDAB `0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436` is a BeaconProxy. Its implementation, `SecuritiesToken`, inherits `ERC8056BaseUpgradeable`, `ComplianceClientUpgradeable`, `PauseManagerClientUpgradeable` and `AccessControlEnumerableUpgradeable`. It has an `IERC8056Scheduled` interface. Source: BscScan verified source file list, https://bscscan.com/address/0x02fca66c1d1afb4e2a7884261eb00f63598a7436#code
-  - **[U]** The per-transfer logic: pause check, then compliance check on from/to/spender. This comes from a third-party reading (stoxwyse) and was not read line by line.
-  - **[U] Discrepancy:** fortunepad says "no pause switch; no share multiplier", which contradicts the BscScan source list. BscScan is treated as authoritative.
-  - **[U] Decimals discrepancy:** fortunepad reports 18 decimals, while the prospectus describes eight-decimal balances. Must be read on-chain via `decimals()`.
+  - **[F] Beacon and implementation.** The NVDAB proxy points at beacon `0x156d6dce9a4f6139a3406f1f021f1a4880de93a3`, and the SecuritiesToken implementation is `0xCFEd6c4679297ea4889F8183bC057B4A86C64e46` (verified source). BscScan shows no upgrade events for the NVDAB proxy (https://bscscan.com/address/0xCFEd6c4679297ea4889F8183bC057B4A86C64e46#code, fetched 2026-11-26).
+  - **[F] Per-transfer logic (`_update`)**, read from the verified implementation source/bytecode on 2026-11-26:
+    1. `pauseManager.isPaused(token)`. If true, the transfer reverts with `TokenPaused`.
+    2. If `msg.sender` is neither `from` nor `to`, then `compliance.check(token, msg.sender)` runs (the spender/initiator).
+    3. `compliance.check(token, from)` if `from ≠ 0`, and `compliance.check(token, to)` if `to ≠ 0`. `check` is a view that reverts on failure.
+    - This matches the third-party reading by stoxwyse (2026-09-27).
+    - The token itself has **no** `isBlacklisted` view. Blacklist/allowlist state lives in the separate compliance contract. **[U]** That contract's rule set (blacklist vs allowlist) was not read.
+  - **[F] Admin surface.** Roles are `DEFAULT_ADMIN_ROLE` and `ISSUER_ROLE`. Admin setters: `setCompliance`, `setPauseManager`, `setMintEnabled`, `setBurnEnabled`, `setName`, `setSymbol`, `setIdentifier`. Also emits `TransferWithUIAmount` and `UIMultiplierChangeOverwritten` (same source, 2026-11-26).
+  - **Resolved discrepancy (pause):** fortunepad's "no pause switch; no share multiplier" is wrong. The implementation has both a pause manager and the ERC-8056 multiplier (BscScan verified source, 2026-11-26).
+  - **[F] Decimals = 18.** `decimals()` returns `0x12` in the implementation bytecode (BscScan, 2026-11-26). This agrees with fortunepad, tokenstock (TSLAB) and dexpaprika (NVDAB). **Contradicts** the "eight-decimal balances" reading of the prospectus, which is dropped. All Dawn math uses 18-decimal raw units.
 - **[F] Multiplier semantics (ERC-8056 / BEP-8056, also called BEP-677).**
   - `balanceOf()` returns raw units and never changes on corporate actions.
   - `uiMultiplier()` (1e18 fixed point) is display-only: UI amount = raw × m / 1e18.
-  - `setUIMultiplier(new, effectiveAt)` emits `UIMultiplierUpdated(old, new, setAt, effectiveAt)` immediately. Views keep returning the old multiplier until `block.timestamp ≥ effectiveAt`.
+  - `setUIMultiplier(new, effectiveAt)` emits `UIMultiplierUpdated(oldMultiplier, newMultiplier, effectiveAtTimestamp)` immediately: **three arguments, not four** (corrected 2026-11-26 from the verified ABI and https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-677.md). Views keep returning the old multiplier until `block.timestamp ≥ effectiveAt`.
+  - [F] Implementation bounds (verified source, 2026-11-26): the multiplier must lie in [1e9, 1e27]; `effectiveAt` must be in the future and no more than 365 days ahead; the initial multiplier is 1e18. A new `setUIMultiplier` before `effectiveAt` overwrites the pending change (`UIMultiplierChangeOverwritten`).
+  - [F] BSC-only extension `IERC8056Scheduled` (`pendingMultiplier`, `hasPendingMultiplier`; interface id `0xeb0093dd`) lets a keeper read the scheduled change directly. On BSC, `TransferWithUIAmount` is REQUIRED, whereas EIP-8056 makes it optional (BEP-677, Draft, created 2026-04-14; https://eips.ethereum.org/EIPS/eip-8056; both fetched 2026-11-26).
   - "CEX Spot already quotes UI price". To convert a raw-denominated feed: UI price = rawPrice × 1e18 / m.
   - Sources: https://docs.bnbchain.org/developer-kit/scaled-ui-amount/ and https://github.com/bnb-chain/bep-677-contracts (audit: Pashov, 2026-04-30).
   - Naming discrepancy: Binance Academy calls it "BEP-677 (Scaled UI Amount)", while BscScan and rwa.xyz call it "BEP-8056". The repo shows these are the same thing: BEP-677 implements EIP-8056.
@@ -73,7 +88,8 @@ Labels used below:
 - **[F] Geo-blocking is the integrator's job.** Integrators must enforce geographic restrictions. "Binance provides a public REST API with a country eligibility endpoint". The issuer "reserves the right to blacklist wallet addresses". Source: Binance Academy "What are bStocks".
   - Pancake's geo-block list for bStocks has 57 countries/territories (https://docs.pancake.xyz/trade/pancake-exchange/tokenized-stocks-geo-block).
   - **[U] Discrepancy:** the Sep 30 issuer restricted list (US, Canada, Cuba, Crimea, Iran, Netherlands, North Korea, Syria, parts of Ukraine) is much shorter than Pancake's list. Pancake's list appears to reflect its own policy.
-  - **[U]** The exact URL and schema of the eligibility endpoint were not found.
+  - [F] Re-confirmed in the Binance bStocks FAQ (https://www.binance.com/en/support/faq/detail/f0c03cd6509a4085b4cce1636f16be38, updated 2026-07-28, fetched 2026-11-26): public REST API with a country eligibility endpoint; not available to US persons; the issuer may blacklist at contract level.
+  - **[U]** The exact URL and schema of the eligibility endpoint are still not found (2026-11-26). Searched the Binance FAQ, Binance Academy and developer docs (developers.binance.com, dev.binance.vision). The only related item found is the generic HTTP 451 "restricted location" error. Ask Binance/BTech for the endpoint spec.
 
 ### Atlas Oracle
 
@@ -82,9 +98,38 @@ Labels used below:
 - **[F] Update policy and data filters.** Heartbeat or deviation updates. Only markets updated in the last hour are used, with liquidity/volume filters and Q25/Q75 outlier removal. The docs example uses a 1h MAX_AGE.
 - **[F] Off-hours pricing.** Per the Circle partner page, outside US hours Atlas prices from onchain tokenized-stock markets (bStocks, Ondo).
 - **[F] Feeds free for bStocks builders on BNB.** Announced Sep 17, 2026.
-- **[F] Lista's configuration.** Lista prices TSLAB, MUB and NVDAB with Atlas as main oracle and APRO as pivot, with a ±2% BoundValidator. NVDAB Atlas oracle: `0x2bd759006b423BFF444181A13C96a6b134E557BB`. Source: https://docs.bsc.lista.org/for-developer/multi-oracle/multi-oracle-bstock
-- **[U]** No market-status flag was found in the Atlas docs.
-- **[U]** Whether Atlas bStock feeds quote **per UI share** (the post-split price) or **per raw token**. The SNDKB notice says the post-split price "will not line up" with the pre-split price, which points to per UI share. Not confirmed from contract output.
+- **[F] Pull mode.** Signed reports carry 18-decimal prices; reference `maxDelay` is 180 s; signer `0x59eD4701224fD9e2a85Ef2946c2ab828C1dDC600`. MultiFeed `decimals()` is shared across all feeds in the contract. Push mode supports SingleFeed or MultiFeed, and whitelist mode allows non-7702 EOAs (https://docs.atlasoracle.io/developers/atlas-oracle/integrate-the-push-mode, fetched 2026-11-26).
+- **[F] Configurable protections (marketing page, not bStock-specific).** atlasoracle.io advertises heartbeat 1 s to 1 day, deviation triggers, a Consensus Score (HEALTHY ≥ 0.85; CRITICAL < 0.40 holds the last trusted value; a SPLIT_MARKET state) and on-chain circuit breakers. Its "RWA PERP" example (TWAP 5 min, heartbeat 60 s, deviation 0.25%) is illustrative only (fetched 2026-11-26). **[U]** The actual heartbeat and deviation of the bStock feeds.
+- **[F] Lista's configuration (updated 2026-11-26).** Lista's bStock page now lists **7** bStocks, not 3. Resilient Oracle `0xf3afD82A4071f272F403dC176916141f44E6c750`; Atlas is main and fallback, APRO is pivot, with a 0.98/1.02 BoundValidator. Source: https://docs.bsc.lista.org/for-developer/multi-oracle/multi-oracle-bstock (fetched 2026-11-26).
+
+  | Asset | Token | Atlas oracle (Lista) |
+  |---|---|---|
+  | TSLAB | `0x5b1910eAaD6450E50f816082Aa078C41F10C292f` | `0xf569C3e52e797219eCFDc1659c3250B0BbDC693C` |
+  | MUB | `0xcdf2f3e0fa43C47A6662a91C9E4a7C5f69762699` | `0xf0c2791042E73a601550493c6C7b9DEafbdedCD3` |
+  | NVDAB | `0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436` | `0x2bd759006b423BFF444181A13C96a6b134E557BB` |
+  | SNDKB | `0x3eE4dF61bd4F867E349BEaE8bFE07bc31b4850fb` | `0x1C5211723f67A77DAaDb62DDc6D68Ee23e724c0f` |
+  | CRCLB | `0x80f3D493EBCe97e343c53D29a137942416B4ffC0` | `0x15c493e3C31080784cd2067369c1fAea9EA35302` |
+  | SPCXB | `0xbe9D156892E55e7154BcD3cB0FEA677F9D3103E1` | `0xdf8b61796436eD39F406623aa2166a7f185185Cb` |
+  | MSFTB | `0x80106CB3ead06659A5ad19dF39d9b4733863b9b0` | `0x56E1c317EF6F029a8327686F4b9736877f621122` |
+
+- **[F] Venus's configuration.** In the Core Pool, TSLAB, NVDAB, SPCXB and SKHYB use Atlas as main and APRO as pivot, with 0.95–1.05 bounds (https://docs-v4.venus.io/risk/resilient-price-oracle, snapshot VIP-663, 2026-09-28; APRO pivot added by VIP-654, executed 2026-08-16, https://community.venus.io/t/5901; fetched 2026-11-26). The Atlas vs APRO median deviation is 7–18 bps.
+  - The listing proposal (https://community.venus.io/t/5832, 2026-06-16) set:
+
+    | Market | CF | LT | Supply cap |
+    |---|---|---|---|
+    | TSLAB | 60% | 70% | 236 |
+    | NVDAB | 60% | 70% | 450 |
+    | SPCXB | 50% | 65% | 500 |
+
+    All three have borrow cap 0, liquidation incentive 10%, and a DeviationBoundedOracle at 16.67%.
+  - Venus Atlas aggregators: TSLAB `0x63950c265e7cdb4016ba60c288c46291c0148ce2`, NVDAB `0x8a44cf4e55add99eb8bac5d5db749c63106d54aa`, SPCXB `0x0072e55bff6fec200708ce82612569a1c0eb4b24`, SKHYB `0x8a87b38d4c8ef07546a1dd87a9d58f0b36b11a2b`.
+  - **[U] Discrepancy:** Venus's Atlas addresses differ from Lista's for the same tickers (e.g. TSLAB Venus `0x6395…8ce2` vs Lista `0xf569…693C`). These may be separate consumer instances or whitelists. Dawn must get its own feed address and read-access status from Atlas, not copy either one.
+- **[U]** No market-status flag was found in the Atlas docs (re-checked 2026-11-26: SingleFeed/MultiFeed API reference, Push/Pull integration pages, the data-quality page and atlasoracle.io).
+- **[U]** Whether Atlas bStock feeds quote **per UI share** (the post-split price) or **per raw token** (re-checked 2026-11-26). Indirect evidence points to per UI share:
+  - The SNDKB notice says the post-split price "will not line up" with the pre-split price.
+  - An Atlas post (LinkedIn, 2026-10-12) says "dividends and splits also come through an on-chain multiplier, so the feed has to follow both".
+  - Venus's risk reviewer reports that Atlas tracks the Binance bStock price, and Binance quotes the UI price.
+  - Not confirmed from contract output: compare `latestAnswer()` with the Binance UI price × 1e(decimals) before launch.
 
 ### Halt data
 
@@ -105,7 +150,7 @@ Labels used below:
 | C6 | **PreLiquidation instance(s)** | on-chain | Partial, gentler liquidation between preLltv and LLTV, with a small preLIF. |
 | C7 | **RegimeRegistry** | on-chain [D] | Calendar plus keeper-set state: OPEN / EXTENDED / CLOSED / WEEKEND / HALTED / CORP_ACTION. It is read by C2 and C4. |
 | C8 | **Keepers** | offchain [D] | Push regime updates and the multiplier watch (`UIMultiplierUpdated` events). Run the halt monitor. Act as sentinel bot (cap cuts). Liquidation bot (backstop). |
-| C9 | **Eligibility service** | offchain [D] | IP geo check, the Binance country-eligibility endpoint, sanctions screening, and an on-chain blacklist mirror. Signs short-lived attestations for C4. |
+| C9 | **Eligibility service** | offchain [D] | IP geo check, the Binance country-eligibility endpoint, sanctions screening, and a pre-flight `compliance.check` simulation (the token has no `isBlacklisted` view; see §6). Signs short-lived attestations for C4. |
 | C10 | **UI** | offchain | Shows balances in UI units (`balanceOfUI`). Shows regime, haircut, health in both price regimes, and corporate-action banners. |
 | C11 | **Risk/LLTV pipeline** | offchain [D] | Computes the gap distribution and haircut tables from historical data. Produces governance proposals for caps and new markets. |
 
@@ -124,7 +169,7 @@ Labels used below:
 
 | Actor / key | Powers | Trust assumption | Notes |
 |---|---|---|---|
-| Morpho DAO Safe | enableLltv/enableIrm, fees (cannot touch existing markets) | Will not set a fee on Dawn markets adversely | [F] owner; [U] 5-of-9, no timelock |
+| Morpho DAO Safe | enableLltv/enableIrm, fees (max 25%, cannot touch existing market params) | Will not set a fee on Dawn markets adversely | [F] owner, multisig with no delay (docs governance page + Gliese, 2026-11-26); [U] 5-of-9 threshold |
 | bStock issuer / Op & Tech Co | pause, blacklist, freeze, upgrade the beacon implementation, set the multiplier | Acts lawfully, keeps the multiplier correct, does not blacklist the Morpho singleton | **The largest single trust point.** The beacon upgrade can change token behavior for every holder at once. |
 | Atlas reporters / feed admin | Price and read-access whitelist | Feed stays live. Dawn's oracle is whitelisted, or the feed is open-read. | Whitelist removal makes `fetch` revert. C2 must handle this with try/catch (see §5.2). |
 | Dawn Vault Owner | Appoints curator and sentinels | Multisig [D] | |
@@ -141,13 +186,16 @@ Labels used below:
 
 ### 3.1 Borrow (happy path)
 
-1. The UI collects the wallet address. C9 checks geo/IP, the Binance eligibility endpoint, sanctions and the issuer blacklist mirror, then returns a signed attestation (address, expiry).
+1. The UI collects the wallet address. C9 checks geo/IP, the Binance eligibility endpoint, sanctions, and simulates the token's `compliance.check` for the address, then returns a signed attestation (address, expiry).
 2. The user approves the bStock (raw amount computed via `fromUIAmount`) to the router (C4).
 3. C4 verifies the attestation, reads RegimeRegistry and computes `maxBorrow = collateral × DawnOracle.price() × targetLTV(regime)`. targetLTV is below the LLTV, and the haircut is already inside the price.
 4. Phase 1: C4 calls `Morpho.supplyCollateral(onBehalf=user)`, then `Morpho.borrow(onBehalf=user, receiver=user)`. This uses user→router `setAuthorization`.
    Phase 2 with C3: C4 wraps the token to `dX` and supplies `dX`.
 5. Morpho calls `DawnOracle.price()` and checks LTV ≤ LLTV.
-6. The token transfer into Morpho runs the bStock compliance checks on from=user/router, to=Morpho and spender. **[U]** whether spender is checked.
+6. The token transfer into Morpho runs the bStock compliance checks. [F] (verified `_update`, 2026-11-26):
+   - Morpho's `transferFrom(user→Morpho)` has `msg.sender = Morpho = to`, so the separate spender check is skipped. `from` (user, or router in phase 1 if it holds the tokens) and `to` (Morpho) are both checked.
+   - Morpho must therefore pass `compliance.check` as `to` here, and as `from` on withdraw/liquidation.
+   - A router that pulls tokens via `transferFrom(user→router)` is itself checked as `to`.
 7. Optionally, the router deploys or authorizes the PreLiquidation contract for the user.
 
 ### 3.2 Liquidation
@@ -156,7 +204,12 @@ Labels used below:
 2. If preLltv < LTV ≤ LLTV, the PreLiquidation contract is used: `preLiquidate` with a partial close at a small incentive. The bot gets the callback, sells collateral, and repays.
 3. If LTV > LLTV, `Morpho.liquidate` is called. Morpho calls the oracle, then transfers collateral from Morpho to the liquidator, which passes bStock pause and compliance. **If the token is paused, or the liquidator or Morpho is blacklisted, the transfer reverts and the liquidation fails.**
 4. Exit venues for the liquidator:
-   - (a) On-chain DEX: PancakeSwap / PancakeSwap X RFQ. Per competitor research, there is no standing depth. **[U]** current depth.
+   - (a) On-chain DEX: PancakeSwap v3 pools plus PancakeSwap X RFQ. **Corrected 2026-11-26:** the earlier "no standing depth" (from Venus's June 2026 risk report) is out of date. Snapshot read 2026-11-26, with US markets closed (Thanksgiving):
+     - NVDAB/USDT Pancake v3, 0.25% fee, pool `0x8FB4243b553aC29BA088aCf00B9B7dA24bD6690C`: TVL ≈ $3.37M, 24h volume ≈ $3.38M (pancake.xyz). Tokenstock shows ≈ 428.7k USDT on the USDT side.
+     - TSLAB/USDT Pancake pool: liquidity ≈ $1.35M (≈ 723k USDT side), 24h volume ≈ $1.28M (tokenstock). ±2% depth ≈ $1.36M (livecoinwatch).
+     - deviation.wtf/stocks: 33 of 34 BSC bStock pools were quoting while the market was closed.
+     - Binance Research (2026-10-20): 56% of bStock volume trades outside regular hours, 7% on weekends.
+     - **[U]** Depth at the moment of a weekend or corporate-action shock, and RFQ quote size, were not measured. Pool figures are aggregator readings, not on-chain reserves read by Dawn.
    - (b) Binance spot via deposit. Not atomic, and suspended during corporate actions.
    - (c) Issuer redemption via Alpaca. US hours only, suspendable, and Delivery-in is not guaranteed.
 5. During CLOSED/WEEKEND, venue (c) is unavailable and (b) may be thin. The keeper should still liquidate, take inventory risk, and unwind at the open.
@@ -242,7 +295,7 @@ price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
 - **Token paused:** every `supplyCollateral`, `withdrawCollateral` and `liquidate` on that collateral reverts. Repay and borrow of the *loan* token still work. The market price still moves, so positions can go underwater while unliquidatable. This creates bad-debt risk for the duration of the pause.
 - **Borrower blacklisted:**
   - Their collateral sits at the Morpho address, so other users are unaffected.
-  - Liquidation sends collateral Morpho → liquidator, so it still works if the compliance check is on from/to/spender and none of those are blacklisted [U on exact check].
+  - Liquidation sends collateral Morpho → liquidator via `transfer`. [F] (verified `_update`, 2026-11-26): only `from` (Morpho) and `to` (liquidator) are checked, because `msg.sender = Morpho = from`, so the spender check is skipped. The borrower's address is never passed to compliance during liquidation, so liquidating a blacklisted borrower still works.
   - A blacklisted borrower cannot withdraw to themselves. They could withdraw to another receiver, which raises evasion concerns. The router should refuse to process actions for blacklisted addresses.
 - **Liquidator blacklisted / not eligible:** their liquidation reverts. Other liquidators can still act.
 - **Morpho singleton blacklisted or frozen:** **all** bStock collateral of that token in **every** Morpho market (Dawn's and anyone else's) becomes immovable. Liquidations revert and withdrawals revert. This is the issuer kill-switch tail risk.
@@ -253,13 +306,15 @@ price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
 **Design [D]:**
 1. **Eligibility gating.** C9 attestation is required by the router. Checks:
    - IP geo-block (union of the issuer's restricted list and any stricter venue lists, decided by counsel).
-   - The Binance country-eligibility endpoint [U on URL/schema].
+   - The Binance country-eligibility endpoint [U on URL/schema, still not found 2026-11-26].
    - Sanctions screening.
-   - Local mirror of on-chain blacklist status (`isBlacklisted`-style views, if exposed [U]).
+   - Pre-flight compliance simulation instead of an `isBlacklisted` mirror. [F] The token has no `isBlacklisted` view (verified ABI, 2026-11-26). C9 reads the compliance contract address from the token (getter name to confirm against the ABI) and `eth_call`s `compliance.check(token, user)`, which reverts if the user would fail, for the user, the router and Morpho. This uses the token's own rule set whatever form it takes. **[U]** The compliance contract's own ABI and rule type.
 2. **Blacklisted borrowers:** the router denies them. Their existing positions stay liquidatable. Liquidator bots are run from a known-eligible address.
-3. **Pre-clear liquidator addresses.** Ask the issuer to confirm that the Morpho contract and Dawn liquidator addresses are compliance-clear. Open question: whether the issuer whitelists protocol contracts.
+3. **Pre-clear liquidator addresses.** Ask the issuer to confirm that the Morpho contract and Dawn liquidator addresses are compliance-clear. Morpho must pass `compliance.check` as both `to` (supply) and `from` (withdraw/liquidate), per the verified `_update`, 2026-11-26.
+   - Precedent: Venus (Core Pool, since June 2026) and Lista Moolah already hold bStocks as collateral in their own contracts, which suggests protocol contracts pass. This is an inference, not a confirmation.
+   - Before launch, `eth_call` `compliance.check(token, 0x01b0Bd30…a83a)` for each listed bStock. Open question: whether that pass comes from a blacklist model or an explicit allowlist entry.
 4. **Exposure caps** per bStock and in aggregate (Vault V2 collateral-id caps) sized so that a total freeze of one issuer's tokens leaves losses within a set fraction of vault TVL. That fraction is a governance choice, not a number given here.
-5. **Monitoring.** `Paused`, blacklist, `Upgraded` and `UIMultiplierUpdated` events on every listed token. On a pause, the sentinel immediately cuts caps to 0 and the allocator pulls idle liquidity.
+5. **Monitoring.** Pause-manager state (`isPaused(token)`), compliance-contract changes (`setCompliance` / `setPauseManager` on the token), beacon `Upgraded` events (beacon `0x156d…93a3`), and `UIMultiplierUpdated` / `UIMultiplierChangeOverwritten` on every listed token. On a pause, the sentinel immediately cuts caps to 0 and the allocator pulls idle liquidity.
 
 ---
 
@@ -348,7 +403,12 @@ Precedent: Steakhouse uses 62.5% for most Coinbase stock-token markets and 77% f
 
 ### Exit venues and limits
 
-- PancakeSwap / PancakeSwap X RFQ: thin. Per competitor research, Venus noted no standing depth [U current].
+- PancakeSwap v3 / PancakeSwap X RFQ: **corrected 2026-11-26.** Standing depth exists and pools quote off-hours. On 2026-11-26, with US markets closed:
+  - NVDAB/USDT TVL ≈ $3.37M.
+  - TSLAB/USDT ≈ $1.35M, with ±2% depth ≈ $1.36M.
+  - Sources: pancake.xyz, tokenstock, livecoinwatch, deviation.wtf (see §3.2).
+
+  That is large relative to Venus caps (236–500 tokens), but finite. Size per-liquidation lots against the ±2% depth, and remember the spread can run wide (TSLAB 2.56% below TSLA on 2026-11-25, Chaconne). **[U]** RFQ quote sizes and depth during a shock.
 - Binance spot: deposit latency. Suspended around corporate actions.
 - Issuer redemption: US hours only, suspendable, operated via Alpaca, and Delivery-in is not guaranteed [F prospectus].
 - Off-hours liquidations therefore mean **inventory risk for the liquidator**. The LIF must also pay for holding the stock until the next open. This argues for 62.5% LLTV at launch.
@@ -357,7 +417,7 @@ Precedent: Steakhouse uses 62.5% for most Coinbase stock-token markets and 77% f
 
 - The router offers it at onboarding.
 - preLltv = LLTV − buffer, small preLIF1 → preLIF2 ≤ 1/LLTV [F constraint], and preLCF partial. This produces smaller, more frequent liquidations that the thin venues can absorb.
-- Requires a PreLiquidationFactory on BNB [U]. Otherwise Dawn deploys the audited code unchanged.
+- [F] Use the BNB PreLiquidationFactory `0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42` (BscScan "Morpho: PreLiquidation Factory", verified, 2026-11-26). Dawn does not need to deploy its own copy. The router calls `createPreLiquidation(marketId, params)` there and has users authorize the resulting instance.
 
 ### Does Dawn run its own bot?
 
@@ -393,13 +453,13 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 | Weekend/overnight gap | Regime calendar, Atlas vs. DEX divergence | Haircut h[r] in C2, router targetLTV, caps | Bot inventory, keeper ramps | Gap beyond G_q plus LIF headroom → bad debt |
 | Split mis-valuation | `UIMultiplierUpdated`, announcements | × m in C2, freeze plus continuity check, borrow block | Pre-window cap cuts, user notices | Wrong assumption on Atlas units [U] |
 | Dividend ex-date dip | Corporate-action calendar | Total-return oracle | Borrow block near LLTV on ex-date | Credit delay larger than the margin; withholding leakage |
-| Token pause | `Paused` event | None (Morpho reverts) | Sentinel caps → 0, allocator pulls liquidity | Positions unliquidatable during pause → bad debt |
-| Morpho or wrapper blacklisted | Compliance events | None | Issuer relationship, exposure caps | Full freeze of the asset's collateral |
+| Token pause | Pause-manager `isPaused(token)` poll / pause-manager events | None (Morpho reverts) | Sentinel caps → 0, allocator pulls liquidity | Positions unliquidatable during pause → bad debt |
+| Morpho or wrapper blacklisted | Periodic `compliance.check` simulation for Morpho/wrapper; `setCompliance` on the token | None | Issuer relationship, exposure caps | Full freeze of the asset's collateral |
 | Beacon upgrade by issuer | `Upgraded` event | None | Monitoring, caps | Arbitrary behavior change |
 | Oracle revert / Atlas whitelist removal | Call failure, staleness | try/catch fallback to TWAP or last good price | Alerting, whitelisting agreement | Both sources down beyond freeze max |
 | Oracle manipulation via thin DEX | TWAP vs. Atlas divergence | min() of sources, liquidity floor, TWAP window | Monitor pool depth | Simultaneous manipulation of the on-chain markets Atlas reads off-hours (Atlas uses them [F]) |
 | Halt / SEC suspension | Nasdaq RSS, SEC | Freeze plus h[HALTED] | Sentinel, governance | Resume far below the frozen price |
-| Illiquid exit | Venue depth monitor | PreLiquidation (smaller lots), conservative LLTV | Own bot, Binance route | Redemption suspended plus no DEX depth |
+| Illiquid exit | Venue depth monitor (≈$1.4–3.4M Pancake TVL per major bStock on 2026-11-26) | PreLiquidation via the BNB factory (smaller lots), conservative LLTV | Own bot, Binance route | Redemption suspended plus DEX depth evaporating in a shock |
 | Ineligible user | C9 | Router attestation (C3 enforces it) | Geo/IP, Binance endpoint, sanctions | Raw-token market without C3 is bypassable; VPN use |
 | Morpho DAO actions | Safe transactions | Immutable markets | Watch | Fee switch on markets [U policy] |
 | Key compromise (sentinel/keeper) | Ops monitoring | Roles can only reduce risk; timelocks on the curator | Multisig, rotation | Griefing: freeze or cap cuts, temporary DoS |
@@ -440,12 +500,19 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 
 1. Do Atlas bStock feeds quote per UI share or per raw token? What happened on-chain at SNDKB's `effectiveAt` versus the feed restart? This is decisive for §4.
 2. Is the Dawn oracle allowed to read Atlas feeds (whitelist vs. open-read) for each bStock?
-3. What is the bStock compliance check exactly: from/to/spender, and is there a freeze distinct from the blacklist? Is there a public `isBlacklisted` view? What are the on-chain `decimals()` (8 vs. 18)?
-4. Will the issuer commit to not blacklisting the Morpho singleton, or treat protocol contracts specially?
-5. Does a PreLiquidationFactory and Vault V2 factory exist on BNB? At what addresses?
-6. What are the URL, schema and terms of the Binance country-eligibility endpoint? Is the restricted list the issuer's 9 regions or a broader venue list?
-7. What is the Morpho DAO's fee policy on BNB markets?
-8. What are realistic off-hours exit depths (PancakeSwap X RFQ quote sizes) per bStock?
+3. **Partly answered 2026-11-26.**
+   - Answered: the check runs on `from` and `to`, and on `msg.sender` only when the caller is neither of them. There is a separate pause manager. There is no token-level `isBlacklisted`. `decimals()` = 18.
+   - Still open: the compliance contract's rule type (blacklist vs allowlist), and whether it supports a freeze distinct from the blacklist.
+4. Will the issuer commit to not blacklisting the Morpho singleton, or treat protocol contracts specially? (Venus/Lista precedent suggests protocol contracts pass today; unconfirmed.)
+5. **Answered 2026-11-26.**
+   - PreLiquidationFactory `0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42`.
+   - VaultV2Factory `0x29955201601630f686beAF47b0B03be7b86d160F` (see §0).
+   - Remaining: confirm the Vault V2 rows on BscScan.
+6. What are the URL, schema and terms of the Binance country-eligibility endpoint? Is the restricted list the issuer's 9 regions or a broader venue list? (Still open; not found 2026-11-26.)
+7. What is the Morpho DAO's fee policy on BNB markets? (Fee switch is capped at 25% [F]; policy still open.)
+8. **Partly answered 2026-11-26.**
+   - Answered: Pancake pool TVL/depth snapshot in §3.2.
+   - Still open: RFQ quote sizes and depth under stress.
 9. What lag between the dividend ex-date and the multiplier credit has been observed for bStocks?
 10. Will the issuer ever migrate contracts (beacon upgrade vs. new token) for spin-offs or mergers?
 
@@ -468,22 +535,67 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 - rwa.xyz corporate-actions methodology.
 - Nasdaq Trader halt RSS page.
 
+**Also checked in the 2026-11-26 verification pass:**
+- Morpho governance page, Morpho Blue concepts page (LLTV list).
+- Gliese Morpho page.
+- BscScan: PreLiquidationFactory, Public Allocator, and the SecuritiesToken implementation (source, ABI, bytecode for `decimals` and `_update`).
+- BEP-677 and EIP-8056 texts.
+- Atlas Push/Pull integration pages and atlasoracle.io.
+- Lista lending page.
+- Venus resilient-oracle docs and listing/VIP-654 forum posts.
+- Binance bStocks FAQ.
+- pancake.xyz / tokenstock / livecoinwatch / deviation.wtf pool data.
+- Binance Research off-hours volume note, Chaconne spread note, deepidea weekend study.
+
 **Earlier in this research session (not re-fetched this turn):**
 - bStocks prospectuses (Jun to Sep 2026).
-- Atlas data-quality and SNDKB notices.
+- Atlas SNDKB notice.
 - Circle partner page.
 - Aster bStocks doc.
-- Morpho governance page.
 - Competitor research notes.
 
 **Not checked / unverified:**
-- Atlas price units (UI vs. raw) and any market-status flag.
-- Exact bStock transfer compliance logic and decimals (source not read line by line).
-- Morpho DAO Safe threshold and timelock.
-- PreLiquidation and Vault V2 factory deployments on BNB.
+- Atlas price units (UI vs. raw), any market-status flag, and the bStock heartbeat/deviation.
+- Whether Dawn's oracle can read Atlas (whitelist status).
+- The compliance contract's rule type (blacklist vs allowlist), and whether Morpho actually passes `compliance.check` today.
+- Morpho DAO Safe threshold (5-of-9).
+- BNB on-chain `isLltvEnabled` set.
+- Chain labels for the Vault V2 rows other than VaultV2Factory and MorphoRegistry.
 - Binance eligibility endpoint URL and schema.
 - NYSE halt page and SEC suspension feed.
-- Current PancakeSwap / RFQ depth.
+- RFQ quote sizes and depth under stress.
 - Dividend credit lag.
 - Gas costs on BNB.
 - The "26% headroom" figure (not reproduced; 29.6% computed before slippage).
+
+---
+
+## Verification log (Nov 26, 2026)
+
+All sources fetched 2026-11-26.
+
+| # | Item | Result | Source |
+|---|---|---|---|
+| 1 | Morpho BNB owner = DAO Safe `0xeE02…518F`, no delay | Verified (threshold still unverified) | https://docs.morpho.org/learn/governance/organization/ ; https://gliese.io/protocols/morpho |
+| 2 | LLTV list / IRM | Verified (generic list, now includes 0%); BNB on-chain set unverified | https://docs.morpho.org/learn/concepts/blue/ |
+| 3 | PreLiquidationFactory on BNB | **Contradicted** README "Ethereum and Base": exists at `0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42` | https://bscscan.com/address/0xEB8871F0FA8aB787AbCD28d1095f7B486d241D42 |
+| 4 | Vault V2 factory / adapters / registry / allocators on BNB | Verified (doc row + Gliese prefixes; some rows need BscScan confirmation) | https://docs.morpho.org/developers/contracts/addresses ; https://gliese.io/protocols/morpho |
+| 5 | bStock transfer logic (pause → spender-if-third-party → from → to) | Verified (was [U]) | https://bscscan.com/address/0xCFEd6c4679297ea4889F8183bC057B4A86C64e46#code |
+| 6 | bStock `decimals()` | Verified = 18; **contradicts** the "eight-decimal" prospectus reading | same as #5 |
+| 7 | `UIMultiplierUpdated` signature | **Contradicted**: 3 args, not 4 (`setAt` removed) | same as #5 ; https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-677.md |
+| 8 | Multiplier bounds [1e9, 1e27], ≤ 365 days ahead | Verified (new) | same as #5 |
+| 9 | fortunepad "no pause switch" | **Contradicted** by the verified source | same as #5 |
+| 10 | Token-level `isBlacklisted` view | Does not exist; §6 design changed to `compliance.check` simulation | same as #5 |
+| 11 | Morpho needs issuer allowlisting | Still unverified: Morpho must pass compliance both ways; Venus/Lista precedent is only inference | same as #5 ; https://community.venus.io/t/5832 |
+| 12 | Dividends via multiplier, 30% withholding | Verified | https://www.binance.com/en/academy (bStocks guide, updated 2026-06-18) ; https://docs.rwa.xyz/methodology/corporate-actions |
+| 13 | Atlas Pull mode 18-dec, maxDelay 180 s, whitelist/open-read | Verified | https://docs.atlasoracle.io/developers/atlas-oracle/integrate-the-push-mode |
+| 14 | Atlas units (UI vs raw) | Still unverified (indirect evidence for per UI share) | docs.atlasoracle.io ; atlasoracle.io |
+| 15 | Atlas market-status flag | Still unverified (none found) | docs.atlasoracle.io |
+| 16 | Atlas bStock heartbeat/deviation | Still unverified (only a marketing example) | https://atlasoracle.io |
+| 17 | Lista bStock set | **Contradicted** "TSLAB, MUB, NVDAB": now 7 assets; bounds 0.98/1.02 | https://docs.bsc.lista.org/for-developer/multi-oracle/multi-oracle-bstock |
+| 18 | Lista Moolah is a Morpho Blue fork | Verified (extended fork: whitelists, upgradeable, 8-dec `peek`) | https://docs.bsc.lista.org/for-developer/lista-lending ; blog.web3wagmi.com (2026-11-13) |
+| 19 | Venus bStock caps / CF / LT / oracle | Verified (table in §0) | https://community.venus.io/t/5832 ; https://docs-v4.venus.io/risk/resilient-price-oracle |
+| 20 | Atlas feed addresses Venus vs Lista | Discrepancy: different addresses per protocol; reported, not resolved | same as #17 and #19 |
+| 21 | Binance eligibility endpoint URL/schema | Still unverified (FAQ confirms it exists; Binance FAQ, Academy, developer docs searched) | https://www.binance.com/en/support/faq/detail/f0c03cd6509a4085b4cce1636f16be38 |
+| 22 | Off-hours DEX depth | **Contradicted** "no standing depth": NVDAB ≈ $3.37M TVL, TSLAB ≈ $1.35M, 33/34 pools quote off-hours | pancake.xyz ; tokenstock ; livecoinwatch ; deviation.wtf/stocks |
+| 23 | ScaledUI primary source | Verified: BEP-677 (Draft, 2026-04-14) implements EIP-8056 and adds `IERC8056Scheduled` | https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-677.md ; https://eips.ethereum.org/EIPS/eip-8056 |
