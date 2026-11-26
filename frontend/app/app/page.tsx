@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import DemoApp from "./components/DemoApp";
+import LiveApp from "./LiveApp";
 
 export const metadata: Metadata = {
-  title: "Blue Finance demo app (mock data)",
-  description: "Demo UI for the Blue Finance draft. Runs on mocked data. Not live, no transactions are sent.",
+  title: "Blue Finance on BNB Smart Chain",
+  description: "Read and interact with the Blue Finance hackathon pool on BNB Smart Chain.",
 };
 
 export default function AppPage() {
-  return <DemoApp />;
+  return <LiveApp />;
 }

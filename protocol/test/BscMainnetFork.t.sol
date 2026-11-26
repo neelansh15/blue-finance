@@ -4,7 +4,12 @@ pragma solidity 0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {ACLManager} from "aave/protocol/configuration/ACLManager.sol";
+import {IAToken} from "aave/interfaces/IAToken.sol";
+import {IMarketCalendar} from "../src/interfaces/IMarketCalendar.sol";
 import {BscMainnet} from "../script/BscMainnet.sol";
+
+contract StandInMultisig {}
 
 /// @notice Deploys Blue in a local BNB mainnet fork with the real bStocks, Atlas feeds, Chainlink USDT/USD and
 ///         USDT, then runs a TSLAB loan through supply, borrow, repay and withdraw.
@@ -16,16 +21,58 @@ contract BscMainnetForkTest is Test, BscMainnet {
     address private constant GUARDIAN = address(0x123);
     address private immutable LENDER = makeAddr("blueLender");
     address private immutable BORROWER = makeAddr("blueBorrower");
+    address private immutable KEEPER = makeAddr("blueKeeper");
 
+    /// @dev Stands in for the multisig. The launch requires a separate admin to be a contract.
+    address private admin;
     Deployment private d;
 
     function setUp() external {
         if (!vm.envOr("BLUE_RUN_BNB_FORK_TESTS", false)) vm.skip(true);
         vm.createSelectFork(vm.envString("BSC_RPC_URL"));
         require(block.chainid == BSC_CHAIN_ID, "BNB fork required");
-        d = _deploy(
-            USDT, Roles(address(this), address(this), GUARDIAN, vm.addr(SIGNER_KEY)), _bscUsdFeed(), _bscStocks()
-        );
+        admin = address(new StandInMultisig());
+        d = _launchBsc(address(this), admin, KEEPER, GUARDIAN, vm.addr(SIGNER_KEY));
+        vm.prank(admin);
+        d.calendar.acceptAdmin();
+    }
+
+    function testLaunchHandsEveryAdminRightToTheMultisig() external view {
+        ACLManager acl = ACLManager(d.provider.getACLManager());
+        assertEq(d.provider.owner(), admin);
+        assertEq(d.provider.getACLAdmin(), admin);
+        assertTrue(acl.isPoolAdmin(admin));
+        assertFalse(acl.isPoolAdmin(address(this)));
+        assertFalse(acl.hasRole(acl.DEFAULT_ADMIN_ROLE(), address(this)));
+        assertEq(d.calendar.admin(), admin);
+        assertEq(d.controls.admin(), admin);
+        assertEq(d.usdtPrice.admin(), admin);
+        for (uint256 i; i < d.stockPrices.length; ++i) {
+            assertEq(d.stockPrices[i].admin(), admin);
+            assertEq(d.stockPrices[i].reporter(), KEEPER);
+            address bluToken = d.pool.getReserveAToken(_bscStocks()[i].token);
+            assertEq(IAToken(bluToken).RESERVE_TREASURY_ADDRESS(), admin);
+        }
+        assertEq(IAToken(d.pool.getReserveAToken(USDT)).RESERVE_TREASURY_ADDRESS(), admin);
+    }
+
+    function testLaunchRegistersKeeperAndSeedsHolidays() external {
+        assertTrue(d.calendar.isKeeper(KEEPER));
+        assertTrue(d.calendar.isHoliday(20261126));
+        assertTrue(d.calendar.isEarlyClose(20261127));
+        vm.prank(KEEPER);
+        d.calendar.setOverride(TSLAB, IMarketCalendar.MarketStatus.HALTED, 1 hours);
+        assertEq(uint256(d.calendar.status(TSLAB)), uint256(IMarketCalendar.MarketStatus.HALTED));
+    }
+
+    function testLaunchRefusesAnAdminWithoutCode() external {
+        vm.expectRevert("admin must be deployer or contract");
+        this.launchWithAdmin(makeAddr("walletAdmin"));
+    }
+
+    /// @dev External so that a revert inside the launch can be expected as one call.
+    function launchWithAdmin(address newAdmin) external {
+        _launchBsc(address(this), newAdmin, KEEPER, GUARDIAN, vm.addr(SIGNER_KEY));
     }
 
     function testListsTheRealBStocks() external view {
@@ -60,6 +107,7 @@ contract BscMainnetForkTest is Test, BscMainnet {
         vm.stopPrank();
 
         for (uint256 i; i <= 5; ++i) {
+            vm.prank(KEEPER);
             d.controls.report(TSLAB, true);
             if (i != 5) vm.warp(block.timestamp + 6 minutes);
         }

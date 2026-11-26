@@ -22,10 +22,9 @@ contract StockBorrowControls is EIP712 {
         bool held;
     }
 
-    address public immutable admin;
-    address public immutable keeper;
-    address public immutable guardian;
-    address public immutable signer;
+    address public keeper;
+    address public guardian;
+    address public signer;
     IPoolAddressesProvider public immutable provider;
     IMarketCalendar public immutable calendar;
     StockPriceSource public immutable debtPrice;
@@ -35,7 +34,8 @@ contract StockBorrowControls is EIP712 {
 
     mapping(address stock => Policy) private _policies;
     mapping(address account => uint256) public nonces;
-    mapping(address account => mapping(address stock => uint256)) public eligibleUntil;
+    /// @dev Keyed by the signer that approved it, so replacing the signer voids its approvals.
+    mapping(address signer => mapping(address account => mapping(address stock => uint256))) private _eligibility;
 
     error Unauthorized();
     error InvalidPolicy();
@@ -44,6 +44,7 @@ contract StockBorrowControls is EIP712 {
     error Ineligible(address account, address stock);
     error InvalidEligibility();
 
+    event RolesSet(address keeper, address guardian, address signer);
     event StockConfigured(address indexed stock);
     event HealthReported(address indexed stock, bool healthy, uint64 lastReport);
     event HoldSet(address indexed stock, bool held);
@@ -51,7 +52,6 @@ contract StockBorrowControls is EIP712 {
     event EligibilityRegistered(address indexed account, address indexed stock, uint256 expiry);
 
     constructor(
-        address admin_,
         address keeper_,
         address guardian_,
         address signer_,
@@ -63,20 +63,27 @@ contract StockBorrowControls is EIP712 {
         uint32 maxEligibility_
     ) EIP712("Blue Stock Borrow Controls", "1") {
         if (
-            admin_ == address(0) || keeper_ == address(0) || guardian_ == address(0) || signer_ == address(0)
-                || address(provider_) == address(0) || address(calendar_) == address(0)
-                || address(debtPrice_) == address(0) || heartbeat_ == 0 || maxEligibility_ == 0
+            address(provider_) == address(0) || address(calendar_) == address(0) || address(debtPrice_) == address(0)
+                || heartbeat_ == 0 || maxEligibility_ == 0
         ) revert InvalidPolicy();
-        admin = admin_;
-        keeper = keeper_;
-        guardian = guardian_;
-        signer = signer_;
+        _setRoles(keeper_, guardian_, signer_);
         provider = provider_;
         calendar = calendar_;
         debtPrice = debtPrice_;
         heartbeat = heartbeat_;
         recovery = recovery_;
         maxEligibility = maxEligibility_;
+    }
+
+    /// @notice The market calendar's admin administers these controls, so one handover moves every Blue role.
+    function admin() public view returns (address) {
+        return calendar.admin();
+    }
+
+    /// @notice Replaces the keeper, guardian and eligibility signer. The calendar tracks its keepers separately.
+    function setRoles(address keeper_, address guardian_, address signer_) external {
+        if (msg.sender != admin()) revert Unauthorized();
+        _setRoles(keeper_, guardian_, signer_);
     }
 
     function configureStock(
@@ -86,7 +93,7 @@ contract StockBorrowControls is EIP712 {
         uint16[4] calldata discounts,
         uint128[4] calldata caps
     ) external {
-        if (msg.sender != admin) revert Unauthorized();
+        if (msg.sender != admin()) revert Unauthorized();
         if (
             stock == address(0) || address(source.stock()) != stock || address(_policies[stock].source) != address(0)
                 || baseLtv == 0 || baseLtv >= BPS
@@ -105,7 +112,7 @@ contract StockBorrowControls is EIP712 {
     }
 
     function setCaps(address stock, uint128[4] calldata caps) external {
-        if (msg.sender != admin && msg.sender != guardian) revert Unauthorized();
+        if (msg.sender != admin() && msg.sender != guardian) revert Unauthorized();
         Policy storage policy = _policy(stock);
         if (msg.sender == guardian) {
             for (uint256 i; i < 4; ++i) {
@@ -117,7 +124,7 @@ contract StockBorrowControls is EIP712 {
     }
 
     function setHold(address stock, bool held) external {
-        if (msg.sender != admin && (msg.sender != guardian || !held)) revert Unauthorized();
+        if (msg.sender != admin() && (msg.sender != guardian || !held)) revert Unauthorized();
         Policy storage policy = _policy(stock);
         policy.held = held;
         policy.healthySince = 0;
@@ -152,8 +159,13 @@ contract StockBorrowControls is EIP712 {
         if (ECDSA.recover(eligibilityDigest(msg.sender, stock, nonce, expiry), signature) != signer) {
             revert InvalidEligibility();
         }
-        eligibleUntil[msg.sender][stock] = expiry;
+        _eligibility[signer][msg.sender][stock] = expiry;
         emit EligibilityRegistered(msg.sender, stock, expiry);
+    }
+
+    /// @notice When the current signer's approval for this account and stock expires. Zero if there is none.
+    function eligibleUntil(address account, address stock) public view returns (uint256) {
+        return _eligibility[signer][account][stock];
     }
 
     function eligibilityDigest(address account, address stock, uint256 nonce, uint256 expiry)
@@ -167,7 +179,7 @@ contract StockBorrowControls is EIP712 {
     }
 
     function checkBorrow(address account, address stock) external view returns (uint256 ltv, uint256 cap) {
-        if (eligibleUntil[account][stock] <= block.timestamp) revert Ineligible(account, stock);
+        if (eligibleUntil(account, stock) <= block.timestamp) revert Ineligible(account, stock);
         return riskLimits(stock);
     }
 
@@ -190,6 +202,14 @@ contract StockBorrowControls is EIP712 {
         uint256 marketStatus = uint256(calendar.status(stock));
         if (policy.held || marketStatus >= 4) revert NewRiskBlocked(stock);
         return uint256(policy.baseLtv) * (BPS - policy.discounts[marketStatus]) / BPS;
+    }
+
+    function _setRoles(address keeper_, address guardian_, address signer_) private {
+        if (keeper_ == address(0) || guardian_ == address(0) || signer_ == address(0)) revert InvalidPolicy();
+        keeper = keeper_;
+        guardian = guardian_;
+        signer = signer_;
+        emit RolesSet(keeper_, guardian_, signer_);
     }
 
     function _fresh(address stock, Policy storage policy) private view returns (bool) {

@@ -35,11 +35,13 @@ abstract contract BlueV3Deployment {
     /// @dev Age limit for an optional cross-check feed that updates at least hourly.
     uint32 internal constant CROSS_CHECK_MAX_AGE = 2 hours;
 
+    /// @notice `admin` runs the deployment. `treasury` receives the reserve factor and is fixed in the bluTokens.
     struct Roles {
         address admin;
         address keeper;
         address guardian;
         address signer;
+        address treasury;
     }
 
     /// @notice A bStock to list as collateral, its primary USD feed, and an optional cross-check feed.
@@ -85,7 +87,7 @@ abstract contract BlueV3Deployment {
         ACLManager acl = new ACLManager(d.provider);
         d.provider.setACLManager(address(acl));
         acl.addPoolAdmin(roles.admin);
-        d.calendar = new MarketCalendar(roles.admin, address(0), 7 days, false);
+        d.calendar = new MarketCalendar(roles.admin, roles.keeper, 7 days, false);
 
         d.usdtPrice = _priceSource(
             roles,
@@ -125,7 +127,6 @@ abstract contract BlueV3Deployment {
         d.provider.setPriceOracle(address(d.oracle));
 
         d.controls = new StockBorrowControls(
-            roles.admin,
             roles.keeper,
             roles.guardian,
             roles.signer,
@@ -149,7 +150,7 @@ abstract contract BlueV3Deployment {
         d.configurator = PoolConfiguratorInstance(d.provider.getPoolConfigurator());
         d.provider.setPoolDataProvider(address(new AaveProtocolDataProvider(d.provider)));
 
-        address atoken = address(new ATokenInstance(d.pool, address(0), roles.admin));
+        address atoken = address(new ATokenInstance(d.pool, address(0), roles.treasury));
         address debtToken = address(new VariableDebtTokenInstance(d.pool, address(0)));
         bytes memory rateData = abi.encode(IDefaultInterestRateStrategyV2.InterestRateData(8_000, 200, 400, 6_000));
         ConfiguratorInputTypes.InitReserveInput[] memory inputs =
@@ -169,6 +170,22 @@ abstract contract BlueV3Deployment {
         }
     }
 
+    /// @notice Moves every admin right from `from`, which must be the caller, to `to`.
+    /// @dev The Aave roles move at once. The calendar, and through it the borrow controls and price sources, moves
+    ///      when `to` calls `acceptAdmin()` on the calendar.
+    function _handOver(Deployment memory d, address from, address to) internal {
+        require(to != address(0) && to != from, "new admin required");
+        ACLManager acl = ACLManager(d.provider.getACLManager());
+        bytes32 root = acl.DEFAULT_ADMIN_ROLE();
+        acl.grantRole(root, to);
+        acl.addPoolAdmin(to);
+        acl.removePoolAdmin(from);
+        acl.renounceRole(root, from);
+        d.provider.setACLAdmin(to);
+        d.calendar.transferAdmin(to);
+        d.provider.transferOwnership(to);
+    }
+
     function _priceSource(
         Roles memory roles,
         MarketCalendar calendar,
@@ -186,7 +203,6 @@ abstract contract BlueV3Deployment {
             address(crossCheckFeed) == address(0) ? [uint16(0), 0, 0, 0] : [uint16(200), 300, 300, 500];
         source = new StockPriceSource(
             StockPriceSource.Config({
-                admin: roles.admin,
                 reporter: roles.keeper,
                 guardian: roles.guardian,
                 feed: feed,

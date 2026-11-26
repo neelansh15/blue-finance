@@ -6,12 +6,13 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
 import { bsc } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
+import { BSC_RPC_URL } from "../../src/lib/blue/mainnet";
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim();
 
 const config = createConfig({
   chains: [bsc],
-  transports: { [bsc.id]: http() },
+  transports: { [bsc.id]: http(BSC_RPC_URL) },
   connectors: [
     injected(),
     ...(projectId ? [walletConnect({
@@ -19,7 +20,7 @@ const config = createConfig({
       showQrModal: false,
       metadata: {
         name: "Blue Finance",
-        description: "Tokenized stock lending simulator",
+        description: "Tokenized stock lending on BNB Smart Chain",
         url: "https://blue-finance.vercel.app",
         icons: ["https://blue-finance.vercel.app/assets/brand/blue-finance-mark.png"],
       },
@@ -45,7 +46,7 @@ const theme = {
 };
 
 const options = {
-  disclaimer: "Wallet connection is optional. App balances and actions are simulated.",
+  disclaimer: "The onchain workspace uses real tokens and gas. Simulator actions stay in the browser.",
   hideBalance: true,
 };
 

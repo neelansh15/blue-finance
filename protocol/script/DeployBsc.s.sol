@@ -9,8 +9,9 @@ import {BscMainnet} from "./BscMainnet.sol";
 
 /// @notice Deploys Blue with the real bStocks, Atlas feeds and USDT on BNB Chain.
 /// @dev Runs against a local Anvil fork by default. A mainnet broadcast also needs BLUE_ALLOW_MAINNET=true and
-///      explicit owner approval. Roles must be set explicitly: BLUE_KEEPER, BLUE_GUARDIAN and BLUE_SIGNER.
-///      BLUE_SEED_USDT (raw 18-decimal units) optionally supplies USDT from the deployer.
+///      explicit owner approval. Roles must be set explicitly: BLUE_ADMIN, BLUE_KEEPER, BLUE_GUARDIAN and
+///      BLUE_SIGNER. BLUE_ADMIN is the deployer or a contract; a contract admin must then call acceptAdmin() on the
+///      market calendar. BLUE_SEED_USDT (raw 18-decimal units) optionally supplies USDT from the deployer.
 contract DeployBsc is Script, BscMainnet {
     using SafeERC20 for IERC20;
 
@@ -21,16 +22,14 @@ contract DeployBsc is Script, BscMainnet {
             vm.rpc("anvil_nodeInfo", "[]");
         }
 
+        address admin = vm.envAddress("BLUE_ADMIN");
+        address keeper = vm.envAddress("BLUE_KEEPER");
+        address guardian = vm.envAddress("BLUE_GUARDIAN");
+        address signer = vm.envAddress("BLUE_SIGNER");
+
         vm.startBroadcast();
         (, address deployer,) = vm.readCallers();
-        Roles memory roles = Roles({
-            admin: deployer,
-            keeper: vm.envAddress("BLUE_KEEPER"),
-            guardian: vm.envAddress("BLUE_GUARDIAN"),
-            signer: vm.envAddress("BLUE_SIGNER")
-        });
-        require(roles.guardian != deployer, "separate guardian required");
-        Deployment memory d = _deploy(USDT, roles, _bscUsdFeed(), _bscStocks());
+        Deployment memory d = _launchBsc(deployer, admin, keeper, guardian, signer);
         uint256 seed = vm.envOr("BLUE_SEED_USDT", uint256(0));
         if (seed != 0) {
             IERC20(USDT).forceApprove(address(d.pool), seed);
@@ -45,11 +44,16 @@ contract DeployBsc is Script, BscMainnet {
         console2.log("Market calendar", address(d.calendar));
         console2.log("Oracle", address(d.oracle));
         console2.log("USDT price source", address(d.usdtPrice));
+        console2.log("Admin", admin);
         StockListing[] memory stocks = _bscStocks();
         for (uint256 i; i < stocks.length; ++i) {
             console2.log(
                 string.concat(IERC20Metadata(stocks[i].token).symbol(), " price source"), address(d.stockPrices[i])
             );
+        }
+        if (admin != deployer) {
+            console2.log("ACTION REQUIRED: the admin must call acceptAdmin() on the market calendar.");
+            console2.log("Until then the deployer still administers the calendar, borrow controls and price sources.");
         }
     }
 }

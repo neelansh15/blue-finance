@@ -6,6 +6,7 @@ import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ICreditDelegationToken} from "aave/interfaces/ICreditDelegationToken.sol";
+import {ACLManager} from "aave/protocol/configuration/ACLManager.sol";
 import {IMarketCalendar} from "../src/interfaces/IMarketCalendar.sol";
 import {IPriceFeed} from "../src/interfaces/IPriceFeed.sol";
 import {TestBStock} from "./utils/TestBStock.sol";
@@ -78,9 +79,8 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
             minPrice: 0.9e8,
             maxPrice: 1.1e8
         });
-        d = _deploy(
-            address(usdt), Roles(address(this), address(this), GUARDIAN, vm.addr(SIGNER_KEY)), usdFeed, listings
-        );
+        Roles memory roles = Roles(address(this), address(this), GUARDIAN, vm.addr(SIGNER_KEY), address(this));
+        d = _deploy(address(usdt), roles, usdFeed, listings);
         for (uint256 i; i < STOCK_COUNT; ++i) {
             stocks[i].source = d.stockPrices[i];
         }
@@ -403,6 +403,112 @@ abstract contract BluePoolScenarios is Test, BlueV3Deployment {
         assertGt(d.pool.getReserveDeficit(address(usdt)), 0);
         assertEq(d.pool.stockDebt(address(stocks[TESLA].token)), 0);
         assertEq(d.pool.debtStock(TESLA_BORROWER), address(0));
+    }
+
+    function testCalendarAdminAdministersBlueContracts() external {
+        address tesla = address(stocks[TESLA].token);
+        address newAdmin = address(0xAD);
+        uint128[4] memory caps = [uint128(1 ether), 1 ether, 1 ether, 1 ether];
+        d.calendar.transferAdmin(newAdmin);
+        // A pending transfer changes nothing.
+        assertEq(d.controls.admin(), address(this));
+        d.controls.setCaps(tesla, caps);
+
+        vm.prank(newAdmin);
+        d.calendar.acceptAdmin();
+        assertEq(d.controls.admin(), newAdmin);
+        assertEq(d.usdtPrice.admin(), newAdmin);
+        assertEq(stocks[TESLA].source.admin(), newAdmin);
+
+        vm.expectRevert(StockBorrowControls.Unauthorized.selector);
+        d.controls.setCaps(tesla, caps);
+        vm.expectRevert(StockBorrowControls.Unauthorized.selector);
+        d.controls.setRoles(address(this), GUARDIAN, address(this));
+        vm.expectRevert(StockPriceSource.Unauthorized.selector);
+        stocks[TESLA].source.acceptReference();
+        vm.expectRevert(StockPriceSource.Unauthorized.selector);
+        stocks[TESLA].source.setBand(1, 2);
+        vm.expectRevert(StockPriceSource.Unauthorized.selector);
+        stocks[TESLA].source.setRoles(newAdmin, newAdmin);
+
+        vm.startPrank(newAdmin);
+        d.controls.setCaps(tesla, caps);
+        stocks[TESLA].source.setBand(1, 1_000e8);
+        vm.stopPrank();
+    }
+
+    function testReplacedKeeperAndGuardianLoseTheirRights() external {
+        address tesla = address(stocks[TESLA].token);
+        address keeper = address(0xBEEF);
+        address guardian = address(0xCAFE);
+        d.controls.setRoles(keeper, guardian, vm.addr(SIGNER_KEY));
+        stocks[TESLA].source.setRoles(keeper, guardian);
+
+        vm.expectRevert(StockBorrowControls.Unauthorized.selector);
+        d.controls.report(tesla, false);
+        vm.prank(GUARDIAN);
+        vm.expectRevert(StockBorrowControls.Unauthorized.selector);
+        d.controls.setHold(tesla, true);
+        vm.prank(GUARDIAN);
+        vm.expectRevert(StockPriceSource.Unauthorized.selector);
+        stocks[TESLA].source.suspend();
+
+        vm.warp(block.timestamp + 1);
+        stocks[TESLA].feed.setAnswer(251e8);
+        vm.startPrank(keeper);
+        stocks[TESLA].source.refresh();
+        d.controls.report(tesla, true);
+        vm.stopPrank();
+        vm.prank(guardian);
+        stocks[TESLA].source.suspend();
+        vm.prank(guardian);
+        d.controls.setHold(tesla, true);
+    }
+
+    function testReplacingTheSignerVoidsItsApprovals() external {
+        address tesla = address(stocks[TESLA].token);
+        d.controls.setRoles(address(this), GUARDIAN, address(0x51));
+        assertEq(d.controls.eligibleUntil(TESLA_BORROWER, tesla), 0);
+        vm.expectRevert(abi.encodeWithSelector(StockBorrowControls.Ineligible.selector, TESLA_BORROWER, tesla));
+        _borrow(TESLA_BORROWER, 1 ether);
+        vm.expectRevert(StockBorrowControls.InvalidEligibility.selector);
+        this.registerWithOriginalSigner(TESLA_BORROWER, tesla);
+    }
+
+    function testRolesCannotBeZero() external {
+        vm.expectRevert(StockBorrowControls.InvalidPolicy.selector);
+        d.controls.setRoles(address(this), GUARDIAN, address(0));
+        vm.expectRevert(StockPriceSource.InvalidConfig.selector);
+        d.usdtPrice.setRoles(address(0), GUARDIAN);
+    }
+
+    /// @dev External so that a revert inside registration can be expected as one call.
+    function registerWithOriginalSigner(address account, address stock) external {
+        _eligibility(account, stock);
+    }
+
+    function testHandOverRemovesEveryDeployerRight() external {
+        address newAdmin = address(0xAD);
+        ACLManager acl = ACLManager(d.provider.getACLManager());
+        _handOver(d, address(this), newAdmin);
+
+        assertEq(d.provider.owner(), newAdmin);
+        assertEq(d.provider.getACLAdmin(), newAdmin);
+        assertTrue(acl.hasRole(acl.DEFAULT_ADMIN_ROLE(), newAdmin));
+        assertTrue(acl.isPoolAdmin(newAdmin));
+        assertFalse(acl.hasRole(acl.DEFAULT_ADMIN_ROLE(), address(this)));
+        assertFalse(acl.isPoolAdmin(address(this)));
+        assertEq(d.calendar.pendingAdmin(), newAdmin);
+        vm.expectRevert();
+        d.configurator.setSupplyCap(address(usdt), 1);
+        vm.expectRevert();
+        d.provider.setPriceOracle(address(this));
+        vm.prank(newAdmin);
+        d.configurator.setSupplyCap(address(usdt), 1);
+
+        vm.prank(newAdmin);
+        d.calendar.acceptAdmin();
+        assertEq(d.controls.admin(), newAdmin);
     }
 
     function _supplyStock(TestBStock stock, address account, uint256 amount) private {

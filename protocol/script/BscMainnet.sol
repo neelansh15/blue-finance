@@ -3,13 +3,14 @@ pragma solidity 0.8.28;
 
 import {IPriceFeed} from "../src/interfaces/IPriceFeed.sol";
 import {BlueV3Deployment} from "./BlueV3Deployment.sol";
+import {UsMarketHolidays} from "./UsMarketHolidays.sol";
 
 /// @notice BNB Chain mainnet addresses for Blue's first listing.
 /// @dev Verified on-chain on 2026-11-27: each token's symbol, 18 decimals and uiMultiplier, and each feed's
 ///      description, 8 decimals and a round under one hour old. Atlas feed addresses are the instances Lista
 ///      lists; reads are open to any caller. Confirm with Atlas which instance Blue should use before launch.
 ///      Price bands are roughly 1/10 to 10 times the price on 2026-11-27, per raw token.
-abstract contract BscMainnet is BlueV3Deployment {
+abstract contract BscMainnet is BlueV3Deployment, UsMarketHolidays {
     uint256 internal constant BSC_CHAIN_ID = 56;
     address internal constant USDT = 0x55d398326f99059fF775485246999027B3197955;
     address internal constant USDT_USD_FEED = 0xB97Ad0E74fa7d920791E90258A6E2085088b4320; // Chainlink
@@ -25,6 +26,21 @@ abstract contract BscMainnet is BlueV3Deployment {
     address internal constant QQQB_USD_FEED = 0xA94918f11c9e7703426CCD494A4a999924942DDD;
     address internal constant SPCXB_USD_FEED = 0xdf8b61796436eD39F406623aa2166a7f185185Cb;
     address internal constant GOOGLB_USD_FEED = 0x9A47A6560E224a26F663675D5c76888A26cac6C3;
+
+    /// @notice The BNB Chain launch: deploys the listing, seeds the market calendar and hands admin to `admin`.
+    /// @dev `deployer` must be the caller. It holds admin only during setup, plus the Blue contracts until
+    ///      `admin` accepts the calendar. An admin other than the deployer must be a contract such as a multisig,
+    ///      because the Aave roles move in one step and a mistyped address could not be recovered.
+    function _launchBsc(address deployer, address admin, address keeper, address guardian, address signer)
+        internal
+        returns (Deployment memory d)
+    {
+        require(guardian != admin && guardian != deployer, "separate guardian required");
+        require(admin == deployer || admin.code.length != 0, "admin must be deployer or contract");
+        d = _deploy(USDT, Roles(deployer, keeper, guardian, signer, admin), _bscUsdFeed(), _bscStocks());
+        _seedHolidays(d.calendar);
+        if (admin != deployer) _handOver(d, deployer, admin);
+    }
 
     /// @dev Values USDT within $0.90 to $1.10. Chainlink USDT/USD on BNB has a 15-minute heartbeat and 0.1%
     ///      deviation, so a round over an hour old stops new borrowing. Valuation tolerates a day.

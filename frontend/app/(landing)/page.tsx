@@ -83,11 +83,11 @@ const ROADMAP = [
   {
     tag: "Launch preparation",
     title: "Eligibility and monitoring",
-    items: ["Connect the app and keepers to the pool", "Set up wallet eligibility, halt monitoring and the holiday calendar"],
+    items: ["Wallet actions and market data from the deployed pool", "Automate eligibility, keeper reports and halt monitoring"],
   },
   {
     tag: "Mainnet",
-    title: "Capped BNB Chain launch",
+    title: "Capped BNB Chain deployment",
     items: ["Calibrate launch limits against price gaps and liquidation depth", "Complete security review and confirm production license eligibility"],
   },
   {
@@ -232,7 +232,7 @@ export default function Home() {
         <div className="wrap project-layout">
           <section id="roadmap" aria-labelledby="roadmap-title" tabIndex={-1}>
             <p className="eyebrow">Roadmap</p>
-            <h2 id="roadmap-title">The path to BNB Chain mainnet</h2>
+            <h2 id="roadmap-title">From hackathon deployment to wider launch</h2>
             <ol className="roadmap">
               {ROADMAP.map((stage) => (
                 <li className={stage.now ? "stage-now" : undefined} key={stage.tag}>

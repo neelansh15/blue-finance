@@ -23,7 +23,7 @@ contract AproCrossCheckForkTest is Test, AproCrossCheck {
         require(block.chainid == BSC_CHAIN_ID, "BNB fork required");
         d = _deploy(
             USDT,
-            Roles(address(this), address(this), address(0x123), address(this)),
+            Roles(address(this), address(this), address(0x123), address(this), address(this)),
             _bscUsdFeed(),
             _bscStocksWithApro()
         );

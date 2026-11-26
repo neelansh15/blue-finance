@@ -21,9 +21,9 @@ const instrumentSerif = localFont({
 
 export const metadata: Metadata = {
   icons: { icon: "/assets/brand/blue-finance-mark.png", apple: "/assets/brand/blue-finance-mark.png" },
-  title: "Blue Finance: lending for tokenized US stocks on BNB Chain (draft)",
+  title: "Blue Finance: lending for tokenized US stocks on BNB Chain",
   description:
-    "Blue Finance is a draft lending protocol for tokenized US stocks on BNB Chain: one Aave V3 pool with shared USDT liquidity, real bStock collateral and borrowing limits that follow US market hours. Prototype for BNB Bangkok. Not live.",
+    "Blue Finance is a hackathon lending protocol for tokenized US stocks on BNB Chain: one Aave V3 pool with shared USDT liquidity, real bStock collateral and borrowing limits that follow US market hours. Prototype for BNB Bangkok.",
 };
 
 export const viewport: Viewport = {

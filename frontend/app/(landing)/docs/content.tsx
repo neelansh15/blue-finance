@@ -57,10 +57,16 @@ export const articles: DocArticle[] = [
       {
         id: "prototype-scope",
         title: "BNB Chain launch",
-        body: <p>The roadmap calls for a capped BNB Chain mainnet launch. The <Link href="/docs/markets">pool guide</Link> covers supported collateral and the shared USDT reserve. See <Link href="/docs/roadmap#verification">launch preparations</Link> for eligibility, monitoring and risk calibration.</p>,
+        body: <p>The hackathon pool is deployed on BNB Smart Chain at <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC"><code>0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</code></a>. Open the <Link href="/app">onchain workspace</Link> for live markets and wallet actions, or the <Link href="/app/simulator">simulator</Link> for a pre-funded walkthrough.</p>,
+      },
+      {
+        id: "demo",
+        title: "Run the demo",
+        body: <><p>Connect a wallet on BNB Smart Chain with USDT and BNB for gas. Supply a small amount of USDT, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The pool launched with zero seeded USDT. For borrowing, the operator must seed liquidity, confirm keeper recovery and fresh prices, and register eligibility for the selected stock. The onchain workspace shows these gates. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
       },
     ],
     sources: [
+      { path: "frontend/README.md", title: "Onchain demo and operator walkthrough" },
       { path: "architecture-v3.md", title: "Architecture v3" },
       { path: "protocol/README.md", title: "Protocol README" },
       { path: "implementation-plan.md", title: "Implementation plan" },
@@ -126,7 +132,7 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>Below 1, l
       {
         id: "overrides",
         title: "Keeper and admin overrides",
-        body: <p>The schedule comes from the on-chain US Eastern calendar. The keeper or admin can apply a stricter status for a limited time, never a looser one. The deployer can set holidays, early closes and temporary overrides through <code>MarketCalendar</code>. Before launch the holiday calendar must be seeded.</p>,
+        body: <p>The schedule comes from the on-chain US Eastern calendar. The keeper or admin can apply a stricter status for a limited time, never a looser one. The calendar admin can set holidays, early closes and temporary overrides through <code>MarketCalendar</code>. The deployment script seeds NYSE holidays and early closes through 2028.</p>,
       },
       {
         id: "halts",
@@ -206,7 +212,7 @@ Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>Below 1, l
       {
         id: "eligibility-and-admin",
         title: "Eligibility and admin controls",
-        body: <p>A configured signer issues an approval for a borrowing wallet and stock. The borrower registers it on the controls contract against <code>eligibilityDigest(borrower, stock, nonces(borrower), expiry)</code>. The keeper reports each stock’s health and renews borrow permission. The guardian can place a hold or lower caps. The admin can release a hold or raise caps.</p>,
+        body: <p>A configured signer issues an approval for a borrowing wallet and stock. The borrower registers it on the controls contract against <code>eligibilityDigest(borrower, stock, nonces(borrower), expiry)</code>. The keeper reports each stock’s health and renews borrow permission. The guardian can place a hold or lower caps. The admin can release a hold, raise caps and replace the keeper, guardian and signer. The borrow controls and price sources use the calendar’s admin.</p>,
       },
     ],
     sources: [
@@ -306,11 +312,11 @@ forge script script/DeployBsc.s.sol:DeployBsc \
       },
       {
         id: "verification",
-        title: "Mainnet launch preparations",
+        title: "Before a wider launch",
         body: <ul>
           <li>Calibrate the risk parameters in <code>BlueV3Deployment.sol</code> against price-gap history and executable liquidation depth.</li>
           <li>Confirm with Atlas which feed instances Blue should use, and decide on a second price source.</li>
-          <li>Connect the app and keepers to the Aave pool. Set up the signer service, halt monitoring and holiday calendar.</li>
+          <li>Automate keeper reporting, eligibility signing and halt monitoring. The hackathon workspace supports manual operator actions.</li>
           <li>Confirm issuer transfer permissions for bStocks and how shared-reserve deficits are handled.</li>
           <li>Complete a security review and confirm license eligibility for production use.</li>
         </ul>,

@@ -22,9 +22,8 @@ contract StockPriceSource {
     uint256 public constant MAX_PRICE = 1e16;
     uint8 public constant decimals = 8;
 
-    address public immutable admin;
-    address public immutable reporter;
-    address public immutable guardian;
+    address public reporter;
+    address public guardian;
     IPriceFeed public immutable feed;
     IBStockLike public immutable stock;
     IMarketCalendar public immutable calendar;
@@ -54,11 +53,11 @@ contract StockPriceSource {
 
     event PriceAccepted(uint256 price, uint256 observedAt, uint256 multiplier);
     event PriceSuspended();
+    event RolesSet(address reporter, address guardian);
     event BandSet(uint256 minPrice, uint256 maxPrice);
     event CrossCheckSet(address feed, uint32 maxAge, uint16[4] toleranceBps);
 
     struct Config {
-        address admin;
         address reporter;
         address guardian;
         IPriceFeed feed;
@@ -77,14 +76,11 @@ contract StockPriceSource {
 
     constructor(Config memory c) {
         if (
-            c.admin == address(0) || c.reporter == address(0) || c.guardian == address(0)
-                || address(c.feed) == address(0) || address(c.calendar) == address(0) || c.feed.decimals() != decimals
+            address(c.feed) == address(0) || address(c.calendar) == address(0) || c.feed.decimals() != decimals
                 || c.borrowMaxAge == 0 || c.borrowMaxAge > c.liquidationMaxAge || c.continuityBps == 0
                 || c.continuityBps >= BPS || (c.feedPerDisplayedUnit && address(c.stock) == address(0))
         ) revert InvalidConfig();
-        admin = c.admin;
-        reporter = c.reporter;
-        guardian = c.guardian;
+        _setRoles(c.reporter, c.guardian);
         feed = c.feed;
         stock = c.stock;
         calendar = c.calendar;
@@ -96,34 +92,45 @@ contract StockPriceSource {
         _setCrossCheck(c.crossCheckFeed, c.crossCheckMaxAge, c.crossCheckBps);
     }
 
+    /// @notice The market calendar's admin administers this source, so one handover moves every Blue role.
+    function admin() public view returns (address) {
+        return calendar.admin();
+    }
+
+    /// @notice Replaces the reporter and guardian.
+    function setRoles(address reporter_, address guardian_) external {
+        if (msg.sender != admin()) revert Unauthorized();
+        _setRoles(reporter_, guardian_);
+    }
+
     function refresh() external {
-        if (msg.sender != reporter && msg.sender != admin) revert Unauthorized();
+        if (msg.sender != reporter && msg.sender != admin()) revert Unauthorized();
         if (suspended) revert UnusablePrice();
         _accept(false);
     }
 
     /// @notice Governance accepts a new reference after checking a large gap or a corporate action.
     function acceptReference() external {
-        if (msg.sender != admin) revert Unauthorized();
+        if (msg.sender != admin()) revert Unauthorized();
         _accept(true);
         suspended = false;
     }
 
     function suspend() external {
-        if (msg.sender != reporter && msg.sender != guardian && msg.sender != admin) revert Unauthorized();
+        if (msg.sender != reporter && msg.sender != guardian && msg.sender != admin()) revert Unauthorized();
         suspended = true;
         emit PriceSuspended();
     }
 
     /// @notice Sets the absolute range outside which a round is treated as invalid.
     function setBand(uint256 minPrice_, uint256 maxPrice_) external {
-        if (msg.sender != admin) revert Unauthorized();
+        if (msg.sender != admin()) revert Unauthorized();
         _setBand(minPrice_, maxPrice_);
     }
 
     /// @notice Sets or clears (feed = 0) the secondary feed that new borrowing must agree with.
     function setCrossCheck(IPriceFeed feed_, uint32 maxAge, uint16[4] calldata toleranceBps) external {
-        if (msg.sender != admin) revert Unauthorized();
+        if (msg.sender != admin()) revert Unauthorized();
         _setCrossCheck(feed_, maxAge, toleranceBps);
     }
 
@@ -165,6 +172,13 @@ contract StockPriceSource {
         observedAt = updatedAt;
         multiplier = _multiplier();
         emit PriceAccepted(normalized, updatedAt, multiplier);
+    }
+
+    function _setRoles(address reporter_, address guardian_) private {
+        if (reporter_ == address(0) || guardian_ == address(0)) revert InvalidConfig();
+        reporter = reporter_;
+        guardian = guardian_;
+        emit RolesSet(reporter_, guardian_);
     }
 
     function _setBand(uint256 minPrice_, uint256 maxPrice_) private {

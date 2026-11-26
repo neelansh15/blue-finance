@@ -935,3 +935,98 @@
 .stock-health meter::-webkit-meter-bar, .stock-factors meter::-webkit-meter-bar { background: var(--blue-app-sheet); border: 1px solid var(--rule); border-radius: 2px; }
 .stock-health meter::-webkit-meter-optimum-value, .stock-factors meter::-webkit-meter-optimum-value { background: var(--blue-app-blue); }
 .stock-health meter::-moz-meter-bar, .stock-factors meter::-moz-meter-bar { background: var(--blue-app-blue); }
+
+.live-controls {
+  min-width: 0;
+}
+
+.live-form,
+.live-operator,
+.live-feedback {
+  padding: 1rem;
+}
+
+.live-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.live-form label {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.live-form p,
+.live-operator p {
+  margin: 0;
+}
+
+.live-form input:not([type="checkbox"]),
+.live-form select,
+.live-controls button {
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rule);
+  background: var(--blue-app-paper);
+  color: var(--blue-app-ink);
+  font: inherit;
+}
+
+.live-controls button {
+  cursor: pointer;
+}
+
+.live-controls button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.live-form .live-primary {
+  background: var(--blue-app-blue);
+  color: var(--on-blue);
+  font-weight: 700;
+}
+
+.live-form .live-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.live-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.live-preview {
+  margin: 1rem;
+}
+
+.live-operator {
+  display: grid;
+  border-top: 1px solid var(--rule);
+}
+
+.live-operator > :not(summary) {
+  margin-top: 0.65rem;
+}
+
+.live-operator summary {
+  cursor: pointer;
+}
+
+.live-feedback {
+  border-top: 1px solid var(--rule);
+  overflow-wrap: anywhere;
+}
+
+.live-feedback a,
+.live-footer a {
+  text-decoration: underline;
+}
+
+.live-footer {
+  padding-block: 1.4rem;
+}

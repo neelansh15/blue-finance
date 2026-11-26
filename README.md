@@ -15,7 +15,16 @@
 
 </div>
 
-> **Status: hackathon prototype (BNB Bangkok, Nov 25-27, 2026).** The contracts are tested offline and on a local BNB mainnet fork. They are not audited and not deployed to mainnet. All risk parameters are uncalibrated prototype values.
+> **Status: hackathon prototype (BNB Bangkok, Nov 25-27, 2026).** The pool is deployed on BNB Smart Chain mainnet (chain ID 56). It uses unaudited contracts and uncalibrated prototype risk parameters.
+
+### Working demo
+
+Run the frontend and open `/app` for the live pool. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, a demo operator first has to supply liquidity, maintain fresh prices and keeper reports, and register wallet eligibility. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
+
+Open `/app/simulator` for a pre-funded walkthrough of lending, borrowing, a halt and repayment without wallet transactions.
+
+**BNB mainnet pool:** `0xDAC47642621B0C3E4191Fe68281EddAC355f12bC`. All 59 deployment transactions succeeded on November 27, 2026. See the [deployment addresses and receipts](protocol/README.md#bnb-mainnet-deployment).
+
 
 ## Table of contents
 
@@ -78,7 +87,7 @@ Each stock has one status at a time. The status sets its borrowing limit and deb
 | `HALTED` | Set by the keeper or admin | Blocked | n/a |
 | `CORP_ACTION` | Set by the keeper or admin | Blocked | n/a |
 
-The schedule comes from the on-chain `MarketCalendar`, which also handles daylight saving time, holidays and early closes. A keeper or the admin can apply a stricter status for a limited time, never a looser one.
+The schedule comes from the on-chain `MarketCalendar`, which also handles daylight saving time, holidays and early closes. The BNB deployment seeds the NYSE calendar through 2028. A keeper or the admin can apply a stricter status for a limited time, never a looser one.
 
 The liquidation threshold is 62.5% in every status. A position with $1,000 of collateral and $500 of debt keeps a health factor of 1.25 through a status change when price and debt are held fixed.
 
@@ -133,8 +142,8 @@ Token and feed addresses are listed in the [protocol README](protocol/README.md#
 
 | Part | State |
 |---|---|
-| [`protocol/`](protocol/README.md) | The current design on Aave V3. Tested offline and on a BNB mainnet fork. |
-| [`frontend/`](frontend/README.md) | Landing page and demo app. The demo simulates the pool rules and sends no transactions. |
+| [`protocol/`](protocol/README.md) | The current Aave V3 deployment, with offline and BNB mainnet fork tests. |
+| [`frontend/`](frontend/README.md) | Landing page, onchain workspace, and pre-funded simulator. |
 | [`keepers/`](keepers/README.md) and [`demo/`](demo/README.md) | Still built for the earlier Morpho prototype. No keeper reports to the Aave pool yet. |
 | [`ai-risk-controller/`](ai-risk-controller/README.md) | Advisory only, on simulated data. Its Blue parameter proposals still follow the Morpho design. |
 | [`protocol-old/`](protocol-old/README.md) | The earlier prototype on Morpho Blue, kept for reference. |
@@ -185,7 +194,7 @@ Frontend:
 ```sh
 cd frontend
 npm ci
-npm run dev      # http://localhost:3000, demo at /app
+npm run dev      # http://localhost:3000, onchain demo at /app
 ```
 
 The `/app/risk` workspace connects to the Python advisory backend. See [local development](docs/local-development.md) to run both. The default analysis is simulated, needs no keys and never executes a transaction.
@@ -200,13 +209,15 @@ forge test                                   # offline suite, fork suites are sk
 BLUE_RUN_BNB_FORK_TESTS=true BSC_RPC_URL=<your BNB mainnet RPC> forge test
 ```
 
-Last run Nov 27, 2026 with fork tests enabled: all 38 pool and listing tests passed.
+Last run Nov 27, 2026 with fork tests enabled: all 58 tests passed.
 
 | Suite | Tests | What it covers |
 |---|---|---|
-| `BluePoolTest` | 18 | Offline scenarios: shared reserve, halts, splits, price gaps, caps, heartbeat recovery, liquidation and deficit accounting |
-| `BluePoolBnbForkTest` | 18 | The same scenarios with real USDT on a BNB mainnet fork |
-| `BscMainnetForkTest` | 2 | The real listing with live bStocks and feeds, including a TSLAB supply, borrow, repay and withdraw |
+| `BluePoolTest` | 23 | Offline scenarios: shared reserve, halts, splits, price gaps, caps, heartbeat recovery, liquidation and deficit accounting, admin handover and role replacement |
+| `BluePoolBnbForkTest` | 23 | The same scenarios with real USDT on a BNB mainnet fork |
+| `BscMainnetForkTest` | 5 | The real launch with live bStocks and feeds: admin handover, keeper and holiday setup, and a TSLAB supply, borrow, repay and withdraw |
+| `UsMarketHolidaysTest` | 5 | The seeded NYSE holidays and early closes |
+| `AproCrossCheckForkTest` | 2 | The optional APRO cross-check against live feeds |
 
 Fork tests read live chain state, so results can vary with feed freshness. They send nothing to BNB mainnet.
 
@@ -239,7 +250,7 @@ Every value is a placeholder until calibrated. Source: [`BlueV3Deployment.sol`](
 - **Corporate actions.** `CORP_ACTION` has to be set before a known split. A feed that updates before the multiplier otherwise looks like a crash and can trigger liquidations.
 - **Single stock price source.** The demo relies on Atlas alone. Confirm with Atlas which feed instances Blue should use.
 - **Issuer control.** A paused token or changed compliance rules can block supply, withdrawal and liquidation transfers.
-- **Not ready for launch.** Calibration, the holiday calendar, keeper integration, the eligibility service and a security review are open.
+- **Not ready for launch.** Calibration, keeper integration, the eligibility service and a security review are open.
 
 ## Documentation
 

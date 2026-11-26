@@ -1,6 +1,8 @@
 # Run Blue Finance locally and configure optional APIs
 
-The connected demo needs **no API keys**. The frontend calls the Python advisory service through its own `/api/risk` routes. NVDA prices, issuer documents and borrower analysis are simulated; Nasdaq/Binance market status is fetched separately from public endpoints. No lending transaction is executed by this integration.
+The onchain demo needs **no API keys**. Open [the onchain app](http://localhost:3000/app) for live BNB Smart Chain reads and wallet actions, or [the simulator](http://localhost:3000/app/simulator) for a pre-funded demo. See the [frontend walkthrough](../frontend/README.md#onchain-demo-app) for prerequisites and operator steps.
+
+The advisory risk workspace is optional. The frontend calls the Python advisory service through its own `/api/risk` routes. NVDA prices, issuer documents and borrower analysis are simulated; Nasdaq/Binance market status is fetched separately from public endpoints. No lending transaction is executed by this integration.
 
 ## Start the backend
 
@@ -64,7 +66,7 @@ An injected browser wallet and the risk demo do not need this setting.
 2. In the project's allowlist, add your actual frontend production origin. Localhost is permitted by Reown. [Official project ID and allowlist guidance](https://docs.reown.com/cloud/relay).
 3. Set `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` in your private `frontend/.env.local`, then restart/rebuild Next.js. In deployment, set it in the frontend host before building.
 
-This is a public browser project identifier, unlike the LLM secret, but keep your actual value out of GitHub as requested. Wallet connection does not turn simulated lending into live transactions.
+This is a public browser project identifier, unlike the LLM secret, but keep your actual value out of GitHub as requested. The wallet signs transactions from the onchain workspace. The simulator keeps its balances in the browser.
 
 ## What is still needed for live financial data
 
