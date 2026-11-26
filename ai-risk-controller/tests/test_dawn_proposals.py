@@ -110,14 +110,12 @@ def test_explicit_per_regime_freshness_preserves_strict_default(service):
         Policy(oracle_max_age_by_regime={'OPEN': 7200})
 
 
-def test_declared_haircuts_and_margin_match_deployment_and_frontend_defaults():
+def test_declared_haircuts_and_margin_match_deployment_defaults():
     root = Path(__file__).resolve().parents[2]
     deployment = (root / 'protocol/script/DawnDeploy.sol').read_text()
-    frontend = (root / 'frontend/src/lib/dawn/params.ts').read_text()
     config = DawnConfig()
-    # Detect cross-language drift rather than trusting three separately written defaults.
+    # Detect backend/Solidity configuration drift without depending on frontend code.
     for regime in REGIMES:
         onchain = int(re.search(rf'H_{regime}\s*=\s*(\d+)', deployment)[1])
-        ui = float(re.search(rf'\b{regime}:\s*([\d.]+)', frontend)[1])
-        assert onchain == config.haircuts_bps[regime] == round(ui * 10000)
+        assert onchain == config.haircuts_bps[regime]
     assert int(re.search(r'MARGIN_BPS\s*=\s*(\d+)', deployment)[1]) == config.margin_bps

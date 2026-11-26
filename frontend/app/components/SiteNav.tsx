@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { IconArrow, BlueprintLogo } from "./Icons";
+import BrandLogo from "./BrandLogo";
+import { IconArrow } from "./Icons";
 import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [
@@ -21,9 +22,8 @@ export default function SiteNav({ docs = false }: { docs?: boolean }) {
   return (
     <header className="nav">
       <nav className="wrap nav-inner" aria-label="Primary">
-        <Link className="brand" href={docs ? "/" : "#top"} aria-label={docs ? "Dawn Finance home" : "Dawn Finance, back to top"}>
-          <BlueprintLogo />
-          <span>Dawn<span className="brand-wide"> Finance</span></span>
+        <Link className="brand" href={docs ? "/" : "#top"} aria-label={docs ? "Blue Finance home" : "Blue Finance, back to top"}>
+          <BrandLogo />
         </Link>
         <ul className="nav-links">
           {LINKS.map(({ href, label }) => (

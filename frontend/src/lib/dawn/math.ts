@@ -1,5 +1,3 @@
-import { ROUTINE_REGIMES } from "./params";
-
 export const REGIMES = ["OPEN", "EXTENDED", "CLOSED", "WEEKEND", "HALTED", "CORP_ACTION"] as const;
 export type Regime = (typeof REGIMES)[number];
 
@@ -21,8 +19,6 @@ export type DawnSnapshot = {
   debt: number;
   pendingMultiplier: { newMultiplier: bigint } | null;
   frozenPricePerRaw: number | null;
-  calendarRegime?: (typeof ROUTINE_REGIMES)[number];
-  frozenHaircut?: number | null;
 };
 
 export function isRegime(value: string): value is Regime {
@@ -32,7 +28,7 @@ export function isRegime(value: string): value is Regime {
 const WAD = 10n ** 18n;
 export const wadToNumber = (wad: bigint) => Number(wad) / Number(WAD);
 export const numberToWad = (value: number) => BigInt(Math.round(value * Number(WAD)));
-export const hMax = (params: Params) => Math.max(...ROUTINE_REGIMES.map(r => params.haircut[r]));
+export const hMax = (params: Params) => Math.max(...Object.values(params.haircut));
 
 export const naivePricePerRaw = (feedPricePerUI: number) => feedPricePerUI;
 export const collateralValue = (raw: bigint, pricePerRaw: number, haircut: number) =>
@@ -51,14 +47,10 @@ export function healthStatus(value: number) {
 export function derivePosition(s: DawnSnapshot) {
   const multiplier = wadToNumber(s.uiMultiplier);
   const pricePerRaw = s.frozenPricePerRaw ?? s.feedPricePerUI * multiplier;
-  const calendarRegime = s.calendarRegime ?? (s.regime === "HALTED" || s.regime === "CORP_ACTION" ? "OPEN" : s.regime);
-  const haircutNow = Math.max(s.params.haircut[s.regime], s.params.haircut[calendarRegime],
-    s.frozenPricePerRaw === null ? 0 : s.frozenHaircut ?? 0);
+  const haircutNow = s.params.haircut[s.regime];
   const grossValue = collateralValue(s.collateralRaw, pricePerRaw, 0);
   const valueNow = grossValue * (1 - haircutNow);
-  const weekendHaircut = Math.max(s.params.haircut.WEEKEND,
-    s.frozenPricePerRaw === null ? 0 : s.frozenHaircut ?? 0);
-  const valueWeekend = grossValue * (1 - weekendHaircut);
+  const valueWeekend = grossValue * (1 - s.params.haircut.WEEKEND);
   const target = s.params.lltv * (1 - hMax(s.params)) - s.params.margin;
   const borrowBlocked = s.regime === "HALTED" || s.regime === "CORP_ACTION";
   const liquidationDenominator = wadToNumber(s.collateralRaw) * multiplier * (1 - haircutNow) * s.params.lltv;
