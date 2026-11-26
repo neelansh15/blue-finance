@@ -1,0 +1,42 @@
+{
+  "version": "hackathon-v0.1",
+  "model_version": "risk-engine-v0.1",
+  "weights": {
+    "volatility": 0.25,
+    "liquidity": 0.25,
+    "issuer": 0.2,
+    "oracle": 0.15,
+    "concentration": 0.15
+  },
+  "category_thresholds": [
+    20.0,
+    40.0,
+    60.0,
+    80.0
+  ],
+  "min_history_points": 20,
+  "history_max_age_hours": 120.0,
+  "oracle_max_age_seconds": 300.0,
+  "market_max_age_seconds": 300.0,
+  "max_price_divergence": 0.1,
+  "volatility_stress_z": 2.33,
+  "execution_fee": 0.003,
+  "min_liquidation_threshold": 0.3,
+  "max_liquidation_threshold": 0.77,
+  "market_lltv": 0.625,
+  "max_ltv": 0.6,
+  "ltv_buffer": 0.08,
+  "max_supply_tokens": 100000.0,
+  "max_borrow_usd": 5000000.0,
+  "depth_participation": 0.25,
+  "volume_participation": 0.05,
+  "recovery_safety_margin": 0.1,
+  "at_risk_health_factor": 1.15,
+  "recommendation_ttl_seconds": 900,
+  "immutable_threshold": true,
+  "weekend_gap": 0.08,
+  "overnight_gap": 0.03,
+  "halted_gap": 0.2,
+  "issuer_restriction_haircut": 0.25,
+  "near_close_minutes": 60.0
+}
