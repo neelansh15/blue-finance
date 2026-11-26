@@ -269,3 +269,5 @@ The project started under the name "Dawn" and was renamed to "Blue" during devel
 ---
 
 <div align="center">Built for BNB Bangkok, November 2026.</div>
+
+Research demo: [Joint stress analysis](docs/joint-stress-analysis.md) estimates simultaneous stock-loss exposure for shared USDT suppliers. Run it separately at `/app/research/joint-stress`; it does not change lending policy.
