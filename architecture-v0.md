@@ -90,4 +90,4 @@ Hackathon cut (36h): phases 1-3 on a fork or testnet, with a live weekend-gap li
 * Which tokenized equities exist on BNB Chain, who issues them, and what are the transfer and KYC rules?
 * Which oracle feeds cover them, and their update cadence outside market hours?
 * Does the issuer offer redemption, and at what latency?
-* Do the hackathon tracks or Builder Fund call out RWA lending specifically?
+* Do the hackathon tracks or sponsor bounties call out RWA lending specifically?
