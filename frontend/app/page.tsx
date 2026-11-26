@@ -122,11 +122,14 @@ export default function Home() {
         <nav className="wrap nav-inner" aria-label="Primary">
           <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
             <IconLogo />
-            <span>Dawn</span>
+            <span>Dawn Finance</span>
           </a>
           <ul className="nav-links">
             <li>
               <a href="#how">How it works</a>
+            </li>
+            <li className="hide-sm">
+              <a href="#regimes">Simulator</a>
             </li>
             <li>
               <a href="#risk">Risk layer</a>
@@ -140,7 +143,7 @@ export default function Home() {
           </ul>
           <span className="nav-status">
             <span className="status-dot" aria-hidden="true" />
-            Draft, not live
+            Prototype
           </span>
         </nav>
       </header>
@@ -148,46 +151,41 @@ export default function Home() {
       <main id="main">
         {/* Hero */}
         <section className="hero" id="top" aria-labelledby="hero-title">
-          <div className="hero-sky" aria-hidden="true">
-            <div className="sun" />
-            <svg className="ridges" viewBox="0 0 1440 320" preserveAspectRatio="xMidYMax slice" focusable="false">
-              <path className="ridge-far" d="M0 210 L120 168 L230 190 L360 120 L480 172 L600 140 L720 186 L840 150 L960 182 L1080 118 L1210 170 L1330 140 L1440 166 L1440 320 L0 320 Z" />
-              <path className="ridge-mid" d="M0 250 L140 200 L260 232 L400 186 L540 236 L680 208 L800 244 L940 196 L1080 240 L1220 204 L1340 236 L1440 214 L1440 320 L0 320 Z" />
-              <path className="ridge-near" d="M0 292 L170 256 L330 284 L500 252 L680 290 L860 262 L1040 294 L1220 258 L1440 284 L1440 320 L0 320 Z" />
-            </svg>
-          </div>
-
           <div className="wrap hero-grid">
             <div className="hero-copy">
-              <p className="eyebrow">
-                <span className="eyebrow-dot" aria-hidden="true" />
-                Lending for tokenized US stocks on BNB Chain
-              </p>
+              <p className="eyebrow">Market-aware lending on BNB Chain</p>
               <h1 id="hero-title">
-                Borrow against stocks that never sleep, <span className="h1-soft">priced for markets that do.</span>
+                Borrow against <span className="h1-soft">tokenized stocks.</span>
               </h1>
               <p className="lead">
-                Dawn lets you post bStocks and borrow stablecoins on unmodified Morpho Blue. Its risk layer knows when the
-                US market is open and adjusts borrowing power before the gap, not after it.
+                Post tokenized US stocks as collateral and borrow stablecoins. Dawn adjusts how much you can borrow
+                as the US market opens and closes.
               </p>
               <div className="ctas">
-                <a className="btn btn-primary" href={`${REPO}/architecture-v1.md`}>
+                <a className="btn btn-primary" href="#regimes">
+                  Explore borrowing power
+                  <IconArrow />
+                </a>
+                <a className="btn btn-quiet" href={`${REPO}/architecture-v1.md`}>
                   Read the architecture
                   <IconArrow />
                 </a>
-                <a className="btn btn-quiet" href="#how">
-                  How it works
-                </a>
               </div>
-              <ul className="built-on" aria-label="Built on">
-                <li>Morpho Blue, unmodified</li>
-                <li>BNB Chain</li>
-                <li>bStocks (BEP-677 multiplier)</li>
-              </ul>
             </div>
 
             <div className="hero-card">
               <PositionPreview />
+            </div>
+          </div>
+          <div className="hero-stack">
+            <div className="wrap hero-stack-inner">
+              <p>Built on</p>
+              <ul className="built-on" aria-label="Built on">
+                <li>Morpho Blue</li>
+                <li>BNB Chain</li>
+                <li>bStocks</li>
+              </ul>
+              <span className="hero-draft">BNB Bangkok prototype · Not live</span>
             </div>
           </div>
         </section>
@@ -195,9 +193,11 @@ export default function Home() {
         {/* Problem */}
         <section className="section" id="problem" aria-labelledby="problem-title">
           <div className="wrap">
-            <Reveal className="section-head">
-              <p className="kicker">The gap</p>
-              <h2 id="problem-title">Tokens trade 24/7. The stock market does not.</h2>
+            <Reveal className="section-head section-head-split">
+              <div>
+                <p className="kicker">The market gap</p>
+                <h2 id="problem-title">Tokens trade 24/7. US stocks trade in sessions.</h2>
+              </div>
               <p className="intro">
                 A bStock can change hands on a Saturday, but the share it tracks only trades in set US sessions. When the
                 market reopens, price can jump past where it closed. Lending built for always-on crypto treats every hour
@@ -237,11 +237,10 @@ export default function Home() {
         <section className="section section-raised" id="regimes" aria-labelledby="regimes-title">
           <div className="wrap">
             <Reveal className="section-head">
-              <p className="kicker">Borrowing power over a week</p>
+              <p className="kicker">Interactive simulator</p>
               <h2 id="regimes-title">Borrowing power follows the market clock</h2>
               <p className="intro">
-                Drag across the week to see how the regime changes the haircut. The shape follows the design; the numbers are
-                placeholders until the gap model is finished.
+                Move through the week to see how market hours affect the collateral haircut and borrowing power.
               </p>
             </Reveal>
             <Reveal className="panel">

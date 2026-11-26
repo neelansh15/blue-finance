@@ -35,7 +35,7 @@ export default function PositionPreview() {
     <div className="preview" aria-labelledby={`${name}-title`} role="group">
       <div className="preview-head">
         <div>
-          <p className="preview-kicker">Position</p>
+          <p className="preview-kicker">Position simulator</p>
           <h2 className="preview-title" id={`${name}-title`}>
             NVDAB <span aria-hidden="true">/</span>
             <span className="sr-only"> collateral, borrowing </span> USDT
@@ -122,7 +122,7 @@ export default function PositionPreview() {
       <p className="preview-note">{REGIME_NOTE[regime]}</p>
       <p className="illustrative">
         <span className="illustrative-tag">Illustrative</span>
-        Mock values, not real data or protocol parameters. 62.5% LLTV is the proposed demo market setting.
+        Simulated values. The proposed demo liquidation LTV is 62.5%.
       </p>
     </div>
   );

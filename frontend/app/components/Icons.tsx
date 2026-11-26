@@ -14,10 +14,9 @@ const base: SVGProps<SVGSVGElement> = {
 };
 
 export const IconLogo = (p: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" width={28} height={28} {...p}>
-    <circle cx="16" cy="18" r="7" fill="var(--accent)" />
-    <path d="M1 30 L10 17 L15 23 L21 13 L31 27 L31 30 Z" fill="var(--logo-far)" />
-    <path d="M1 30 L7 25 L12 28.5 L19 22 L31 30 Z" fill="var(--logo-near)" />
+  <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false" width={28} height={28} {...p}>
+    <rect x="0.5" y="0.5" width="31" height="31" rx="3" fill="currentColor" />
+    <path d="M9 19a7 7 0 0 1 14 0M6 19h20M9 23h14M14 8h4" stroke="var(--logo-ink)" strokeWidth="1.5" />
   </svg>
 );
 
