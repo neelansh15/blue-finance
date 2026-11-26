@@ -45,6 +45,8 @@ Full detail: [architecture-v0.md](architecture-v0.md).
 
 Working name: Dawn Finance.
 
+Alternative under consideration (Nov 26): Blue Finance. No decision yet.
+
 ## Build plan
 
 1. Spec and parameter model: gap analysis on 2-3 equities, regime table, LLTV formula (backtest).
