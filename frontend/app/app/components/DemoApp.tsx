@@ -6,6 +6,8 @@ import CorpActionBanner from "./CorpActionBanner";
 import DemoPanel from "./DemoPanel";
 import PositionCard from "./PositionCard";
 import { useBlue } from "./useBlue";
+import RiskPanel from "../risk/RiskPanel";
+import { demoPosition } from "../../../src/lib/risk/adapter";
 
 export default function DemoApp() {
   const { client, snapshot, error } = useBlue();
@@ -44,6 +46,10 @@ export default function DemoApp() {
             <BorrowForm s={snapshot} client={client} />
             {dev && client.demo && <DemoPanel s={snapshot} demo={client.demo} />}
           </div>
+          <details className="risk-embedded">
+            <summary>Assess this position with the risk backend</summary>
+            <RiskPanel key={JSON.stringify(demoPosition(snapshot))} position={demoPosition(snapshot)} />
+          </details>
         </>
       )}
       <p className="illustrative dapp-foot">

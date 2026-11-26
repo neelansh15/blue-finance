@@ -137,6 +137,8 @@ cd ../keepers && pnpm install && pnpm test
 cd ../frontend && npm install && npm run dev      # http://localhost:3000, demo at /app
 ```
 
+The `/app/risk` workspace connects the frontend to the Python advisory backend. See [local development and optional API registration](docs/local-development.md) to run both services. Default analysis is simulated and needs no keys; advice never executes a transaction.
+
 Deploying to a local BNB fork: see [protocol/README.md](protocol/README.md).
 
 ## Testing
