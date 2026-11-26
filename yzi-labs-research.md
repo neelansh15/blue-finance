@@ -6,7 +6,7 @@ Research on what YZi Labs (ex-Binance Labs) and BNB Chain fund and want next. Co
 
 * Funding mix per CZ (Consensus Miami, May 2026): ~70% blockchain, 20% AI, 10% biotech.
 * 2026 deals by category (DefiLlama, 50 total): DeFi 13, AI 5, Payments 5, Trading 4, Prediction Market 3, RWA 3, Banking 3. Generic lending, perps and prediction markets are a minority. Payments/FX, AI agents, RWA and trading infrastructure dominate.
-* Recommendation: avoid generic lending, perps and prediction-market clones. Build against stated gaps (below).
+* Implication: generic lending, perps and prediction-market clones are crowded. Stated gaps are listed below.
 
 ## Funding routes
 
