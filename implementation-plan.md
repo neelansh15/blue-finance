@@ -69,7 +69,14 @@ Toolchain: Foundry (Solidity), viem for scripts, Next.js for the UI.
 2. **Multiplier watcher:** listens for `UIMultiplierUpdated`, sets CORP_ACTION, and checks the oracle price stays continuous before returning to normal (§4).
 3. **Liquidation bot:** scans positions, liquidates unhealthy ones using the Morpho callback so no flash loan is needed.
 4. Demo control script: flip regime, change the multiplier, move the mock price.
-5. Production items (later): halt monitor (Nasdaq RSS, SEC), sentinel bot for cap cuts.
+5. **Halt monitor** (small version for the demo, full version later), per architecture §7:
+   - Nasdaq halt RSS, at most once per minute.
+   - Binance bapi `/asset/market/status/ai` per bStock (poll every 30-60s). Use `type=3` on `/stock/detail/list/ai` to get contract addresses.
+   - Binance Spot `exchangeInfo` status.
+   - Any signal can only move the regime to HALTED or CORP_ACTION. Clearing needs a Nasdaq resumption, bapi status TRADING and the price-continuity check. A fetch failure counts as unknown, never as clear.
+   - The session clock is computed locally from the ET table and a holiday calendar; the bapi market status is a cross-check only.
+   - Before relying on it, verify live that ASSET_PAUSED fires on a real split or dividend pause, and what `marketStatus` returns for bStocks.
+6. Production items (later): SEC suspension feed, sentinel bot for cap cuts.
 
 ### WS7. UI
 1. UI-unit balances via `balanceOfUI`.
