@@ -49,7 +49,7 @@
 }
 
 .app-demo-label,
-.app-session label {
+.app-session-head {
   color: var(--secondary);
   font: 500 0.6875rem/1.45 var(--mono);
   letter-spacing: 0.055em;
@@ -85,28 +85,30 @@
 }
 
 .app-session {
-  display: grid;
+  width: min(100%, 380px);
   gap: 6px;
-  min-width: 170px;
-  padding: 8px 10px;
-  border: 1px solid var(--rule-strong);
+  padding: 8px;
   background: var(--paper);
 }
 
-.app-session select {
-  width: 100%;
-  min-height: 36px;
-  padding: 4px 6px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 0;
-  background: var(--sheet);
-  color: var(--ink);
-  font: inherit;
+.app-session-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-inline: 4px;
 }
 
-.app-session p,
-.app-amount-heading span,
-.app-message,
+.app-session-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.app-session .app-session-options label span {
+  padding-inline: 4px;
+  font-size: 0.8125rem;
+}
+
 .app-feedback:empty {
   margin-top: 0;
 }
@@ -144,14 +146,27 @@
   padding-block: 26px;
 }
 
-.dashboard-link {
+.dashboard-position-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dashboard-position-actions a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  min-height: 44px;
+  padding-inline: 12px;
+  border: 1px solid var(--rule-strong);
   color: var(--blue);
-  font-size: 0.8125rem;
-  text-underline-offset: 3px;
-  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dashboard-position-actions a:hover {
+  background: var(--sheet);
 }
 
 .app-footnote {
@@ -166,6 +181,20 @@
   margin-top: 16px;
   border: 1px solid var(--rule-strong);
   background: var(--paper);
+}
+
+.app-summary-overview {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 880px;
+}
+
+.app-summary .app-summary-net {
+  background: var(--plot);
+  color: var(--plot-ink);
+}
+
+.app-summary .app-summary-net dt {
+  color: var(--plot-muted);
 }
 
 .app-summary-pair {
@@ -224,41 +253,86 @@
   border-block: 1px solid var(--rule-strong);
 }
 
-.app-market-head,
-.app-market-row {
-  display: grid;
-  grid-template-columns: minmax(114px, 1.25fr) minmax(64px, 0.65fr) minmax(64px, 0.65fr) minmax(102px, 0.95fr) 16px;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 13px;
+.app-market-ledger {
+  width: 100%;
+  border-spacing: 0;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
 }
 
-.app-market-head {
+.app-market-ledger th,
+.app-market-ledger td {
+  padding: 10px 8px;
+}
+
+.app-market-ledger thead th {
   color: var(--secondary);
   font: 500 0.6875rem/1.5 var(--mono);
   text-transform: uppercase;
+  vertical-align: bottom;
 }
 
-.app-market-row {
-  width: 100%;
-  min-height: 69px;
-  border: 0;
-  border-top: 1px solid var(--rule);
-  background: var(--paper);
-  color: var(--ink);
-  font: 500 0.9375rem/1.4 var(--font-instrument-sans), system-ui, sans-serif;
-  font-variant-numeric: tabular-nums;
+.app-market-ledger th:first-child {
   text-align: start;
 }
 
-.app-market-row:hover,
-.app-market-row[aria-pressed="true"] {
+.app-market-ledger th:not(:first-child),
+.app-market-ledger td {
+  text-align: end;
+}
+
+.app-market-ledger td {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.app-market-ledger tbody tr {
+  position: relative;
+}
+
+.app-market-ledger tbody th,
+.app-market-ledger tbody td {
+  border-top: 1px solid var(--rule);
+}
+
+.app-market-ledger tbody tr[data-selected="true"],
+.app-market-ledger tbody tr:hover {
   background: var(--sheet);
+}
+
+.app-market-ledger tbody tr[data-selected="true"] th {
+  box-shadow: inset 3px 0 var(--blue);
+}
+
+.app-market-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.35;
+  text-align: start;
+}
+
+.app-market-select::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.app-market-select[aria-pressed="true"],
+.app-market-ledger .app-rate-priority {
   color: var(--blue);
 }
 
-.app-market-row[aria-pressed="true"] {
-  box-shadow: inset 3px 0 var(--blue);
+.app-market-ledger td.app-rate-priority {
+  font-weight: 600;
+}
+
+.app-asset .app-market-compact {
+  display: none;
 }
 
 .app-asset img {
@@ -307,6 +381,20 @@
 
 .app-ticket-head h2 {
   font-size: 1.25rem;
+}
+
+.app-ticket-rate {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-ticket-rate dt {
+  color: var(--plot-muted);
+  font-size: 0.75rem;
+}
+
+.app-ticket-rate dd {
+  font-weight: 650;
 }
 
 .app-ticket-body {
@@ -423,6 +511,25 @@
   margin-top: 6px;
 }
 
+.app-position-preview {
+  margin-block: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  background: var(--sheet);
+}
+
+.app-position-preview > p {
+  color: var(--secondary);
+  font: 500 0.6875rem/1.5 var(--mono);
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.app-position-preview .app-preview {
+  margin: 4px 0 0;
+  border-bottom: 0;
+}
+
 .app-preview {
   margin-block: 10px;
   border-block: 1px solid var(--rule);
@@ -501,6 +608,18 @@
   }
 }
 
+@media (max-width: 620px), (min-width: 921px) and (max-width: 1060px) {
+  .app-market-ledger .app-market-liquidity {
+    display: none;
+  }
+}
+
+@media (max-width: 410px) {
+  .app-session-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 540px) {
   .app-brand-wide {
     display: none;
@@ -514,34 +633,38 @@
     gap: 6px;
   }
 
-  .app-session {
-    grid-template-columns: auto minmax(74px, 1fr);
-    align-items: center;
-    width: 100%;
+  .app-summary-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .app-session p {
-    grid-column: 1 / -1;
+  .app-summary-overview > div:nth-child(odd) {
+    border-left: 0;
   }
 
-  .app-market-head,
-  .app-market-row {
-    grid-template-columns: minmax(84px, 1fr) 62px 62px 16px;
-    gap: 7px;
-    padding-inline: 8px;
+  .app-summary-overview > div:nth-child(n + 3) {
+    border-top: 1px solid var(--rule);
   }
 
-  .app-market-row {
-    font-size: 0.8125rem;
-  }
-
-  .app-market-liquidity {
+  .app-market-ledger .app-market-account {
     display: none;
   }
 
-  .app-market-row .app-asset img {
+  .app-asset .app-market-compact {
+    display: block;
+    font-size: 0.75rem;
+  }
+
+  .app-market-select .app-market-name {
+    display: none;
+  }
+
+  .app-market-select img {
     width: 28px;
     height: 28px;
+  }
+
+  .app-positions dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

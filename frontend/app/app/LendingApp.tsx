@@ -4,12 +4,11 @@ import { useSearchParams } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { useDemoAccount } from "./DemoAccount";
 import { health, money, quantity } from "./format";
-import { IconArrow } from "../components/Icons";
 import TokenIcon from "../components/TokenIcon";
 import { ILLUSTRATIVE_HAIRCUT, REGIME_LABEL, type Regime } from "../components/regimes";
 import {
   ACTIONS, CENTS_PER_USDT, MARKETS, TOKENS_PER_UNIT, accountTotals,
-  actionMaximum, applyAction, liquidity, marketMetrics, parseAmount, walletUsdt,
+  actionMaximum, applyAction, collateralValue, liquidity, marketMetrics, parseAmount, walletUsdt,
   type Action, type Market,
 } from "./markets";
 
@@ -62,17 +61,31 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
   const amountUnits = parseAmount(amount, scale);
   const invalidAmount = amount !== "" && (amountUnits <= 0 || amountUnits > maximum);
   const canSubmit = amountUnits > 0 && !invalidAmount;
+  const amountError = invalidAmount
+    ? amountUnits > maximum
+      ? `Enter ${quantity.format(maximum / scale)} ${symbol} or less.`
+      : `Enter a positive amount with up to ${definition.collateral ? 4 : 2} decimal places.`
+    : "";
   const needsCollateral = action === "borrow" && position.collateral === 0;
-  const previewsDebt = canSubmit && (action === "borrow" || action === "repay");
   const current = marketMetrics(market, position, regime);
   const projected = canSubmit ? applyAction(position, action, amountUnits) : position;
   const preview = marketMetrics(market, projected, regime);
   const weekendHealth = marketMetrics(market, projected, "weekend").health;
   const totals = accountTotals(positions);
   const collateralAction = action === "deposit" || action === "withdraw";
-  const metricLabel = isLender ? "USDT supplied" : collateralAction ? "Borrowing power" : "Health factor";
-  const metricBefore = isLender ? money(position.supplied) : collateralAction ? money(current.available) : health(current.health);
-  const metricAfter = isLender ? money(projected.supplied) : collateralAction ? money(preview.available) : health(preview.health);
+  const rateLabel = isLender ? "Supply APR" : "Borrow APR";
+  const rate = isLender ? market.supplyApr : market.borrowApr;
+  const walletAfter = wallet + projected.debt - position.debt + position.supplied - projected.supplied;
+  const previewRows = isLender ? [
+    { label: "USDT supplied", before: money(position.supplied), after: money(projected.supplied) },
+    { label: "Wallet balance", before: money(wallet), after: money(walletAfter) },
+  ] : [
+    collateralAction
+      ? { label: "Collateral value", before: money(collateralValue(market, position)), after: money(collateralValue(market, projected)) }
+      : { label: "Debt", before: money(position.debt), after: money(projected.debt) },
+    { label: "Available to borrow", before: money(current.available), after: money(preview.available) },
+    { label: "Health factor", before: health(current.health), after: health(preview.health) },
+  ];
 
   function selectAction(next: Action) {
     setAction(next);
@@ -108,16 +121,25 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
             <div>
               <h1 id="app-title">{isLender ? <>Earn <em>with USDT.</em></> : <>Borrow <em>against stocks.</em></>}</h1>
             </div>
-            {!isLender && <div className="app-session">
-              <label htmlFor="market-session">Market session</label>
-              <select id="market-session" value={regime} onChange={event => {
-                setRegime(event.target.value as Regime);
-                setFeedback("");
-              }}>
-                {SESSIONS.map(session => <option key={session} value={session}>{REGIME_LABEL[session]}</option>)}
-              </select>
-              <p>{Math.round(ILLUSTRATIVE_HAIRCUT[regime] * 100)}% collateral haircut</p>
-            </div>}
+            {!isLender && (
+              <fieldset className="market-action-picker app-session">
+                <legend className="sr-only">Market session</legend>
+                <div className="app-session-head" aria-hidden="true">
+                  <span>Market session</span>
+                  <span>{Math.round(ILLUSTRATIVE_HAIRCUT[regime] * 100)}% haircut</span>
+                </div>
+                <div className="app-session-options">
+                  {SESSIONS.map(session => (
+                    <label key={session}>
+                      <input type="radio" name="market-session" value={session} checked={regime === session}
+                        aria-describedby="session-haircut" onChange={() => { setRegime(session); setFeedback(""); }} />
+                      <span>{session === "closed" ? "Overnight" : REGIME_LABEL[session]}</span>
+                    </label>
+                  ))}
+                </div>
+                <span className="sr-only" id="session-haircut">{Math.round(ILLUSTRATIVE_HAIRCUT[regime] * 100)}% collateral haircut</span>
+              </fieldset>
+            )}
           </div>
           <dl className="app-summary app-summary-pair">
             {isLender ? (
@@ -141,30 +163,41 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
             <h2 id="markets-heading">Markets</h2>
             <span className="app-unit"><TokenIcon symbol="USDT" size={18} /> USDT loans</span>
           </div>
-          <div className="app-market-ledger">
-            <div className="app-market-head" aria-hidden="true">
-              <span>Market</span><span>Supply APR</span><span>Borrow APR</span><span className="app-market-liquidity">Liquidity</span><span />
-            </div>
-            <ul aria-label="Isolated markets">
-              {MARKETS.map(item => (
-                <li key={item.id}>
-                  <button className="app-market-row" type="button"
-                    aria-pressed={item.id === market.id}
-                    onClick={() => selectMarket(item)}>
-                    <span className="app-asset">
-                      <TokenIcon symbol={item.id} size={36} />
-                      <span><strong>{item.symbol}</strong><small>{item.name}</small></span>
-                    </span>
-                    <span><span className="sr-only">Supply APR </span>{item.supplyApr.toFixed(2)}%</span>
-                    <span><span className="sr-only">Borrow APR </span>{item.borrowApr.toFixed(2)}%</span>
-                    <span className="app-market-liquidity"><span className="sr-only">Liquidity </span>{money(liquidity(item, positions[item.id]))}</span>
-                    <IconArrow />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-
+          <table className="app-market-ledger" aria-labelledby="markets-heading">
+            <thead>
+              <tr>
+                <th scope="col">Market</th>
+                <th scope="col" className={isLender ? "app-rate-priority" : undefined}>Supply APR</th>
+                <th scope="col" className={!isLender ? "app-rate-priority" : undefined}>Borrow APR</th>
+                <th scope="col" className="app-market-account">{isLender ? "Your supply" : "Can borrow"}</th>
+                <th scope="col" className="app-market-liquidity">Liquidity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MARKETS.map(item => {
+                const holding = positions[item.id];
+                const accountValue = isLender ? holding.supplied : marketMetrics(item, holding, regime).available;
+                return (
+                  <tr key={item.id} data-selected={item.id === market.id}>
+                    <th scope="row">
+                      <button className="app-market-select app-asset" type="button" aria-controls="manage-market"
+                        aria-pressed={item.id === market.id} onClick={() => selectMarket(item)}>
+                        <TokenIcon symbol={item.id} size={32} />
+                        <span>
+                          <strong>{item.symbol}</strong><small className="app-market-name">{item.name}</small>
+                          <small className="app-market-compact">{money(accountValue)} {isLender ? "supplied" : "available"}</small>
+                        </span>
+                      </button>
+                    </th>
+                    <td className={isLender ? "app-rate-priority" : undefined}>{item.supplyApr.toFixed(2)}%</td>
+                    <td className={!isLender ? "app-rate-priority" : undefined}>{item.borrowApr.toFixed(2)}%</td>
+                    <td className="app-market-account">{money(accountValue)}</td>
+                    <td className="app-market-liquidity">{money(liquidity(item, holding))}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </section>
 
         <section className="app-ticket" id="manage-market" tabIndex={-1} ref={workspace} aria-labelledby="ticket-title">
@@ -173,6 +206,7 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
               <TokenIcon symbol={market.id} size={36} />
               <h2 id="ticket-title">{market.symbol} / USDT</h2>
             </div>
+            <dl className="app-ticket-rate"><dt>{rateLabel}</dt><dd>{rate.toFixed(2)}%</dd></dl>
           </header>
 
           <div className="app-ticket-body">
@@ -207,22 +241,24 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
                 <button type="button" disabled={maximum === 0}
                   onClick={() => { setAmount(String(maximum / scale)); setFeedback(""); }}>Max</button>
               </div>
-              {invalidAmount && <p className="app-message" id="amount-error">Use a positive amount within the limit ({definition.collateral ? 4 : 2} decimal places max).</p>}
+              {invalidAmount && <p className="app-message" id="amount-error">{amountError}</p>}
               {needsCollateral && <p className="app-message">Supply {market.symbol} as collateral to borrow.</p>}
               {action === "borrow" && !needsCollateral && maximum === 0 && (
                 <p className="app-message">Borrowing limit reached. Supply more collateral or repay debt.</p>
               )}
 
-              <dl className="app-preview">
-                <div><dt>{metricLabel}</dt><dd>{metricBefore}{metricAfter !== metricBefore && (
-                  <> <span aria-hidden="true">→</span><span className="sr-only"> after action </span> <strong>{metricAfter}</strong></>
-                )}</dd></div>
-                {previewsDebt && (
-                  <div><dt>Debt</dt><dd>{money(position.debt)} <span aria-hidden="true">→</span>
-                    <span className="sr-only"> after action </span> <strong>{money(projected.debt)}</strong>
-                  </dd></div>
-                )}
-              </dl>
+              {!needsCollateral && (
+                <div className="app-position-preview">
+                  <p>{canSubmit ? "Position preview" : "Current position"}</p>
+                  <dl className="app-preview">
+                    {previewRows.map(({ label, before, after }) => (
+                      <div key={label}><dt>{label}</dt><dd>{before}{before !== after && (
+                        <> <span aria-hidden="true">→</span><span className="sr-only"> after action </span> <strong>{after}</strong></>
+                      )}</dd></div>
+                    ))}
+                  </dl>
+                </div>
+              )}
               {needsCollateral ? (
                 <button className="btn app-submit" type="button" onClick={() => {
                   selectAction("deposit");
@@ -239,11 +275,8 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
               <summary>{isLender ? "Market details" : "Risk and market details"}</summary>
               <dl className="app-preview">
                 <div><dt>Market liquidity</dt><dd>{money(liquidity(market, position))}</dd></div>
-                {isLender ? (
-                  <div><dt>Supply APR</dt><dd>{market.supplyApr.toFixed(2)}%</dd></div>
-                ) : (
+                {!isLender && (
                   <>
-                    <div><dt>Available to borrow{canSubmit && " after action"}</dt><dd>{money(preview.available)}</dd></div>
                     <div><dt>Weekend health{canSubmit && " after action"}</dt><dd>{health(weekendHealth)}</dd></div>
                     <div><dt>Target / liquidation LTV</dt><dd>{(market.maxLtv * 100).toFixed(0)}% / {(market.liquidationLtv * 100).toLocaleString("en-US")}%</dd></div>
                   </>
