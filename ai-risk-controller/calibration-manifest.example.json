@@ -1,0 +1,8 @@
+{
+  "asset": "BNB_STOCK_NVDA",
+  "source_reference": "REPLACE_WITH_A_VERIFIED_HISTORICAL_SOURCE",
+  "methodology": "Document regime-window classification, corporate-action adjustments and sampling independence before use.",
+  "simulated": true,
+  "corporate_action_adjusted": false,
+  "price_unit": "PER_NORMALIZED_TOKEN"
+}

@@ -1,6 +1,6 @@
 # README requirement coverage
 
-The risk-controller stack is advisory. Existing contracts and keepers enforce the protocol; the controller produces evidence and reviewable configuration proposals. No historical calibration dataset has been supplied. The defaults, statistical assumptions and cap multipliers remain uncalibrated.
+The risk-controller stack is advisory. Existing contracts and keepers enforce the protocol; the controller produces evidence and reviewable configuration proposals. No historical calibration dataset has been supplied. The [offline gap-calibration workflow](gap-calibration.md) now supplies evidence gates and chronological holdout diagnostics, while the defaults, statistical assumptions and cap multipliers remain uncalibrated.
 
 | README area | Implemented behavior | Remaining evidence or integration |
 |---|---|---|
