@@ -3,6 +3,7 @@
 import { useModal } from "connectkit";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAccount } from "wagmi";
+import { IconArrow } from "../../components/Icons";
 import TokenIcon from "../../components/TokenIcon";
 import { REGIME_LABEL } from "../../components/regimes";
 import { useDemoAccount } from "../DemoAccount";
@@ -154,6 +155,7 @@ export default function SimplifiedFlow() {
             <button className="btn" type="button" disabled={isConnecting || isReconnecting}
               onClick={() => connected ? setStep(1) : setOpen(true)}>
               {connected ? "Continue" : isConnecting || isReconnecting ? "Connecting…" : "Connect wallet"}
+              {connected && <IconArrow />}
             </button>
           </div>
         )}
@@ -189,7 +191,7 @@ export default function SimplifiedFlow() {
               <thead><tr><th scope="col">Market</th><th scope="col">{borrowing ? "Borrow APR" : "Supply APR"}</th>
                 <th scope="col">{borrowing ? "Can borrow" : "Your supply"}</th><th scope="col">Liquidity</th></tr></thead>
               <tbody>{MARKETS.map(item => (
-                <tr key={item.id}>
+                <tr key={item.id} className="simple-market-row">
                   <th scope="row"><button className="simple-market" type="button" onClick={() => selectMarket(item)}
                     aria-label={`Select ${item.symbol} market`}><MarketName market={item} /><span aria-hidden="true">→</span></button></th>
                   <td>{(borrowing ? item.borrowApr : item.supplyApr).toFixed(2)}%</td>
@@ -204,8 +206,13 @@ export default function SimplifiedFlow() {
         {active === 3 && market && position && (
           <div className="app-ticket simple-ticket">
             <header className="app-ticket-head">
-              <div className="app-asset"><TokenIcon symbol={market.id} size={36} />
-                <h2 id="simple-heading" tabIndex={-1} ref={heading}>{operation} USDT · {market.symbol}</h2></div>
+              <div className="app-asset">
+                <TokenIcon symbol="USDT" size={36} />
+                <div>
+                  <h2 id="simple-heading" tabIndex={-1} ref={heading}>{operation} USDT</h2>
+                  <p className="simple-ticket-market">{market.symbol} Market</p>
+                </div>
+              </div>
               <dl className="app-ticket-rate"><dt>{operation} APR</dt><dd>{rate.toFixed(2)}%</dd></dl>
             </header>
             <form className="app-ticket-body simple-form" onSubmit={submit}>
@@ -249,8 +256,14 @@ export default function SimplifiedFlow() {
 
         {active === 4 && receipt && (
           <div className="simple-receipt">
-            <h2 id="simple-heading" tabIndex={-1} ref={heading}>{receipt.action === "borrow" ? "Borrow" : "Supply"} simulation complete</h2>
-            <p>Your demo position was updated. This receipt records a simulated transaction.</p>
+            <h2 className="simple-success" id="simple-heading" tabIndex={-1} ref={heading}>
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor"
+                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m5 12 4 4L19 6" />
+              </svg>
+              <span>{receipt.action === "borrow" ? "Borrowed" : "Supplied"} {usdt(receipt.amount)} {receipt.action === "borrow" ? "from" : "to"} {receipt.market.symbol}/USDT Market</span>
+            </h2>
+            <p>Simulated transaction. Your demo position was updated.</p>
             <Details rows={[
               ["Market", `${receipt.market.symbol} / USDT`],
               ["Amount", usdt(receipt.amount)],
