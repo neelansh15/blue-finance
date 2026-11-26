@@ -41,14 +41,22 @@ event UIMultiplierUpdated(uint256 oldMultiplier, uint256 newMultiplier);
 ## IAtlasFeed (Chainlink AggregatorV2/V3-compatible subset)
 ```solidity
 function latestAnswer() external view returns (int256);
-function latestTimestamp() external view returns (uint256);
+function latestRoundData() external view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 function decimals() external view returns (uint8);
 ```
+
+Dawn reads ONLY `latestRoundData()` (updatedAt for staleness). `latestTimestamp()` was removed from the interface: it reverts on the real Atlas feeds.
 
 ## Keeper -> chain
 Keeper hot key holds KEEPER role on the registry. Keeper reads `regime(asset)`, `calendarRegime()`, `overrideOf(asset)`, oracle `frozenSince()` and `uiMultiplier()`.
 
 ## Changes
+
+Atlas read path, Nov 26 2026 (NEEDS AN OPUS-LEVEL SECURITY REVIEW):
+- **IAtlasFeed:** `latestTimestamp()` removed, `latestRoundData()` added. DawnOracle reads feeds through the single adapter `_readFeed(address)`. Accepts only: return data of at least 5 words, round ids within uint80, `answeredInRound >= roundId`, `0 < answer <= MAX_ANSWER`, `updatedAt != 0`. Failure means "no price" (never reverts). `MockAtlasFeed` is unchanged (it keeps `latestTimestamp()` as an extra view).
+- **Units:** real Atlas feeds quote per raw token, so real deployments use `feedPerUIShare = false`; the mock default stays per UI share.
+- **DawnDeploy / Deploy.s.sol:** `realAtlasFeed` / `realBStock` hooks, env `ATLAS_FEED` / `BSTOCK`. Unset keeps the mock path. With a real feed: per raw token, 2 h live staleness, `Deployment.feed` is address(0).
+- **Tests:** test/AtlasAdapter.t.sol (10), test/fork/AtlasRealFeedFork.t.sol (4). Existing tests unchanged.
 
 Protocol core (registry, oracle, mocks), Nov 26 2026. No names above were renamed. Additions and one deviation:
 

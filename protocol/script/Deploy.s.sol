@@ -24,6 +24,9 @@ interface IERC20Bal {
 ///   ELIGIBILITY_SIGNER     signer address (default: address of the public DEMO_SIGNER_KEY)
 ///   SEED_SUPPLY            USDT (18 dec) to supply (default 100,000e18; skipped if the deployer has less)
 ///   INITIAL_PRICE          feed answer, 8 decimals (default 200e8)
+///   ATLAS_FEED             real Atlas feed address (e.g. TSLAB/USD 0xf569C3e52e797219eCFDc1659c3250B0BbDC693C);
+///                          default: deploy MockAtlasFeed. Configures the oracle per raw token, 2h live staleness
+///   BSTOCK                 real bStock token address (optional, pair with ATLAS_FEED); default: MockBStock
 ///   ANVIL_FUND_USDT=true   on an anvil fork, write the deployer's USDT balance via anvil_setStorageAt first
 ///
 /// Usage:
@@ -54,6 +57,9 @@ contract Deploy is Script, DawnDeploy {
             seedSupply: seed,
             initialPrice: int256(vm.envOr("INITIAL_PRICE", uint256(200e8)))
         });
+
+        realAtlasFeed = vm.envOr("ATLAS_FEED", address(0));
+        realBStock = vm.envOr("BSTOCK", address(0));
 
         vm.startBroadcast(pk);
         d = _deployDawn(p);

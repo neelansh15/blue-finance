@@ -168,11 +168,8 @@ contract DawnOracle is IOracle {
         (bool okM, uint256 m) = _staticUint(c.asset, abi.encodeWithSelector(IBStockLike.uiMultiplier.selector));
         if (okM && m >= MIN_MULTIPLIER && m <= MAX_MULTIPLIER) {
             lastMultiplier = m;
-            (bool okA, uint256 a) =
-                _staticUint(c.atlasFeed, abi.encodeWithSelector(IAtlasFeed.latestAnswer.selector));
-            (bool okT, uint256 t) =
-                _staticUint(c.atlasFeed, abi.encodeWithSelector(IAtlasFeed.latestTimestamp.selector));
-            if (okA && okT && a > 0 && a <= MAX_ANSWER && t != 0 && t <= block.timestamp) {
+            (bool okA, uint256 a, uint256 t) = _readFeed(c.atlasFeed);
+            if (okA && t <= block.timestamp) {
                 uint256 x = a * (c.feedPerUIShare ? m : 1e18);
                 uint256 sm = numExp >= denExp ? 10 ** (numExp - denExp) : 1;
                 uint256 sd = numExp >= denExp ? 1 : 10 ** (denExp - numExp);
@@ -352,8 +349,9 @@ contract DawnOracle is IOracle {
     }
 
     /// @dev ATLAS ADAPTER. The only place that knows the feed's interface and units.
-    ///      [U] Units: per UI share (x uiMultiplier) vs per raw token is unverified; selected by FEED_PER_UI_SHARE.
-    ///      [U] Read access: if Dawn is not whitelisted the calls revert, which is handled as "no price".
+    ///      Units: measured on 2026-11-26, the real Atlas feeds quote USD per RAW token (see README), so real
+    ///      deployments use FEED_PER_UI_SHARE = false. The flag stays for per-UI feeds (the mock default).
+    ///      Read access: the real feeds are open to any caller; a revert is still handled as "no price".
     ///      [U] USDT is treated as exactly 1 USD; the feed is assumed to be USD-quoted.
     /// @return ok      false if the read failed, the answer is non-positive/out of range, or stale for `r`
     /// @return rawPrice price per raw collateral unit, Morpho scale, pre-haircut
@@ -363,14 +361,8 @@ contract DawnOracle is IOracle {
         view
         returns (bool ok, uint256 rawPrice, uint256 observedAt)
     {
-        (bool okA, uint256 a) =
-            _staticUint(address(ATLAS_FEED), abi.encodeWithSelector(IAtlasFeed.latestAnswer.selector));
-        // A negative int256 reads as a huge uint256, so the MAX_ANSWER bound also rejects it.
-        if (!okA || a == 0 || a > MAX_ANSWER) return (false, 0, 0);
-
-        (bool okT, uint256 t) =
-            _staticUint(address(ATLAS_FEED), abi.encodeWithSelector(IAtlasFeed.latestTimestamp.selector));
-        if (!okT || t == 0) return (false, 0, 0);
+        (bool okA, uint256 a, uint256 t) = _readFeed(address(ATLAS_FEED));
+        if (!okA) return (false, 0, 0);
         if (t > block.timestamp) t = block.timestamp; // never trust a future timestamp beyond "now"
         if (block.timestamp - t > stalenessSec(r)) return (false, 0, 0);
 
@@ -379,6 +371,34 @@ contract DawnOracle is IOracle {
         uint256 p = (x * SCALE_MUL) / SCALE_DIV; // round down
         if (p < MIN_RAW_PRICE || p > MAX_RAW_PRICE) return (false, 0, 0);
         return (true, p, t);
+    }
+
+    /// @dev THE ONLY place that knows the Atlas read interface: latestRoundData() (latestTimestamp() reverts on
+    ///      the real feeds). Never reverts. ok requires: call succeeded with >= 5 words of return data, round ids
+    ///      in uint80 range, answer > 0 and <= MAX_ANSWER, updatedAt != 0, answeredInRound >= roundId.
+    ///      The real feeds return roundId == answeredInRound (0 or 1) and startedAt ~ updatedAt, so there is no
+    ///      roundId > 0 requirement and startedAt is ignored. updatedAt is returned unclamped.
+    function _readFeed(address feed) internal view returns (bool ok, uint256 answer, uint256 updatedAt) {
+        bytes memory data = abi.encodeWithSelector(IAtlasFeed.latestRoundData.selector);
+        bytes memory buf = new bytes(0xa0); // fixed-size return buffer: no return-data bomb
+        uint256 roundId;
+        uint256 answeredIn;
+        int256 ans;
+        assembly ("memory-safe") {
+            let out := add(buf, 0x20)
+            ok := staticcall(gas(), feed, add(data, 0x20), mload(data), out, 0xa0)
+            if lt(returndatasize(), 0xa0) { ok := 0 }
+            roundId := mload(out)
+            ans := mload(add(out, 0x20))
+            updatedAt := mload(add(out, 0x60))
+            answeredIn := mload(add(out, 0x80))
+        }
+        if (!ok || roundId > type(uint80).max || answeredIn > type(uint80).max || answeredIn < roundId) {
+            return (false, 0, 0);
+        }
+        // A negative answer is rejected here; it must not be reinterpreted as a huge uint.
+        if (ans <= 0 || uint256(ans) > MAX_ANSWER || updatedAt == 0) return (false, 0, 0);
+        return (true, uint256(ans), updatedAt);
     }
 
     function _record(uint256 p, uint256 ts, uint256 m, bool force) internal {
