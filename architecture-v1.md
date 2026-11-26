@@ -156,8 +156,8 @@ Labels used below:
 
 **DawnOracle (C2) logic:**
 1. Read the Atlas feed.
-2. Read the DEX TWAP.
-3. Take the conservative of the two (the min, for collateral).
+2. *(Backup, not implemented in this version: read the PancakeSwap TWAP and take the min of the two, see §5.1.)*
+3. Use the Atlas price as the single source in this version, with a staleness limit and a freeze if the feed fails.
 4. Convert to price-per-raw-token: × `uiMultiplier()` if the source is per-UI-share.
 5. Apply the regime haircut.
 6. Apply a staleness policy: during freeze, return the last good price, with a bounded duration.
@@ -258,8 +258,10 @@ Comparable regime-aware designs:
 
 ```
 p_atlas = Atlas per-UI price (staleness ≤ maxAge(regime), else treated as missing)
-p_twap  = PancakeSwap bStock/USDT TWAP over window W, valid only if pool liquidity ≥ L_min
-p_ui    = min(p_atlas, p_twap)        (if one source is missing: the other source × extra haircut)
+p_ui    = p_atlas             (this version: Atlas only; ask Atlas for a TWAP or median-configured feed)
+# Backup, NOT implemented in this version:
+#   p_twap = PancakeSwap bStock/USDT TWAP over window W, valid only if pool liquidity ≥ L_min
+#   p_ui   = min(p_atlas, p_twap)   (if one source is missing: the other source × extra haircut)
 p_raw   = p_ui × uiMultiplier() / 1e18   (see §4; verify Atlas units)
 price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
 ```
@@ -456,8 +458,8 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 | Token pause | Pause-manager `isPaused(token)` poll / pause-manager events | None (Morpho reverts) | Sentinel caps → 0, allocator pulls liquidity | Positions unliquidatable during pause → bad debt |
 | Morpho or wrapper blacklisted | Periodic `compliance.check` simulation for Morpho/wrapper; `setCompliance` on the token | None | Issuer relationship, exposure caps | Full freeze of the asset's collateral |
 | Beacon upgrade by issuer | `Upgraded` event | None | Monitoring, caps | Arbitrary behavior change |
-| Oracle revert / Atlas whitelist removal | Call failure, staleness | try/catch fallback to TWAP or last good price | Alerting, whitelisting agreement | Both sources down beyond freeze max |
-| Oracle manipulation via thin DEX | TWAP vs. Atlas divergence | min() of sources, liquidity floor, TWAP window | Monitor pool depth | Simultaneous manipulation of the on-chain markets Atlas reads off-hours (Atlas uses them [F]) |
+| Oracle revert / Atlas whitelist removal | Call failure, staleness | try/catch fallback to last good price (Pancake TWAP fallback is a backup, not implemented in this version) | Alerting, whitelisting agreement | Both sources down beyond freeze max |
+| Oracle manipulation via thin DEX | TWAP vs. Atlas divergence | Backup only (not implemented in this version): min() of sources, liquidity floor, TWAP window. This version relies on Atlas aggregation and its staleness and deviation settings | Monitor pool depth | Simultaneous manipulation of the on-chain markets Atlas reads off-hours (Atlas uses them [F]) |
 | Halt / SEC suspension | Nasdaq RSS, SEC | Freeze plus h[HALTED] | Sentinel, governance | Resume far below the frozen price |
 | Illiquid exit | Venue depth monitor (≈$1.4–3.4M Pancake TVL per major bStock on 2026-11-26) | PreLiquidation via the BNB factory (smaller lots), conservative LLTV | Own bot, Binance route | Redemption suspended plus DEX depth evaporating in a shock |
 | Ineligible user | C9 | Router attestation (C3 enforces it) | Geo/IP, Binance endpoint, sanctions | Raw-token market without C3 is bypassable; VPN use |
@@ -470,7 +472,7 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 
 **In the 36h demo (BSC testnet or a mainnet fork):**
 - One market: NVDAB (or a mock ERC-8056 token deployed from the bep-677 reference) as collateral and USDT as loan, at 62.5% LLTV, on the canonical Morpho at the address above (fork) or a local Morpho deploy (testnet).
-- DawnOracle v0: Atlas (or a mock implementing the Atlas interface), × uiMultiplier, regime haircut from a simple RegimeRegistry set by a keeper script, and freeze with max duration. No DEX TWAP if no testnet pool exists.
+- DawnOracle v0: Atlas (or a mock implementing the Atlas interface), × uiMultiplier, regime haircut from a simple RegimeRegistry set by a keeper script, and freeze with max duration. No DEX TWAP (the Pancake TWAP is a backup, not implemented in this version).
 - Router v0: borrow with targetLTV(regime) and a stubbed eligibility signature.
 - Demo script:
   - (1) Borrow during OPEN.
