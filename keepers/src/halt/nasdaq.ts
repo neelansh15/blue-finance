@@ -1,6 +1,6 @@
 // Nasdaq Trader trade-halt RSS. Terms forbid polling more than once per minute: enforced here.
 import { XMLParser } from "fast-xml-parser";
-import { errMsg, getText, defaultFetch } from "./http.js";
+import { errMsg, fetchText, defaultFetch } from "./http.js";
 import { halted, ok, unknown, type AssetRef, type FetchLike, type HaltSource, type Signal } from "./types.js";
 
 export const NASDAQ_HALT_URL = "https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts";
@@ -84,7 +84,7 @@ export class NasdaqHaltSource implements HaltSource {
     if (!this.inflight) {
       this.inflight = (async () => {
         try {
-          const xml = await getText(this.fetchFn, this.url);
+          const xml = await fetchText(this.fetchFn, this.url);
           this.cache = { at: nowMs, items: parseNasdaqHalts(xml) };
         } catch (e) {
           this.cache = { at: nowMs, items: null, error: errMsg(e) };

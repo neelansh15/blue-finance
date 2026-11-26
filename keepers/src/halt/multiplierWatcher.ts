@@ -1,4 +1,5 @@
 // On-chain UIMultiplierUpdated watcher. Polling getLogs (robust on public RPCs) behind a tiny reader interface.
+import { ApiCache } from "../apiCache.js";
 import type { PublicClient } from "viem";
 import { bStockAbi } from "../abi.js";
 import { errMsg } from "./http.js";
@@ -19,10 +20,12 @@ export interface MultiplierReader {
 }
 
 export function viemMultiplierReader(client: PublicClient): MultiplierReader {
+  const cache = new ApiCache<unknown>();
+  const read = <T>(key: string, load: () => Promise<T>) => cache.get(key, load) as Promise<T>;
   return {
-    getBlockNumber: () => client.getBlockNumber(),
+    getBlockNumber: () => read("head", () => client.getBlockNumber()),
     async getEvents(token, fromBlock, toBlock) {
-      const logs = await client.getContractEvents({ address: token, abi: bStockAbi, eventName: "UIMultiplierUpdated", fromBlock, toBlock });
+      const logs = await read(`logs:${token.toLowerCase()}:${fromBlock}:${toBlock}`, () => client.getContractEvents({ address: token, abi: bStockAbi, eventName: "UIMultiplierUpdated", fromBlock, toBlock }));
       return logs.map((l) => ({
         oldMultiplier: l.args.oldMultiplier!,
         newMultiplier: l.args.newMultiplier!,
@@ -30,7 +33,7 @@ export function viemMultiplierReader(client: PublicClient): MultiplierReader {
         blockNumber: l.blockNumber,
       }));
     },
-    uiMultiplier: (token) => client.readContract({ address: token, abi: bStockAbi, functionName: "uiMultiplier" }),
+    uiMultiplier: (token) => read(`multiplier:${token.toLowerCase()}`, () => client.readContract({ address: token, abi: bStockAbi, functionName: "uiMultiplier" })),
   };
 }
 

@@ -2,7 +2,7 @@
 
 **Blue Finance · 2026-11-27 · Aave V3 design for BNB Chain**
 
-Blue will operate **one Aave V3 pool with one shared USDT reserve**. Lenders supply USDT once. Borrowers use one eligible stock token as collateral per account, initially TSLAB or NVDAB. Both types of borrower draw from the same reserve. The pool enforces stock-specific rules modeled on Zona Lend, so a Tesla halt can stop new Tesla-backed loans while Nvidia-backed borrowing and Tesla repayment continue.
+Blue will operate **one Aave V3 pool with one shared USDT reserve**. Lenders supply USDT once. Borrowers use one eligible stock token as collateral per account. The test deployment lists TSLAB, NVDAB, QQQb, SPCXb, and GOOGLb as mock collateral. Every borrower draws from the same reserve. The pool enforces stock-specific rules modeled on Zona Lend, so a Tesla halt can stop new Tesla-backed loans while other eligible borrowing and Tesla repayment continue.
 
 V3 supersedes the [V4 hub and spoke proposal](architecture-v2.md). The [Morpho architecture](architecture-v1.md) describes the current implementation. This is a design for a separate deployment.
 
@@ -13,19 +13,18 @@ Build the Aave V3 contracts in [`protocol/`](protocol/README.md). The Morpho imp
 ```mermaid
 flowchart LR
     L[Lenders] -->|Supply USDT| P[Blue Aave V3 Pool]
-    T[Tesla-backed borrowers] -->|Supply TSLAB| P
-    N[Nvidia-backed borrowers] -->|Supply NVDAB| P
+    B[Borrowers] -->|Supply one eligible stock| P
     P <-->|Draw and repay USDT| R[Shared USDT reserve]
     G[Per-stock borrow controls] --> P
     O[Stock and USDT price sources] --> P
 ```
 
 1. **Lend.** A lender supplies USDT through the pool and receives interest-bearing aUSDT. Withdrawals depend on how much USDT is available.
-2. **Post collateral.** A borrower supplies TSLAB or NVDAB and enables that stock as collateral. The stock reserves are collateral only. USDT is the sole borrowable asset and does not count as collateral in the first deployment.
+2. **Post collateral.** A borrower supplies one of the supported stock tokens and enables it as collateral. The stock reserves are collateral only. USDT is the sole borrowable asset and does not count as collateral in the first deployment.
 3. **Borrow.** The pool checks the borrower’s active stock, eligibility, borrow permission, debt after interest, and the applicable limits. If approved, it draws from the shared USDT reserve and records variable-rate debt.
 4. **Repay or liquidate.** The borrower repays USDT plus interest and can withdraw the stock when the position permits it. Liquidators use the pool’s liquidation entry point when Aave reports an eligible position and collateral can transfer.
 
-A single USDT reserve lets either group borrow available cash without a lender or allocator moving it between stock markets. It also means USDT suppliers are exposed to both stocks. A per-stock debt ceiling limits new concentration. If a liquidation falls short, the shared reserve still bears the resulting exposure. Pin and test how the selected V3 release records a deficit, who may cover it, and how a shortfall affects supplier withdrawals. [Aave V3 market structure](https://aave.com/blog/unlimited-lending-market-structures) · [Aave V3 Pool and tokens](https://aave.com/docs/aave-v3/smart-contracts)
+A single USDT reserve lets borrowers draw available cash without a lender or allocator moving it between stock markets. USDT suppliers are exposed to losses across all listed collateral. A per-stock debt ceiling limits new concentration. If a liquidation falls short, the shared reserve still bears the resulting exposure. Pin and test how the selected V3 release records a deficit, who may cover it, and how a shortfall affects supplier withdrawals. [Aave V3 market structure](https://aave.com/blog/unlimited-lending-market-structures) · [Aave V3 Pool and tokens](https://aave.com/docs/aave-v3/smart-contracts)
 
 ## 2. Stock-specific borrowing controls
 
@@ -57,7 +56,7 @@ The borrow restriction leaves debt-free withdrawal and collateral top-ups availa
 
 | Area | V3 deployment or repo work |
 |---|---|
-| Aave lending core | One Blue-operated Pool with three reserves. Deploy the Pool addresses provider, configurator, access manager, oracle, interest-rate strategy, and receipt and debt token infrastructure required by the pinned release. Fund the USDT reserve through the Pool. |
+| Aave lending core | One Blue-operated Pool with six reserves. Deploy the Pool addresses provider, configurator, access manager, oracle, interest-rate strategy, and receipt and debt token infrastructure required by the pinned release. Fund the USDT reserve through the Pool. |
 | Blue contracts | Reuse `RegimeRegistry`. Add stock borrow permissions, eligibility and debt-ceiling checks in the pool’s enforcement path, and Atlas price adapters. Keep a router optional for transaction bundling. |
 | Scripts and fixtures | Deploy a dedicated pool on a local BNB mainnet fork. Use deployer-minted stock mocks for deterministic cases and verify actual feed reads and real-token custody and transfers in separate tests. Keep exposures low for the demonstration. |
 | Keepers and frontend | Reuse market hours, issuer signals, and multiplier monitoring. Add stock permission renewal and show available USDT, accrued debt, health, stock borrowing capacity, and why a stock is blocked. Use the Pool for supply, borrow, repay, and withdraw. |
@@ -87,7 +86,7 @@ For live one-click execution, require atomic batching and recheck the account, c
 
 | Scenario | Expected result |
 |---|---|
-| Fund the USDT reserve once and borrow against both stocks | Both borrowers draw from the same cash balance. Verify reserve caps, separate stock ceilings, interest accrual, and lender withdrawal against available cash. |
+| Fund the USDT reserve once and borrow against all five stocks | All borrowers draw from the same cash balance. Verify reserve caps, separate stock ceilings, interest accrual, and lender withdrawal against available cash. |
 | Halt Tesla or let its permission expire | Direct pool calls and delegated debt-opening calls fail for Tesla. Nvidia-backed borrowing continues with valid prices, permission, and liquidity. Tesla borrowers can repay. |
 | Try to bypass stock attribution | Test enabling a second stock, switching collateral while in debt, transferring aTokens, and any other route that can open or move debt. The stock assignment and ceilings remain accurate. |
 | Switch to `WEEKEND` or receive a stale report | Borrowing capacity falls or new borrowing stops according to policy. Existing liquidation health stays the same when prices and debt are held fixed. A fresh report leaves a guardian hold in place. |

@@ -50,7 +50,9 @@ const options = {
 };
 
 export default function WalletProvider({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: { queries: { staleTime: 60_000, retry: false } },
+  }));
   const [mode, setMode] = useState<"light" | "dark" | "auto">("auto");
 
   useEffect(() => {

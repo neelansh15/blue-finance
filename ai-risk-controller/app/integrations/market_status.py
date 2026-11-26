@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from pydantic import AwareDatetime, Field
 
+from app.integrations.cache import API_CACHE_SECONDS
 from app.models import Model
 from app.services.store import AuditStore
 
@@ -161,8 +162,12 @@ class LiveMarketStatusProvider:
         key = (url, tuple(sorted((params or {}).items())))
         with self._lock:
             now = self.clock()
-            if key in self._cache and (now - self._cache[key][0]).total_seconds() < 60:
+            if key in self._cache and 0 <= (now - self._cache[key][0]).total_seconds() < API_CACHE_SECONDS:
                 return self._cache[key]
+            self._cache = {k: v for k, v in self._cache.items()
+                           if 0 <= (now - v[0]).total_seconds() < API_CACHE_SECONDS}
+            if len(self._cache) >= 256:
+                del self._cache[next(iter(self._cache))]
             http_status = None
             try:
                 response = self.market_fetch() if url == NASDAQ_MARKET else self.client.get(url, params=params)

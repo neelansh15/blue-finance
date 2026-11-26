@@ -1,6 +1,4 @@
-import { createPublicClient, fallback, http, parseAbi, type Address } from "viem";
-import { bsc } from "viem/chains";
-import { pricePerDisplayedShare } from "./scaled-ui";
+import type { Address } from "viem";
 
 export const BSTOCK_FEEDS = {
   NVDAB: { name: "NVIDIA", token: "0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436", feed: "0x2bd759006b423BFF444181A13C96a6b134E557BB" },
@@ -12,31 +10,13 @@ export type BStockSymbol = keyof typeof BSTOCK_FEEDS;
 export type AtlasPrice = { symbol: BStockSymbol; priceUsd: number; updatedAt: number };
 export const PRICE_STALE_MS = 2 * 60 * 60 * 1000;
 
-const feedAbi = parseAbi([
-  "function decimals() view returns (uint8)",
-  "function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
-]);
-const tokenAbi = parseAbi(["function uiMultiplier() view returns (uint256)"]);
-
-const client = createPublicClient({
-  chain: bsc,
-  transport: fallback([
-    http("https://bsc-dataseed.binance.org", { timeout: 10000 }),
-    http("https://bsc-dataseed1.defibit.io", { timeout: 10000 }),
-  ]),
-});
-
 export async function fetchAtlasPrice(symbol: BStockSymbol): Promise<AtlasPrice> {
-  const { token, feed } = BSTOCK_FEEDS[symbol];
-  const [round, decimals, multiplier] = await Promise.all([
-    client.readContract({ address: feed, abi: feedAbi, functionName: "latestRoundData" }),
-    client.readContract({ address: feed, abi: feedAbi, functionName: "decimals" }),
-    client.readContract({ address: token, abi: tokenAbi, functionName: "uiMultiplier" }),
-  ]);
-  const [roundId, answer, , updatedAt, answeredInRound] = round;
-  const timestamp = Number(updatedAt) * 1000;
-  if (updatedAt === 0n || answeredInRound < roundId || !Number.isSafeInteger(timestamp) || timestamp > Date.now() + 60_000) {
+  const response = await fetch(`/api/atlas/prices/${symbol}`, { cache: "no-store" });
+  if (!response.ok) throw new Error("Atlas price unavailable");
+  const price: AtlasPrice = await response.json();
+  if (price.symbol !== symbol || !Number.isFinite(price.priceUsd) || price.priceUsd <= 0 ||
+      !Number.isSafeInteger(price.updatedAt) || price.updatedAt <= 0 || price.updatedAt > Date.now() + 60_000) {
     throw new Error("Invalid Atlas observation");
   }
-  return { symbol, priceUsd: pricePerDisplayedShare(answer, decimals, multiplier), updatedAt: timestamp };
+  return price;
 }

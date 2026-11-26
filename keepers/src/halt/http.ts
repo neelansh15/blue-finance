@@ -1,8 +1,23 @@
+import { ApiCache } from "../apiCache.js";
 import type { FetchLike } from "./types.js";
 
 export const defaultFetch: FetchLike = (url, init) => fetch(url, init) as unknown as ReturnType<FetchLike>;
 
-export async function getText(
+const caches = new WeakMap<FetchLike, ApiCache<string>>();
+
+export function getText(
+  f: FetchLike,
+  url: string,
+  headers: Record<string, string> = {},
+  timeoutMs = 10_000,
+): Promise<string> {
+  let cache = caches.get(f);
+  if (!cache) { cache = new ApiCache<string>(); caches.set(f, cache); }
+  const key = JSON.stringify([url, Object.entries(headers).sort(([a], [b]) => a.localeCompare(b)), timeoutMs]);
+  return cache.get(key, () => fetchText(f, url, headers, timeoutMs));
+}
+
+export async function fetchText(
   f: FetchLike,
   url: string,
   headers: Record<string, string> = {},
