@@ -31,17 +31,18 @@ class UnsupportedAsset(ValueError):
 class RiskService:
     def __init__(self, policy: Policy, store: AuditStore, provider: SnapshotProvider | None = None,
                  agent: IssuerAgent | None = None, signer: RecommendationSigner | None = None,
-                 chain_id: int = 56, market_id: str = "DEMO_NVDA_MARKET_NOT_DEPLOYED"):
+                 chain_id: int = 56, market_id: str = "DEMO_NVDA_MARKET_NOT_DEPLOYED",
+                 assets: dict[str, str] | None = None):
         self.policy, self.store = policy, store
+        self.assets = dict(ASSETS if assets is None else assets)
         self.provider, self.agent = provider or MockProviders(), agent or IssuerAgent()
         self.signer, self.chain_id, self.market_id = signer, chain_id, market_id
         self.optimiser = RuleBasedOptimiser(policy)
 
-    @staticmethod
-    def asset_id(asset: str) -> str:
-        if asset.upper() not in ASSETS:
-            raise UnsupportedAsset("Unsupported collateral asset; MVP supports NVDA / BNB_STOCK_NVDA")
-        return ASSETS[asset.upper()]
+    def asset_id(self, asset: str) -> str:
+        if asset.upper() not in self.assets:
+            raise UnsupportedAsset("Unsupported collateral asset for this service")
+        return self.assets[asset.upper()]
 
     def resolve(self, asset: str, request: AssessRequest) -> Snapshot:
         asset = self.asset_id(asset)

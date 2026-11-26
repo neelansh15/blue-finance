@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 
 from app.models import (Assessment, AssessRequest, Model, Recommendation, RiskEvent, RiskScore,
                         SimulateRequest, SimulationResult)
 from app.services.risk_service import RiskService
+from app.integrations.market_status import AssetMarketStatus, status_failures
+from app.routing.engine import route_markets
+from app.routing.models import RoutingDecision, RoutingRequest
 
 router = APIRouter(prefix="/risk", tags=["Risk controller"])
 
@@ -84,3 +88,29 @@ def recommendations(asset: str, request: Request, limit: int = Query(100, ge=1, 
     now = datetime.now(timezone.utc)
     current = next((r for r in rows if r.timestamp <= now < r.expires_at), None)
     return HistoryResponse(asset=svc.asset_id(asset), current=current, recommendations=rows)
+
+
+@router.post("/route/{asset}", response_model=RoutingDecision,
+             summary="Assess configured markets and propose an eligible alternative contract for approval")
+def route(asset: str, request: Request, body: RoutingRequest):
+    return route_markets(service(request), asset, body, request.app.state.routing_policy,
+                         request.app.state.market_status)
+
+
+@router.get('/market-status/{asset}', response_model=list[AssetMarketStatus],
+            summary='Fetch live Nasdaq session/halts and individual Binance bStock status')
+def market_status(asset: str, request: Request):
+    canonical = service(request).assets.get(asset.upper(), asset.upper())
+    matches = [t for t in request.app.state.routing_policy.targets if t.collateral_asset == canonical]
+    if not matches:
+        raise HTTPException(404, 'Asset has no server-configured status mapping')
+    observations = [request.app.state.market_status.get(t) for t in matches]
+    for status in observations:
+        service(request).store.put('market_status', canonical, status.as_of.isoformat(), status.model_dump(mode='json'))
+    failures = [failure for status in observations
+                for failure in status_failures(status, request.app.state.market_status.clock())]
+    if failures:
+        return JSONResponse(status_code=503, content={
+            'detail': 'Live market status unavailable; upstream 200/201 and valid fresh data required',
+            'failures': failures, 'observations': [s.model_dump(mode='json') for s in observations]})
+    return observations

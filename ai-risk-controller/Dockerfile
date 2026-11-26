@@ -2,7 +2,10 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 RISK_DB_PATH=/service/data/risk.sqlite3
 WORKDIR /service
 COPY requirements.lock ./requirements.lock
-RUN pip install --no-cache-dir -r requirements.lock \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir -r requirements.lock \
     && useradd --uid 10001 --create-home risk \
     && mkdir -p /service/data \
     && chown risk:risk /service/data

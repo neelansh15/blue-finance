@@ -55,7 +55,7 @@ Enable continuous simulated monitoring by setting `RISK_POLL_SECONDS=120` before
 ## Modules and handoff
 
 - `integrations/providers.py`: market, oracle, issuer and snapshot provider protocols; deterministic mock implementation and synthetic positions. Replace with read-only teammate integrations.
-- `market_sessions/`: NASDAQ calendar, New York session detection, override halts/degraded data, oracle health and regime policy. Calendar library handles holidays, early closes and DST. Unexpected halts must come from a provider flag. `EARLY_CLOSE` denotes the shortened regular trading window; after its close, `EXTENDED` applies. Extended hours are an illustrative 04:00–20:00 ET window on exchange session dates, not evidence of executable equity or token liquidity.
+- `market_sessions/`: NASDAQ calendar, New York session detection, override halts/degraded data, oracle health and regime policy. Calendar library handles holidays, early closes and DST. Routing obtains unexpected halts from the live Nasdaq adapter; standalone assessment endpoints still use their snapshot provider flag. `EARLY_CLOSE` denotes the shortened regular trading window; after its close, `EXTENDED` applies. Extended hours are an illustrative 04:00–20:00 ET window on exchange session dates, not evidence of executable equity or token liquidity.
 - `risk/`: independent log-return volatility, drawdown, momentum, book execution, issuer/oracle risks, scoring and recovery calculations.
 - `optimiser/`: extensible optimiser protocol, constraint-based implementation and governance bounds.
 - `simulation/`: protocol health semantics and correlated portfolio stress. Swap the adapter once exact contract accounting is available.
@@ -97,8 +97,63 @@ docker run --rm -p 127.0.0.1:8000:8000 \
   -e RISK_POLL_SECONDS=120 dawn-risk-controller
 ```
 
-The image uses Python 3.12, a nonroot user, runtime dependency lock, persistent data directory and HTTP healthcheck. Live feeds, calibrated/backtested policies, contract-exact accounting, production signing/approval workflows, authentication and monitoring infrastructure remain integration work.
+The image uses Python 3.12, a nonroot user, runtime dependency lock, persistent data directory and HTTP healthcheck. Live price/oracle/issuer feeds, calibrated/backtested policies, contract-exact accounting, production signing/approval workflows, authentication and monitoring infrastructure remain integration work.
 
-Validation in this workspace: 43 tests pass, including all REST routes, calendar boundaries, finite-depth recovery, parameter constraints, borrower shock/transition counts, oracle-premium safety, evidence/signing serialization, issuer fail-closed behavior, monitoring success/failure, and audit persistence. The demo completes through the REST routes; `pip check` reports no dependency conflicts. Third-party calendar/TestClient dependencies emit deprecation warnings. A Docker build could not be run because the local Docker daemon is unavailable.
+Validation before the routing extension: 43 tests passed, including all REST routes, calendar boundaries, finite-depth recovery, parameter constraints, borrower shock/transition counts, oracle-premium safety, evidence/signing serialization, issuer fail-closed behavior, monitoring success/failure, and audit persistence. The demo completes through the REST routes; `pip check` reports no dependency conflicts. Third-party calendar/TestClient dependencies emit deprecation warnings. A Docker build could not be run because the local Docker daemon is unavailable.
 
 Calendar reference: [pandas-market-calendars schedule and early-close API](https://pandas-market-calendars.readthedocs.io/en/latest/pandas_market_calendars.html).
+
+## Market risk and alternative contracts (sixth PR)
+
+`POST /risk/route/{asset}` assesses configured destinations and proposes a different contract if the current market fails its controls or quantitative checks. `KEEP_CURRENT` retains an eligible primary; `PROPOSE_ALTERNATIVE` identifies an independently eligible destination; `HOLD_NEW_EXPOSURE` means no acceptable destination exists. All responses are simulated, unsigned and pending review. Existing collateral and debt stay in their original contracts.
+
+Run `python -m scripts.market_routing_demo` for healthy, governance pause, government asset halt, global halt and high-volatility examples. A sample API request is in `routing-request.example.json`. It explicitly selects `status_mode: SIMULATED` and uses a historical simulated timestamp; expiry is tied to that timestamp.
+
+```sh
+curl -s -X POST http://127.0.0.1:8000/risk/route/NVDA \
+  -H 'Content-Type: application/json' --data-binary @routing-request.example.json
+```
+
+Set `RISK_ROUTING_CONFIG_PATH` to a server-controlled JSON file following `routing-policy.example.json` and restart the service. In Docker, bind-mount the configuration file and set the variable to its container path. Configuration binds an approved/enabled target ID to chain, market ID, contract address, collateral, underlying venue, loan asset and immutable LLTV. Live status mappings add `underlying_ticker`, `collateral_token_address` (the bStock token, separate from the lending contract), and optional `binance_spot_symbol`. The default addresses and market IDs are **placeholders, not deployed contracts**. Only configured destinations can be evaluated; requests cannot supply addresses or approve targets. Market LLTV must also fit the existing governance bounds. The primary must use the configured chain and USD-valued USDT debt; cross-chain moves and incompatible loan assets are rejected. Alternatives must use a distinct contract address.
+
+Controls include observation time and source reference, government pause scope (`NONE`, `ASSET`, `VENUE`, `GLOBAL`, `UNKNOWN`), protocol-governance pause, and token-transfer pause. Missing, unknown, stale or future-dated control evidence rejects that destination. Positive asset/venue/global restrictions propagate across matching destinations even when their own reports say open. Token-transfer pauses and issuer restrictions propagate by asset; excessive/missing underlying volatility also propagates across contracts sharing that asset. Live adapters must persist active restrictions and verify their clearance; the MVP does not authenticate control reports or maintain a durable regulatory halt registry.
+
+Each market receives its own deterministic assessment and optimiser run. Default routing limits reject score ≥60, annual volatility ≥65%, recovery ratio <70%, or any underlying deterministic rejection of new borrowing. Eligible alternatives are ordered by score, volatility, then target ID. A healthy primary remains selected to avoid unnecessary switching. Evidence hashes bind input controls, fetched live status records, risk assessments, full risk/routing policies, and destination metadata; complete decisions and evidence are retained in SQLite under `routing` records.
+
+SPY exists only as a configured, independently assessed alternative in this routing demo. Its mock provider reuses generic seeded synthetic inputs; these are not real SPY observations or evidence that SPY is safe during an NVDA halt. Ordinary risk endpoints retain their original NVDA allowlist. Other assets are evaluated only inside the server-configured routing registry, using the current US-equity calendar/one-share assumptions.
+
+Before production, integrate authenticated regulator/keeper and onchain pause observations, actual per-asset market/oracle/issuer data, verified deployment/market metadata, and an external approval/signing workflow. Switching contracts does not remove an asset-wide halt or shared volatility exposure. A different-asset destination changes exposure and requires separate approval and migration analysis. The API does not execute transactions, clear pauses, mutate immutable markets, or move existing positions. Historical replay outputs must not be treated as current executable instructions.
+
+Routing validation before live adapters: **68 cumulative tests passed**. The API demo retains a healthy primary, proposes an alternative for governance/asset pauses or high volatility, and holds new exposure under a global halt.
+
+
+### Live Nasdaq and individual bStock status
+
+`GET /risk/market-status/NVDA` fetches the server-configured asset's statuses directly. `POST /risk/route/NVDA` defaults to `status_mode: LIVE` and fetches the same evidence before selecting a destination. In live mode, `as_of` must be within 60 seconds of server time. The existing historical demo explicitly chooses `SIMULATED`, makes no network calls, and remains useful offline. Live statuses do not promote synthetic prices, issuer reports or borrower inputs into production data: routing decisions remain simulated/advisory.
+
+| Returned field | Source | Meaning |
+|---|---|---|
+| `nasdaq_market` | [Nasdaq market-info JSON](https://api.nasdaq.com/api/market-info) | Open, closed, pre-market, after-hours, or an explicit suspension/halt label |
+| `underlying_halt` | [Nasdaq Trader halt RSS](https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts) | Per-ticker active halt/pause and effective trade resumption |
+| `binance_bstock` | Binance Wallet public RWA `asset/market/status/ai`, keyed by chain ID and collateral-token address | Individual token trading, closed, paused, corporate action, limited, maintenance, or unknown |
+| `binance_spot` | [Binance exchangeInfo](https://developers.binance.com/docs/binance-spot-api-docs/rest-api/general-endpoints), when configured | Supplementary CEX-pair status; never used as a substitute for bStock status |
+
+```sh
+curl -s http://127.0.0.1:8000/risk/market-status/NVDA
+python -m scripts.market_status_smoke --asset NVDA  # strict real-HTTP acceptance check, no API keys
+```
+
+The adapter shares a 60-second cache across assets and caches failures too, respecting Nasdaq's [once-per-minute RSS guideline](https://www.nasdaqtrader.com/Trader.aspx?id=TradeHaltRSS). Results include the actual upstream HTTP status, fetch time, feed publication time when available, source URL, raw status fields and an explanation. The endpoint returns HTTP 503 if any required source lacks HTTP 200/201 or valid fresh data. A Nasdaq market-info response for another Eastern calendar date, or a halt-feed publication older than five minutes/future-dated, is unknown. A cached fetch retains its original timestamp.
+
+Underlying halts persist in SQLite by ticker across provider/process restarts. An omitted ticker does not clear a remembered halt; a later explicit, already-effective trade resumption must clear it. Quotation resumption alone or a future scheduled trade resumption does not clear it. A fresh feed with no entry is labelled `NO_ACTIVE_HALT`, not a claim that every regulatory restriction is absent. The persistence protects previously observed halts, not unseen history from before initial startup.
+
+Live routing rejects paused, restricted, unknown, stale, or failed status evidence. A stock-market closure alone does not imply a bStock pause: it retains calendar-dependent stress and borrowing buffers. If Nasdaq says closed while the calendar says regular trading, routing blocks new exposure conservatively. Halt/pause signals feed the quantitative assessment's halted state, and restrictions propagate across matching ticker/token identities. Request control flags cannot override fetched status. Government restrictions, protocol governance pauses and actual onchain token-transfer availability remain separate controls and still require independent evidence.
+
+The default NVDA mapping uses NVDAB on chain 56. The demo SPY target has no verified bStock-token mapping; its live bStock status is unknown and cannot be selected. Configure verified identities for any additional bStocks; no token address or Spot pair is guessed.
+
+Nasdaq's website JSON and Binance Wallet's `/ai` RWA routes are public website endpoints without a guaranteed API contract or availability. Nasdaq may return HTTP 403 to some HTTP clients; Binance can impose regional/rate restrictions. The Nasdaq market-info adapter uses system curl over HTTP/1.1, with the `DawnFinance/0.1` user agent, because it was verified to return HTTP 200 where Python HTTP clients received Akamai 403. Curl uses a fixed HTTPS URL, no shell, no credentials, no redirects, and bounded time/size; TLS verification remains enabled. Install curl locally (the Docker image installs it and CA certificates). Such responses return `UNKNOWN` and block live routing rather than falling back to an optimistic calendar or CEX status. Deployment must have trusted TLS roots and network access; certificate verification stays enabled. A licensed Nasdaq feed is needed for stronger real-time/availability guarantees.
+
+Live-status validation: **112 cumulative tests pass** (68 existing + 44 status/integration tests). Fixtures cover session states, per-bStock restrictions, timeouts/403/429/schema errors, cache timestamps and polling limits, durable halts, effective resumptions, shared restrictions, live routing/expiry, API exposure and explicit simulated replay. The application live acceptance check returned HTTP 200 with Nasdaq market-info CLOSED, Nasdaq per-ticker NO_ACTIVE_HALT, and Binance NVDAB TRADING, all with upstream HTTP 200 and no API keys.
+
+
+Before publishing an integration update, run the unit suite and the strict live check above. A mocked HTTP success or a response containing UNKNOWN is not acceptance. The smoke command exits nonzero on a failed/missing/stale source and prints the application and upstream HTTP codes. Its default checks every approved, enabled configured target; `--asset NVDA` verifies only the configured NVDAB integration. The unmapped SPY demo does not pass a live gate. Verify every real asset being claimed in the update. On systems with a custom trusted CA bundle, set `SSL_CERT_FILE` to that bundle; never disable certificate verification.

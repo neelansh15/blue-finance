@@ -1,0 +1,41 @@
+{
+  "as_of": "2026-11-20T16:00:00Z",
+  "primary_target_id": "demo-nvda-primary",
+  "markets": [
+    {
+      "target_id": "demo-nvda-primary",
+      "controls": {
+        "observed_at": "2026-11-20T16:00:00Z",
+        "source_reference": "mock://control-evidence",
+        "government_pause": "ASSET",
+        "governance_paused": false,
+        "token_transfers_paused": false
+      },
+      "assessment": {
+        "scenario": "baseline",
+        "as_of": null,
+        "oracle_mode": "24_5",
+        "liquidation_quantity": 1000.0,
+        "snapshot": null
+      }
+    },
+    {
+      "target_id": "demo-spy-alternative",
+      "controls": {
+        "observed_at": "2026-11-20T16:00:00Z",
+        "source_reference": "mock://control-evidence",
+        "government_pause": "NONE",
+        "governance_paused": false,
+        "token_transfers_paused": false
+      },
+      "assessment": {
+        "scenario": "baseline",
+        "as_of": null,
+        "oracle_mode": "24_5",
+        "liquidation_quantity": 1000.0,
+        "snapshot": null
+      }
+    }
+  ],
+  "status_mode": "SIMULATED"
+}

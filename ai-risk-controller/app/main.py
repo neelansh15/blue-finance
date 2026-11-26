@@ -9,12 +9,14 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.integrations.market_status import LiveMarketStatusProvider
 from app.agents.issuer_agent import IssuerAgent, OpenAICompatibleProvider
 from app.api.risk import router
 from app.config import load_policy
 from app.models import Model, SimulateRequest
 from app.services.risk_service import RiskService, UnsupportedAsset
 from app.services.store import AuditStore
+from app.routing.policy import load_routing_policy
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ async def monitor(app: FastAPI, stop: asyncio.Event, interval: float):
             pass
 
 
-def create_app(injected_service: RiskService | None = None) -> FastAPI:
+def create_app(injected_service: RiskService | None = None, status_provider: LiveMarketStatusProvider | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         owned = injected_service is None
@@ -58,6 +60,8 @@ def create_app(injected_service: RiskService | None = None) -> FastAPI:
             elif mode != "mock":
                 raise ValueError("Unknown ISSUER_PROVIDER")
             app.state.service = RiskService(load_policy(), AuditStore(os.getenv("RISK_DB_PATH", "risk.sqlite3")), agent=agent)
+        app.state.routing_policy = load_routing_policy()
+        app.state.market_status = status_provider or LiveMarketStatusProvider(app.state.service.store)
         interval = float(os.getenv("RISK_POLL_SECONDS", "0"))
         if interval != 0 and (not 10 <= interval <= 86400):
             raise ValueError("RISK_POLL_SECONDS must be 0 (disabled) or between 10 and 86400")
@@ -70,6 +74,8 @@ def create_app(injected_service: RiskService | None = None) -> FastAPI:
         stop.set()
         if task:
             await task
+        if status_provider is None:
+            app.state.market_status.close()
         if owned:
             app.state.service.store.close()
 
