@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { IconArrow, IconLogo } from "./Icons";
+import { IconArrow, BlueprintLogo } from "./Icons";
 import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [
@@ -21,7 +21,7 @@ export default function SiteNav() {
     <header className="nav">
       <nav className="wrap nav-inner" aria-label="Primary">
         <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
-          <IconLogo />
+          <BlueprintLogo />
           <span>Dawn<span className="brand-wide"> Finance</span></span>
         </a>
         <ul className="nav-links">
@@ -53,7 +53,7 @@ export default function SiteNav() {
               ))}
             </ul>
           </details>
-          <Link className="btn launch-app" href="/app">Launch App <IconArrow /></Link>
+          <Link className="btn launch-app" href="/app/dashboard">Launch App <IconArrow /></Link>
         </div>
       </nav>
     </header>
