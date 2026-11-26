@@ -49,6 +49,14 @@ abstract contract DawnDeploy {
     /// Public demo signer key. NOT A SECRET: anyone can sign eligibility attestations with it. Demo only.
     uint256 internal constant DEMO_SIGNER_KEY = uint256(keccak256("dawn.demo.eligibility.signer"));
 
+    /// Optional REAL Atlas feed (and real bStock). Default address(0) keeps the MockAtlasFeed / MockBStock path,
+    /// which every test and the demo use. Set by script/Deploy.s.sol from env ATLAS_FEED / BSTOCK.
+    /// With a real feed the oracle is configured per RAW token (feedPerUIShare = false, measured 2026-11-26) and the
+    /// live-regime staleness is 2 hours, because real feeds heartbeat roughly hourly (see README).
+    /// Deployment.feed is then address(0); the bStock stays a mock unless BSTOCK is also set.
+    address internal realAtlasFeed;
+    address internal realBStock;
+
     struct DeployParams {
         address deployer; // admin of registry and router, owner of the mocks, supplies the seed liquidity
         address keeper; // registry keeper (overrides)
@@ -73,9 +81,22 @@ abstract contract DawnDeploy {
         d.registry.setHolidays(_nyseHolidays(), true);
         d.registry.setEarlyCloses(_nyseEarlyCloses(), true);
 
-        d.bStock = new MockBStock("Mock bStock AAPL", "bAAPL");
-        d.feed = new MockAtlasFeed(8, p.initialPrice);
-        d.oracle = new DawnOracle(_oracleConfig(address(d.feed), address(d.registry), address(d.bStock)));
+        address feedAddr = realAtlasFeed;
+        if (realBStock != address(0)) {
+            d.bStock = MockBStock(realBStock); // real token: only used through its address / uiMultiplier()
+        } else {
+            d.bStock = new MockBStock("Mock bStock AAPL", "bAAPL");
+        }
+        if (feedAddr == address(0)) {
+            d.feed = new MockAtlasFeed(8, p.initialPrice);
+            feedAddr = address(d.feed);
+        }
+        DawnOracle.Config memory c = _oracleConfig(feedAddr, address(d.registry), address(d.bStock));
+        if (realAtlasFeed != address(0)) {
+            c.feedPerUIShare = false;
+            c.stalenessSec = [uint32(2 hours), 2 hours, 4 hours, 6 hours, 1 hours, 1 hours];
+        }
+        d.oracle = new DawnOracle(c);
 
         d.marketParams = MarketParams({
             loanToken: USDT, collateralToken: address(d.bStock), oracle: address(d.oracle), irm: IRM, lltv: LLTV
@@ -104,7 +125,7 @@ abstract contract DawnDeploy {
         c.loanDecimals = 18;
         c.collateralDecimals = 18;
         c.feedDecimals = 8;
-        c.feedPerUIShare = true; // [U] Atlas units unverified; the mock is per UI share
+        c.feedPerUIShare = true; // mock default is per UI share; real Atlas feeds are per raw token (see _deployDawn)
         c.haircutsBps = [H_OPEN, H_EXTENDED, H_CLOSED, H_WEEKEND, H_HALTED, H_CORP_ACTION];
         c.stalenessSec = [uint32(1 hours), 1 hours, 4 hours, 6 hours, 1 hours, 1 hours]; // PLACEHOLDER
         c.maxFreeze = MAX_FREEZE;
