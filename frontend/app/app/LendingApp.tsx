@@ -13,7 +13,7 @@ import {
   ACTIONS, BORROWING_DISCOUNT, MARKET_STATUSES, SCHEDULED_STATUSES, STATUS_LABEL, STOCKS, isStockId, stockById,
   type Action, type StockId,
 } from "./markets";
-import { BLUE, parseTokenAmount } from "../../src/lib/blue/mainnet";
+import { BLUE, IS_DEMO, parseTokenAmount } from "../../src/lib/blue/mainnet";
 import {
   accountStock, actionLimit, blockingStock, borrowGate, borrowLtv, formatAmount, formatBps, formatHealth, formatRate,
   formatUsd, isEligible, liveRiskPosition, liveStock, position, stockCap, stockValue, usdtDebt, usdtValue, utilisation,
@@ -405,7 +405,7 @@ function MarketWorkspace({ mode, groups, requestedStock, initialAction }: {
         <summary>Stress-test this position with synthetic advisory scenarios</summary>
         <LiveRisk state={data} stock={stock} />
       </details>}
-      <p className="wrap app-footnote">Live BNB Smart Chain data. Wallet approvals move real tokens and use BNB gas. Unaudited hackathon contracts with prototype risk limits. <Link href="/app/simulator">Open the simulator</Link>.</p>
+      <p className="wrap app-footnote">{IS_DEMO ? "Demo market on BNB Smart Chain using test tokens with no value. Wallet approvals use real BNB gas." : "Live BNB Smart Chain data. Wallet approvals move real tokens and use BNB gas."} Unaudited hackathon contracts with prototype risk limits. <Link href="/app/simulator">Open the simulator</Link>.</p>
     </main>
   );
 }

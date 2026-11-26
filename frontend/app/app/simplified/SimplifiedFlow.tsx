@@ -10,7 +10,7 @@ import { useDemoAccount } from "../DemoAccount";
 import { ReadStatus, TxFeedback, WalletAction } from "../live/LiveParts";
 import { EXPLORER, useBlueState, useBlueTransactions, type TxStep } from "../live/useBlueLive";
 import { LEVERAGE } from "../../../src/lib/blue/leverage";
-import { parseTokenAmount } from "../../../src/lib/blue/mainnet";
+import { IS_DEMO, parseTokenAmount } from "../../../src/lib/blue/mainnet";
 import {
   actionLimit, blockingStock, borrowGate, borrowLtv, borrowRoom, formatAmount, formatBps, formatHealth, formatRate,
   formatUsd, isEligible, liveStock, pinnedStock, position, statusLabel, usdtDebt, type LiveLimit, type LiveState,
@@ -237,7 +237,9 @@ function Guide() {
         {active === 0 && (
           <div className="simple-center">
             <h2 id="simple-heading" tabIndex={-1} ref={heading}>{connected ? "Wallet connected" : "Connect your wallet"}</h2>
-            <p>{connected ? address : "A wallet opens the guide. Borrowing and supplying use real tokens and BNB gas."}</p>
+            <p>{connected ? address : IS_DEMO
+              ? "A wallet opens the guide. This demo market uses test tokens with no value, and transactions cost real BNB gas."
+              : "A wallet opens the guide. Borrowing and supplying use real tokens and BNB gas."}</p>
             <button className="btn" type="button" disabled={isConnecting || isReconnecting}
               onClick={() => connected ? setStep(1) : setOpen(true)}>
               {connected ? "Continue" : isConnecting || isReconnecting ? "Connecting…" : "Connect wallet"}

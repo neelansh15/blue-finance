@@ -11,7 +11,7 @@ import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wa
 import { bsc } from "wagmi/chains";
 import TokenIcon from "../components/TokenIcon";
 import {
-  BLUE, controlsContract, eligibilityDomain, eligibilityTypes, liveStocks, parseTokenAmount,
+  BLUE, IS_DEMO, controlsContract, eligibilityDomain, eligibilityTypes, liveStocks, parseTokenAmount,
   poolContract, priceSourceAbi, tokenContract,
 } from "../../src/lib/blue/mainnet";
 import { readLiveState } from "../../src/lib/blue/live-state";
@@ -212,7 +212,7 @@ export default function LiveApp() {
             <h1>Blue <em>onchain.</em></h1>
             <a href={`${explorer}/address/${BLUE.pool}`}>View pool on BscScan</a>
           </div>
-          <p>BNB Smart Chain mainnet. Wallet approvals use real tokens and BNB gas.</p>
+          <p>{IS_DEMO ? "Demo market on BNB Smart Chain mainnet. It uses test tokens with no value. Transactions cost real BNB gas." : "BNB Smart Chain mainnet. Wallet approvals use real tokens and BNB gas."}</p>
           <dl className="app-summary app-summary-overview">
             <div><dt>Available USDT</dt><dd>{display(data?.liquidity)}</dd></div>
             <div><dt>USDT supply cap</dt><dd>{display(data?.caps[1], 0)}</dd></div>

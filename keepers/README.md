@@ -14,6 +14,8 @@
 
 The first report cycle starts four minutes after the service starts. A stock becomes borrowable after 30 minutes of healthy reports, provided the shared USDT reserve has liquidity. Allowlisted wallets still need BNB, eligible bStock collateral and enough USDT to cover repayment and interest. The keeper needs recurring BNB. Watch service logs and fund that account as needed. The service does not liquidate loans.
 
+The service watches the [demo pool](src/v3/bsc-demo.json), which lists test tokens. Set `BLUE_DEPLOYMENT=real` to watch the [live pool](src/v3/bsc-mainnet.json). Both pools use the same keeper wallet, so run one service at a time.
+
 ## Earlier Morpho prototype
 
 The commands and environment variables below apply to the previous Morpho prototype.

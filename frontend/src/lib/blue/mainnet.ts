@@ -1,31 +1,45 @@
 import { erc20Abi, parseAbi, parseUnits, type Address } from "viem";
+import demoDeployment from "./demo-deployment.json";
 import { STOCKS } from "./pool";
 
 export const BSC_RPC_URL = process.env.NEXT_PUBLIC_BSC_RPC_URL?.trim() || "https://bsc-rpc.publicnode.com";
 
-export const BLUE = {
+/** The live pool, with the real bStocks and USDT. Do not change these when working on the demo. */
+const REAL = {
   pool: "0xDAC47642621B0C3E4191Fe68281EddAC355f12bC",
   provider: "0x1AfE5e07f6c6f092494DA8423708c412939B6906",
   dataProvider: "0xa7db8d9e04c466126d58379fcfab2ae0f26a7643",
   controls: "0x9F80DEe6652798855133358a382264986C2A5d4D",
   calendar: "0x33CcEcEDA8f2f47BdE9f234FF025977aeB292B17",
   oracle: "0x727D5D5001717e7F5fAC98c5b134B27487192e4d",
-  usdtSource: "0xe3329b970Acf9545496786B77aa73639E3F4b489",
   usdt: "0x55d398326f99059fF775485246999027B3197955",
-} as const satisfies Record<string, Address>;
+  usdtSource: "0xe3329b970Acf9545496786B77aa73639E3F4b489",
+  /** Token, then price source. */
+  stocks: {
+    TSLAB: ["0x5b1910eAaD6450E50f816082Aa078C41F10C292f", "0x2162Ba3A993BC8442CEE02340693D1818bbB6826"],
+    NVDAB: ["0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436", "0xE28c1AFf5549CBAD6e7Dfb09C7446CC8EDA6Cb3D"],
+    QQQB: ["0x205812CdBed920aFf76C6580abD681a46D11efc7", "0xC0a4c6fb4dF398c64B48b19898e5BE1375a83c67"],
+    SPCXB: ["0xbe9D156892E55e7154BcD3cB0FEA677F9D3103E1", "0x57569eEDA113AF59BFcEfd549610AF6692fD0772"],
+    GOOGLB: ["0x3F53De71c126BdaBAe20f9cD64848d317f6C3238", "0x289Ae6026ae1a9E02fC4dC964861e72473E5f28e"],
+  },
+} as const;
 
-const stockAddresses = {
-  TSLAB: ["0x5b1910eAaD6450E50f816082Aa078C41F10C292f", "0x2162Ba3A993BC8442CEE02340693D1818bbB6826"],
-  NVDAB: ["0x02Fca66C1D1aFB4E2A7884261eB00F63598a7436", "0xE28c1AFf5549CBAD6e7Dfb09C7446CC8EDA6Cb3D"],
-  QQQB: ["0x205812CdBed920aFf76C6580abD681a46D11efc7", "0xC0a4c6fb4dF398c64B48b19898e5BE1375a83c67"],
-  SPCXB: ["0xbe9D156892E55e7154BcD3cB0FEA677F9D3103E1", "0x57569eEDA113AF59BFcEfd549610AF6692fD0772"],
-  GOOGLB: ["0x3F53De71c126BdaBAe20f9cD64848d317f6C3238", "0x289Ae6026ae1a9E02fC4dC964861e72473E5f28e"],
-} as const satisfies Record<string, readonly [Address, Address]>;
+type Deployment = Record<Exclude<keyof typeof REAL, "stocks">, Address> & {
+  stocks: Record<keyof typeof REAL.stocks, readonly Address[]>;
+};
+
+// protocol/script/deploy-demo.sh writes this file. It holds null until the demo pool exists.
+const demo = demoDeployment as unknown as Deployment | null;
+
+/** The app uses the demo pool (our own test tokens, same price feeds) unless NEXT_PUBLIC_BLUE_DEPLOYMENT=real. */
+export const IS_DEMO = demo !== null && process.env.NEXT_PUBLIC_BLUE_DEPLOYMENT?.trim() !== "real";
+
+export const BLUE: Deployment = IS_DEMO ? demo! : REAL;
 
 export const liveStocks = STOCKS.map(stock => ({
   ...stock,
-  address: stockAddresses[stock.id][0],
-  source: stockAddresses[stock.id][1],
+  address: BLUE.stocks[stock.id][0],
+  source: BLUE.stocks[stock.id][1],
 }));
 
 export const poolContract = {

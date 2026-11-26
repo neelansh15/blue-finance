@@ -1,5 +1,9 @@
 import { getAddress, parseAbi } from "viem";
-import deployment from "./bsc-mainnet.json";
+import demo from "./bsc-demo.json";
+import real from "./bsc-mainnet.json";
+
+// The service watches the demo pool, like the app. BLUE_DEPLOYMENT=real switches to the live pool.
+const deployment = process.env.BLUE_DEPLOYMENT?.trim() === "real" ? real : demo;
 
 export const chainId = deployment.chainId;
 export const pool = getAddress(deployment.pool);

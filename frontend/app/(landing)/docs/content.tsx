@@ -80,12 +80,12 @@ export const articles: DocArticle[] = [
       {
         id: "prototype-scope",
         title: "BNB Chain launch",
-        body: <p>The hackathon pool is deployed on BNB Smart Chain at <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC"><code>0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</code></a>. See every <Link href="/docs/deployment">deployed contract and role</Link>. Open <Link href="/app/earn">Earn</Link>, <Link href="/app/borrow">Borrow</Link> or <Link href="/app/simplified">Simplified Mode</Link> for live markets and wallet actions, or the <Link href="/app/simulator">simulator</Link> for a pre-funded walkthrough.</p>,
+        body: <p>The hackathon pool is deployed on BNB Smart Chain at <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC"><code>0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</code></a>. See every <Link href="/docs/deployment">deployed contract and role</Link>. Open <Link href="/app/earn">Earn</Link>, <Link href="/app/borrow">Borrow</Link> or <Link href="/app/simplified">Simplified Mode</Link> for live markets and wallet actions, or the <Link href="/app/simulator">simulator</Link> for a pre-funded walkthrough. These pages currently use a separate demo pool at <a href="https://bscscan.com/address/0xBee284aAFe856280D3212fe3260b81fE2702BE03"><code>0xBee284aAFe856280D3212fe3260b81fE2702BE03</code></a> with <Link href="/docs/markets#test-tokens">test tokens</Link>.</p>,
       },
       {
         id: "demo",
         title: "Run the demo",
-        body: <><p>Connect a wallet on BNB Smart Chain with USDT and BNB for gas. Supply a small amount of USDT, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The pool launched with zero seeded USDT. Borrowing also needs liquidity, a keeper that has completed the recovery window with fresh prices, and eligibility for the selected stock. Borrow and Risk show these gates. Leveraged borrowing in Simplified Mode is a simulation. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
+        body: <><p>Connect a wallet on BNB Smart Chain with the demo pool’s test USDT and BNB for gas. Supply a small amount, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The demo pool was deployed with no liquidity. Borrowing also needs liquidity, a keeper that has completed the recovery window with fresh prices, and eligibility for the selected stock. Borrow and Risk show these gates. Leveraged borrowing in Simplified Mode is a simulation. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
       },
     ],
     sources: [
@@ -154,6 +154,18 @@ export const articles: DocArticle[] = [
           [<code>USDT</code>, "The only borrowable asset. Lenders supply it and borrowers draw it from the same shared liquidity."],
           [<code>TSLAB, NVDAB, QQQB, SPCXB, GOOGLB</code>, "Real bStock tokens on BNB Chain. Collateral only. Each account uses one collateral stock."],
         ]} /><p>Lenders receive <strong>bluUSDT</strong>, Blue’s name for the Aave aToken. Borrower debt is recorded as <strong>bluDebtUSDT</strong>, an Aave variable debt token. USDT withdrawals depend on available liquidity. Flash loans are disabled.</p></>,
+      },
+      {
+        id: "test-tokens",
+        title: "Mock test tokens",
+        body: <><p>Five mock stock tokens and a mock USDT are deployed on BNB Smart Chain mainnet for testing. They are not Binance bStocks or Tether’s USDT and have no value. A separate demo pool at <a href="https://bscscan.com/address/0xBee284aAFe856280D3212fe3260b81fE2702BE03"><code>0xBee284aAFe856280D3212fe3260b81fE2702BE03</code></a> lists them and uses the same price feeds as the live pool. The live pool does not accept them.</p><Table columns={["Token", "Name", "Address"]} rows={[
+          [<code>mUSDT</code>, "Blue Mock USDT", <a href="https://bscscan.com/token/0x7698257D4200A2d3E6A47Ce3BBffEb3aEe0445f9"><code>0x7698257D4200A2d3E6A47Ce3BBffEb3aEe0445f9</code></a>],
+          [<code>mTSLAB</code>, "Blue Mock Tesla", <a href="https://bscscan.com/token/0xA75f781454764A3E50B9381f7e4A68e617D2a1c8"><code>0xA75f781454764A3E50B9381f7e4A68e617D2a1c8</code></a>],
+          [<code>mNVDAB</code>, "Blue Mock NVIDIA", <a href="https://bscscan.com/token/0xCfA61BEb931eF2E20e7a017C47f1c494a2556e89"><code>0xCfA61BEb931eF2E20e7a017C47f1c494a2556e89</code></a>],
+          [<code>mQQQB</code>, "Blue Mock Invesco QQQ", <a href="https://bscscan.com/token/0xA93364Cf343495846fC2a89D54f90452FEfD5b91"><code>0xA93364Cf343495846fC2a89D54f90452FEfD5b91</code></a>],
+          [<code>mSPCXB</code>, "Blue Mock SpaceX", <a href="https://bscscan.com/token/0x1871c0511AC66Ee8D153932A620cCCb9AB6E69F8"><code>0x1871c0511AC66Ee8D153932A620cCCb9AB6E69F8</code></a>],
+          [<code>mGOOGLB</code>, "Blue Mock Alphabet", <a href="https://bscscan.com/token/0x6Dd6fd3f283233aF264aa3958F7Fef2b0d8ef09B"><code>0x6Dd6fd3f283233aF264aa3958F7Fef2b0d8ef09B</code></a>],
+        ]} /><p>Each token uses 18 decimals. The deployment minted 100,000 of each to the Blue admin wallet, which owns the tokens and can mint more.</p></>,
       },
       {
         id: "supplier-and-borrower-flows",

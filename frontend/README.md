@@ -43,6 +43,23 @@ The deployment seeded zero liquidity. There is no liquidation bot. The contracts
 
 The public BNB RPC defaults to PublicNode. To use another browser-accessible BNB mainnet RPC, set `NEXT_PUBLIC_BSC_RPC_URL` before starting or building the app. This setting is exposed to browsers. Keep credentials out of it.
 
+## Mock test tokens
+
+These tokens are on BNB Smart Chain mainnet for testing. They are not Binance bStocks or Tether's USDT, have no value. The live pool does not accept them. The demo pool below lists them. The admin wallet owns them and can mint more.
+
+| Token | Address |
+|---|---|
+| mUSDT | [`0x7698257D4200A2d3E6A47Ce3BBffEb3aEe0445f9`](https://bscscan.com/token/0x7698257D4200A2d3E6A47Ce3BBffEb3aEe0445f9) |
+| mTSLAB | [`0xA75f781454764A3E50B9381f7e4A68e617D2a1c8`](https://bscscan.com/token/0xA75f781454764A3E50B9381f7e4A68e617D2a1c8) |
+| mNVDAB | [`0xCfA61BEb931eF2E20e7a017C47f1c494a2556e89`](https://bscscan.com/token/0xCfA61BEb931eF2E20e7a017C47f1c494a2556e89) |
+| mQQQB | [`0xA93364Cf343495846fC2a89D54f90452FEfD5b91`](https://bscscan.com/token/0xA93364Cf343495846fC2a89D54f90452FEfD5b91) |
+| mSPCXB | [`0x1871c0511AC66Ee8D153932A620cCCb9AB6E69F8`](https://bscscan.com/token/0x1871c0511AC66Ee8D153932A620cCCb9AB6E69F8) |
+| mGOOGLB | [`0x6Dd6fd3f283233aF264aa3958F7Fef2b0d8ef09B`](https://bscscan.com/token/0x6Dd6fd3f283233aF264aa3958F7Fef2b0d8ef09B) |
+
+## Demo pool
+
+`protocol/script/deploy-demo.sh` deploys a second pool that lists the mock tokens above and prices them from the same feeds as the live pool. The current one is at [`0xBee284aAFe856280D3212fe3260b81fE2702BE03`](https://bscscan.com/address/0xBee284aAFe856280D3212fe3260b81fE2702BE03). The script records the addresses in `src/lib/blue/demo-deployment.json`. Once that file holds a record, `/app` uses the demo pool and says so on the page. Set `NEXT_PUBLIC_BLUE_DEPLOYMENT=real` before starting or building to use the live pool, for example to withdraw funds supplied there. The keeper and eligibility service (`keepers/src/v3`) watches the demo pool too, and `BLUE_DEPLOYMENT=real` switches it back.
+
 ## Simulator
 
 Open [`/app/simulator`](http://localhost:3000/app/simulator) for a pre-funded walkthrough with no wallet or gas. Its balances never appear on the live pages. For the scenario controls, use `/app/simulator?dev=1` or Shift+D.

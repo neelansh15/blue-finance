@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { createConfig, http, WagmiProvider } from "wagmi";
 import { bsc } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
-import { BSC_RPC_URL } from "../../src/lib/blue/mainnet";
+import { BSC_RPC_URL, IS_DEMO } from "../../src/lib/blue/mainnet";
 
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim();
 
@@ -46,7 +46,9 @@ const theme = {
 };
 
 const options = {
-  disclaimer: "The onchain workspace uses real tokens and gas. Simulator actions stay in the browser.",
+  disclaimer: IS_DEMO
+          ? "The onchain workspace is a demo market with test tokens and real gas. Simulator actions stay in the browser."
+          : "The onchain workspace uses real tokens and gas. Simulator actions stay in the browser.",
   hideBalance: true,
 };
 
