@@ -18,10 +18,10 @@ const config = createConfig({
       projectId,
       showQrModal: false,
       metadata: {
-        name: "Dawn Finance",
+        name: "Blue Finance",
         description: "Tokenized stock lending simulator",
         url: "https://dawn-finance.vercel.app",
-        icons: [],
+        icons: ["https://dawn-finance.vercel.app/assets/brand/blue-finance-mark.png"],
       },
     })] : []),
   ],

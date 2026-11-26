@@ -172,12 +172,6 @@ button {
   white-space: nowrap;
 }
 
-.brand svg {
-  --logo-ink: var(--on-blue);
-  color: var(--blue);
-  flex: none;
-}
-
 .nav-links {
   display: flex;
   align-items: center;
@@ -1278,11 +1272,5 @@ details[open] .disclosure-icon::after {
 
   .launch-app {
     padding-inline: 10px;
-  }
-}
-
-@media (max-width: 360px) {
-  .brand-wide {
-    display: none;
   }
 }

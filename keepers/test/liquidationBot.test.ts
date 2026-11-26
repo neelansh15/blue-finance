@@ -189,7 +189,20 @@ describe("LiquidationBot", () => {
     expect([...f.bot.borrowers].sort()).toEqual([U1, U2]);
     f.calls.ranges.length = 0;
     await f.bot.tick();
-    expect(f.calls.ranges).toEqual([]); // head did not move: nothing to scan
+    expect(f.calls.ranges).toEqual([[95n, 100n]]); // only the small reorg-overlap window is rescanned
+  });
+  it("head moving backwards (evm_revert / reorg) rescans and finds borrowers on the new branch", async () => {
+    let head = 100n;
+    const f = fake({ positions: { [U2]: bad } });
+    const chain = f.bot["d"].chain;
+    chain.headBlock = async () => head;
+    chain.borrowersBetween = async (from, to) => (60n >= from && 60n <= to ? [U2] : []);
+    head = 100n;
+    await f.bot.tick(); // cursor at 100, U2 borrowed at 60 on this branch
+    f.bot.borrowers.clear();
+    head = 65n; // chain reverted behind the cursor
+    await f.bot.tick();
+    expect(f.bot.borrowers.has(U2)).toBe(true);
   });
   it("drops borrowers whose debt is gone", async () => {
     const f = fake({ seed: [U1], positions: {} });

@@ -151,7 +151,7 @@ Last run Nov 26, 2026: 116 passed, 0 failed, 0 skipped. Suites: RegimeRegistry, 
 
 ## Parameters that need manual tuning
 
-Every value below is a **placeholder** until it is calibrated. Source: `protocol/script/DawnDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/dawn/params.ts`.
+Every value below is a **placeholder** until it is calibrated. Source: `protocol/script/DawnDeploy.sol`, `keepers/src/config.ts`, `frontend/src/lib/dawn/client.ts` and `frontend/src/lib/dawn/math.ts`.
 
 ### What `targetLTV` is
 
@@ -242,4 +242,4 @@ The off-chain controller now produces review-only Dawn margin and six-regime bor
 
 ## AI Risk Controller
 
-The standalone [AI Risk Controller](ai-risk-controller/README.md) provides advisory collateral risk assessment, parameter recommendations and borrower simulation. The frontend risk workspace connects to this service without executing transactions.
+The standalone [AI Risk Controller](ai-risk-controller/README.md) provides advisory collateral risk assessment, parameter recommendations and borrower simulation. The backend exposes an additive advisory API without executing transactions. Frontend integration is owned separately; this PR changes no frontend code.

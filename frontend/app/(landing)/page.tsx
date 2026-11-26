@@ -2,12 +2,12 @@ import Image from "next/image";
 import Link from "next/link";
 import RegimeExplorer from "../components/RegimeExplorer";
 import SiteNav from "../components/SiteNav";
+import BrandLogo from "../components/BrandLogo";
 import TokenIcon from "../components/TokenIcon";
 import {
   IconArrow,
   IconDoc,
   IconHalt,
-  BlueprintLogo as IconLogo,
   IconOracle,
   IconRegime,
   IconShield,
@@ -289,9 +289,8 @@ export default function Home() {
 
       <footer className="footer">
         <div className="wrap footer-inner">
-          <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
-            <IconLogo />
-            <span>Dawn Finance</span>
+          <a className="brand" href="#top" aria-label="Blue Finance, back to top">
+            <BrandLogo />
           </a>
           <p>Built on BNB Chain and Morpho Blue</p>
           <p>BNB Bangkok prototype · Not live</p>
