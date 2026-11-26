@@ -1,15 +1,15 @@
 :root {
-  --paper: #ffffff;
-  --sheet: #f3f6fd;
-  --ink: #132544;
-  --secondary: #425779;
-  --blue: #2040bf;
-  --on-blue: #ffffff;
-  --rule: #cbd8ef;
-  --rule-strong: #8ca3d1;
-  --grid: rgba(38, 77, 169, 0.085);
+  --paper: light-dark(#ffffff, #0b1530);
+  --sheet: light-dark(#f3f6fd, #111f42);
+  --ink: light-dark(#132544, #f3f6ff);
+  --secondary: light-dark(#425779, #b9caec);
+  --blue: light-dark(#2040bf, #a6beff);
+  --on-blue: light-dark(#ffffff, #0b1530);
+  --rule: light-dark(#cbd8ef, #304776);
+  --rule-strong: light-dark(#8ca3d1, #6882b4);
+  --grid: light-dark(rgba(38, 77, 169, 0.085), rgba(151, 180, 249, 0.11));
 
-  --plot: #1836a8;
+  --plot: light-dark(#1836a8, #142c80);
   --plot-ink: #ffffff;
   --plot-muted: #e0e8ff;
   --plot-rule: #889de6;
@@ -18,23 +18,15 @@
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --gutter: clamp(16px, 4vw, 56px);
   --page-width: 1312px;
+  color-scheme: light dark;
+}
+
+:root[data-theme="light"] {
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #0b1530;
-    --sheet: #111f42;
-    --ink: #f3f6ff;
-    --secondary: #b9caec;
-    --blue: #a6beff;
-    --on-blue: #0b1530;
-    --rule: #304776;
-    --rule-strong: #6882b4;
-    --grid: rgba(151, 180, 249, 0.11);
-    --plot: #142c80;
-    color-scheme: dark;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 *,
@@ -208,8 +200,39 @@ button {
   color: var(--blue);
 }
 
-.nav-status {
+.nav-actions {
+  display: flex;
+  align-items: center;
   justify-self: end;
+  gap: 12px;
+}
+
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.theme-toggle:hover {
+  background: var(--sheet);
+  color: var(--blue);
+}
+
+.theme-sun,
+[data-theme="dark"] .theme-moon {
+  display: none;
+}
+
+[data-theme="dark"] .theme-sun {
+  display: block;
+}
+
+.nav-status {
   color: var(--secondary);
   font: 500 0.6875rem/1.45 var(--mono);
   text-transform: uppercase;
@@ -1070,9 +1093,9 @@ details[open] .disclosure-icon::after {
   font-size: 0.875rem;
 }
 
-@media (max-width: 850px) {
+@media (max-width: 940px) {
   .nav-inner {
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     gap: clamp(8px, 2vw, 20px);
     min-height: 60px;
   }
@@ -1122,7 +1145,9 @@ details[open] .disclosure-icon::after {
   .mobile-nav li + li {
     border-top: 1px solid var(--rule);
   }
+}
 
+@media (max-width: 850px) {
   .market-workbench,
   .editorial-section {
     grid-template-columns: minmax(0, 1fr);
@@ -1202,7 +1227,17 @@ details[open] .disclosure-icon::after {
 }
 
 @media (max-width: 470px) {
+  .nav-actions {
+    gap: 8px;
+  }
+
   .nav-status-prefix {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav-status {
     display: none;
   }
 }

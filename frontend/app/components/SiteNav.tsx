@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { IconLogo } from "./Icons";
+import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [
   { href: "#regimes", label: "Simulator" },
@@ -25,30 +26,33 @@ export default function SiteNav() {
         <ul className="nav-links">
           {LINKS.map(({ href, label }) => <li key={href}><a href={href}>{label}</a></li>)}
         </ul>
-        <span className="nav-status"><span className="nav-status-prefix">Prototype · </span>Not live</span>
-        <details
-          className="mobile-nav"
-          ref={menu}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && menu.current?.open) {
-              menu.current.open = false;
-              toggle.current?.focus();
-            }
-          }}
-        >
-          <summary ref={toggle}>Menu <span className="menu-icon" aria-hidden="true" /></summary>
-          <ul>
-            {LINKS.map(({ href, label }) => (
-              <li key={href}>
-                <a href={href} onClick={() => {
-                  if (menu.current) menu.current.open = false;
-                }}>
-                  {label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </details>
+        <div className="nav-actions">
+          <span className="nav-status"><span className="nav-status-prefix">Prototype · </span>Not live</span>
+          <ThemeToggle />
+          <details
+            className="mobile-nav"
+            ref={menu}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && menu.current?.open) {
+                menu.current.open = false;
+                toggle.current?.focus();
+              }
+            }}
+          >
+            <summary ref={toggle}>Menu <span className="menu-icon" aria-hidden="true" /></summary>
+            <ul>
+              {LINKS.map(({ href, label }) => (
+                <li key={href}>
+                  <a href={href} onClick={() => {
+                    if (menu.current) menu.current.open = false;
+                  }}>
+                    {label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </div>
       </nav>
     </header>
   );

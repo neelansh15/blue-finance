@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { THEME_COLORS, themeInitScript } from "./theme";
 
 const instrumentSans = localFont({
   src: "./fonts/instrument-sans.woff2",
@@ -28,15 +29,15 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   colorScheme: "light dark",
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0b1530" },
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${instrumentSans.variable} ${instrumentSerif.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${instrumentSans.variable} ${instrumentSerif.variable}`}>
+      <head>
+        <meta id="dawn-theme-color" name="theme-color" content={THEME_COLORS.light} suppressHydrationWarning />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );
