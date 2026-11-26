@@ -5,10 +5,10 @@ import BorrowForm from "./BorrowForm";
 import CorpActionBanner from "./CorpActionBanner";
 import DemoPanel from "./DemoPanel";
 import PositionCard from "./PositionCard";
-import { useDawn } from "./useDawn";
+import { useBlue } from "./useBlue";
 
 export default function DemoApp() {
-  const { client, snapshot, error } = useDawn();
+  const { client, snapshot, error } = useBlue();
   const [dev, setDev] = useState(false);
 
   // Hidden: ?dev=1 or Shift+D toggles the demo control panel.
@@ -25,7 +25,7 @@ export default function DemoApp() {
 
   return (
     <main id="app-main" tabIndex={-1} className="wrap dapp">
-      <h1 className="dapp-title">Dawn demo</h1>
+      <h1 className="dapp-title">Blue demo</h1>
       <p className="dapp-sub">
         One market: bStock collateral, USDT loan. Mocked data, no transactions. Haircuts, margin and the continuity band
         are placeholders.

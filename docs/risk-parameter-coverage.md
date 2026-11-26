@@ -10,7 +10,7 @@ The risk-controller stack is advisory. Existing contracts and keepers enforce th
 | Router margin | Whole-basis-point proposal consistent with configured haircuts and existing LLTV; no margin relaxation below declared settings | Validate deployment settings and review an intraday buffer calibrated from real observations |
 | Total borrow cap | Proposed within both model budget and declared deployment cap | Live market-wide borrow/depth/volume observations; admin approval and contract submission |
 | Per-regime caps | Six ordered caps, bounded by declared caps and total; HALTED/CORP_ACTION zero | Empirical liquidity/exit-capacity calibration; conservative current factors are illustrative |
-| Supply cap | Labelled as unmapped advice | An enforcing vault/wrapper; the current DawnRouter has no supply-cap setter |
+| Supply cap | Labelled as unmapped advice | An enforcing vault/wrapper; the current BlueRouter has no supply-cap setter |
 | Eligibility TTL | Declared 900s retained; contract max 1h is validated | Real eligibility service, EIP-712 attestation and replay/expiry checks remain separate |
 | Staleness | Separate declared mock/Atlas profiles and optional six-regime advisory freshness; five-minute default is explicit | Verified feed heartbeat/transport evidence and deployment settings; no live Atlas price adapter is supplied |
 | Continuity and jump bands | Declared values and bounds included unchanged | Split-adjusted discontinuity observations and independent security review |

@@ -32,7 +32,7 @@ def detect_session(at: datetime, policy: Policy, *, halted: bool = False, degrad
             session = Session.EXTENDED
         else:
             session = Session.OVERNIGHT
-    # Dawn's regime boundaries differ from the illustrative underlying exchange
+    # Blue's regime boundaries differ from the illustrative underlying exchange
     # session. Mirror RegimeRegistry.calendarRegimeAt without conflating the two.
     tomorrow = local.date() + timedelta(days=1)
     tomorrow_closed = not any(schedule.index.date == tomorrow)

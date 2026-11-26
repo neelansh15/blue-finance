@@ -32,7 +32,7 @@ def test_router_ceiling_is_enforced_in_recommendations_and_proposals():
         assessment, _ = service.assess('NVDA', AssessRequest(as_of=DEMO_TIMES['baseline']))
         params, _ = service.optimiser.recommend(assessment)
         assert params.ltv == pytest.approx(.51125)
-        with pytest.raises(ValueError, match='DawnRouter'):
+        with pytest.raises(ValueError, match='BlueRouter'):
             validate_bounds(params.model_copy(update={'ltv': .5327}), service.policy)
         with pytest.raises(ValueError, match='no borrowing capacity'):
             Policy(router_hmax=1)

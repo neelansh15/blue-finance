@@ -20,7 +20,7 @@ async function getArticle(params: Props["params"]) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = await getArticle(params);
-  return { title: `${article.title} | Dawn Finance Docs`, description: article.summary };
+  return { title: `${article.title} | Blue Finance Docs`, description: article.summary };
 }
 
 export default async function TopicPage({ params }: Props) {

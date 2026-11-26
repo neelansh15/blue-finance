@@ -1,7 +1,7 @@
 import { ILLUSTRATIVE_HAIRCUT } from "../../../app/components/regimes";
 import {
   derivePosition, liquidationOutcome, numberToWad, validateBorrow, wadToNumber,
-  type DawnSnapshot, type Regime,
+  type BlueSnapshot, type Regime,
 } from "./math";
 
 export * from "./math";
@@ -21,15 +21,15 @@ export type DemoControls = {
   reset(): void;
 };
 
-export type DawnClient = {
+export type BlueClient = {
   mode: "mock";
   demo: DemoControls;
-  getSnapshot(): Promise<DawnSnapshot>;
+  getSnapshot(): Promise<BlueSnapshot>;
   subscribe(listener: () => void): () => void;
   borrow(amount: number): Promise<ActionResult>;
 };
 
-function startingSnapshot(): DawnSnapshot {
+function startingSnapshot(): BlueSnapshot {
   return {
     symbol: "NVDAb",
     loanSymbol: "USDT",
@@ -56,18 +56,18 @@ function startingSnapshot(): DawnSnapshot {
   };
 }
 
-export function createDawnClient(): DawnClient {
+export function createBlueClient(): BlueClient {
   let snapshot = startingSnapshot();
   let resumeRegime: Regime = "OPEN";
   const listeners = new Set<() => void>();
   const specialRegime = (regime: Regime) => regime === "HALTED" || regime === "CORP_ACTION";
 
-  function update(changes: Partial<DawnSnapshot>) {
+  function update(changes: Partial<BlueSnapshot>) {
     snapshot = { ...snapshot, ...changes };
     listeners.forEach((listener) => listener());
   }
 
-  function enterRegime(regime: Regime, pendingMultiplier: DawnSnapshot["pendingMultiplier"] = null) {
+  function enterRegime(regime: Regime, pendingMultiplier: BlueSnapshot["pendingMultiplier"] = null) {
     if (!specialRegime(snapshot.regime)) resumeRegime = snapshot.regime;
     update({
       regime,

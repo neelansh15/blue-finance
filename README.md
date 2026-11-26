@@ -4,7 +4,6 @@
 
 **Lending against tokenized US stocks on BNB Chain, with a risk layer that knows when the stock market is open.**
 
-_Formerly Dawn Finance._
 
 ![BNB Chain](https://img.shields.io/badge/chain-BNB%20Chain-F0B90B?logo=binance&logoColor=white)
 ![Morpho Blue](https://img.shields.io/badge/built%20on-Morpho%20Blue%20(unmodified)-2470FF)
@@ -226,7 +225,7 @@ Everything Blue adds around Morpho: the oracle, the regime registry, the router 
 
 ## Advisory risk coverage
 
-The off-chain controller now produces review-only Dawn margin and six-regime borrowing-cap proposals. Oracle haircuts, freshness, freeze controls, eligibility TTL and keeper controls are included as declared settings for review, not automatically tuned. Settings are unverified against deployments and remain uncalibrated. See [the requirement-by-requirement coverage](docs/risk-parameter-coverage.md) and [controller configuration](ai-risk-controller/README.md#dawn-parameter-proposals). Supply-cap advice requires a separate vault/wrapper; it is not enforced by DawnRouter. No proposal executes a transaction.
+The off-chain controller now produces review-only Blue margin and six-regime borrowing-cap proposals. Oracle haircuts, freshness, freeze controls, eligibility TTL and keeper controls are included as declared settings for review, not automatically tuned. Settings are unverified against deployments and remain uncalibrated. See [the requirement-by-requirement coverage](docs/risk-parameter-coverage.md) and [controller configuration](ai-risk-controller/README.md#blue-parameter-proposals). Supply-cap advice requires a separate vault/wrapper; it is not enforced by BlueRouter. No proposal executes a transaction.
 
 ## Roadmap
 

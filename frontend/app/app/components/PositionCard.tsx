@@ -1,4 +1,4 @@
-import { derivePosition, healthStatus, type DawnSnapshot, type Regime } from "../../../src/lib/dawn/client";
+import { derivePosition, healthStatus, type BlueSnapshot, type Regime } from "../../../src/lib/blue/client";
 import { hf, pct, units, usd } from "./format";
 
 export const REGIME_TITLE: Record<Regime, string> = {
@@ -31,7 +31,7 @@ function Health({ label, value }: { label: string; value: number }) {
   );
 }
 
-export default function PositionCard({ s }: { s: DawnSnapshot }) {
+export default function PositionCard({ s }: { s: BlueSnapshot }) {
   const p = derivePosition(s);
   const frozen = p.oracle.frozen;
   return (

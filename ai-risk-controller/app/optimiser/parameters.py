@@ -39,7 +39,7 @@ class RuleBasedOptimiser:
         supply = min(p.max_supply_tokens, min(depth_budget, volume_budget) / a.recovery.reference_price)
         supply *= session.cap_multiplier * (1 - issuer_haircut)
         reasons = [session.reason, f"Recovery constraint: {recovery_limit:.4f} before session buffer",
-                   f"Configured DawnRouter ceiling: {p.router_target_ltv:.5f}; deployment parameters must be verified",
+                   f"Configured BlueRouter ceiling: {p.router_target_ltv:.5f}; deployment parameters must be verified",
                    f"Volatility constraint: {volatility_limit:.4f}",
                    "Supply cap in tokens; borrow cap in USD; exposure constrained by executable depth and volume",
                    "Target LTV is measured against the protocol oracle; conservative-reference/oracle conversion prevents price-premium overborrowing",

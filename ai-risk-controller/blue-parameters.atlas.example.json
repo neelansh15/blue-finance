@@ -39,5 +39,5 @@
   "unknown_timeout_seconds": 600,
   "poll_seconds": 30,
   "nasdaq_poll_seconds": 60,
-  "calendar_source": "RegimeRegistry / DawnDeploy 2026\u20132027; verify deployed holiday and early-close entries"
+  "calendar_source": "RegimeRegistry / BlueDeploy 2026\u20132027; verify deployed holiday and early-close entries"
 }

@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.config import Policy
-from app.dawn import DawnConfig, REGIMES, propose_dawn
+from app.blue import BlueConfig, REGIMES, propose_blue
 from app.integrations.providers import DEMO_TIMES, MockProviders
 from app.integrations.signing import evidence_hash
 from app.models import AssessRequest, OracleMode, OracleObservation, SimulateRequest
@@ -26,10 +26,10 @@ def proposal(service, scenario='baseline'):
     request = SimulateRequest(as_of=DEMO_TIMES[scenario], scenario=scenario, borrowers=[])
     a, snapshot = service.assess('NVDA', request)
     recommendation = service.recommend_assessed(a, snapshot, request)
-    return propose_dawn(a, recommendation, service.policy, DawnConfig()), recommendation
+    return propose_blue(a, recommendation, service.policy, BlueConfig()), recommendation
 
 
-def test_proposal_maps_only_enforceable_dawn_controls_and_binds_evidence(service):
+def test_proposal_maps_only_enforceable_blue_controls_and_binds_evidence(service):
     result, recommendation = proposal(service)
     assert result.router.margin_bps == 200
     assert result.router.target_ltv == pytest.approx(.51125)
@@ -46,7 +46,7 @@ def test_proposal_maps_only_enforceable_dawn_controls_and_binds_evidence(service
     assert any('Supply cap requires' in reason for reason in result.reasons)
     wrong = recommendation.model_copy(update={'evidence_hash': 'sha256:wrong'})
     with pytest.raises(ValueError, match='matching assessment'):
-        propose_dawn(service.latest('NVDA'), wrong, service.policy, DawnConfig())
+        propose_blue(service.latest('NVDA'), wrong, service.policy, BlueConfig())
 
 
 def test_margin_rounds_conservatively_and_blocked_exposure_uses_zero_caps(service):
@@ -54,12 +54,12 @@ def test_margin_rounds_conservatively_and_blocked_exposure_uses_zero_caps(servic
     a, snap = service.assess('NVDA', req)
     r = service.recommend_assessed(a, snap, req)
     r.recommended_parameters.ltv = .43216
-    p = propose_dawn(a, r, service.policy, DawnConfig())
+    p = propose_blue(a, r, service.policy, BlueConfig())
     assert p.router.margin_bps == 991
     assert p.router.target_ltv <= .43216
     # A target below the contract's legal margin range cannot become an invalid call.
     r.recommended_parameters.ltv = .001
-    p = propose_dawn(a, r, service.policy, DawnConfig())
+    p = propose_blue(a, r, service.policy, BlueConfig())
     assert p.router.margin_bps == 200 and p.router.total_borrow_cap_usd == 0
     assert all(cap == '0' for cap in p.router.regime_cap_assets)
     blocked, _ = proposal(service, 'saturday')
@@ -71,13 +71,13 @@ def test_contract_configuration_bounds_and_mismatches_fail_closed(service):
                    dict(margin_bps=5001), dict(nasdaq_poll_seconds=30),
                    dict(refresh_margin_seconds=3600), dict(profile='ATLAS_RAW_TOKEN')]:
         with pytest.raises(ValidationError):
-            DawnConfig(**change)
+            BlueConfig(**change)
     p, r = proposal(service)
     a = service.latest('NVDA')
     with pytest.raises(ValueError, match='disagree'):
-        propose_dawn(a, r, service.policy, DawnConfig(margin_bps=300))
+        propose_blue(a, r, service.policy, BlueConfig(margin_bps=300))
     root = Path(__file__).resolve().parents[1]
-    atlas = DawnConfig.model_validate_json((root / 'dawn-parameters.atlas.example.json').read_text())
+    atlas = BlueConfig.model_validate_json((root / 'blue-parameters.atlas.example.json').read_text())
     assert atlas.staleness_seconds['OPEN'] == atlas.staleness_seconds['EXTENDED'] == 7200
 
 
@@ -112,8 +112,8 @@ def test_explicit_per_regime_freshness_preserves_strict_default(service):
 
 def test_declared_haircuts_and_margin_match_deployment_defaults():
     root = Path(__file__).resolve().parents[2]
-    deployment = (root / 'protocol/script/DawnDeploy.sol').read_text()
-    config = DawnConfig()
+    deployment = (root / 'protocol/script/BlueDeploy.sol').read_text()
+    config = BlueConfig()
     # Detect backend/Solidity configuration drift without depending on frontend code.
     for regime in REGIMES:
         onchain = int(re.search(rf'H_{regime}\s*=\s*(\d+)', deployment)[1])

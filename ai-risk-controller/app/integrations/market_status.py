@@ -111,7 +111,7 @@ def fetch_nasdaq_market() -> httpx.Response:
         result = subprocess.run([
             'curl', '-q', '--http1.1', '--silent', '--show-error', '--proto', '=https',
             '--connect-timeout', '5', '--max-time', '10', '--max-filesize', '2000000',
-            '--user-agent', 'DawnFinance/0.1', '--write-out', '\n%{http_code}', NASDAQ_MARKET,
+            '--user-agent', 'BlueFinance/0.1', '--write-out', '\n%{http_code}', NASDAQ_MARKET,
         ], capture_output=True, timeout=12, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise httpx.TransportError('Nasdaq curl transport unavailable or timed out') from exc

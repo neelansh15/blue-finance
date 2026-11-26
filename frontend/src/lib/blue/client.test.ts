@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createDawnClient, derivePosition, liquidationOutcome } from "./client";
+import { createBlueClient, derivePosition, liquidationOutcome } from "./client";
 
-describe("Dawn demo client", () => {
+describe("Blue demo client", () => {
   it("updates the position when a mock borrow succeeds and tightens the limit over the weekend", async () => {
-    const client = createDawnClient();
+    const client = createBlueClient();
     let updates = 0;
     const unsubscribe = client.subscribe(() => { updates += 1; });
     const before = await client.getSnapshot();
@@ -24,7 +24,7 @@ describe("Dawn demo client", () => {
   });
 
   it("freezes the price across a split and clears only after the feed matches the new multiplier", async () => {
-    const client = createDawnClient();
+    const client = createBlueClient();
     const initial = derivePosition(await client.getSnapshot());
     client.demo.announceSplit(2);
     expect((await client.borrow(1)).ok).toBe(false);
@@ -39,7 +39,7 @@ describe("Dawn demo client", () => {
   });
 
   it("liquidates an unhealthy mock position after a price gap", async () => {
-    const client = createDawnClient();
+    const client = createBlueClient();
     expect(client.demo.runLiquidationBot().ok).toBe(false);
     client.demo.movePrice(-0.45);
     expect(liquidationOutcome(await client.getSnapshot()).liquidatable).toBe(true);

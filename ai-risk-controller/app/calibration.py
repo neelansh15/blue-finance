@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, Field, StrictBool, model_validator
 
 from app.config import Policy
-from app.dawn import DawnConfig, REGIMES, ROUTINE
+from app.blue import BlueConfig, REGIMES, ROUTINE
 from app.integrations.signing import evidence_hash
 from app.models import Model
 
@@ -93,7 +93,7 @@ def nearest_rank(losses: list[Decimal], quantile: float):
 
 
 def calibrate(data: bytes | None, manifest: CalibrationManifest | None, settings: CalibrationSettings,
-              config: DawnConfig, policy: Policy, as_of: datetime) -> dict:
+              config: BlueConfig, policy: Policy, as_of: datetime) -> dict:
     """All candidates are withheld unless provenance, sample, holdout and contract gates pass.
 
     Provenance is caller-declared. Passing gates is not calibrated production safety.
@@ -102,13 +102,13 @@ def calibrate(data: bytes | None, manifest: CalibrationManifest | None, settings
         raise ValueError('Calibration as_of must be timezone-aware and not in the future')
     if (not policy.immutable_threshold or abs(config.hmax - policy.router_hmax) > 1e-12
             or abs(config.margin_bps / 10000 - policy.router_margin) > 1e-12):
-        raise ValueError('Calibration requires matching declared Dawn/Morpho baseline policies')
+        raise ValueError('Calibration requires matching declared Blue/Morpho baseline policies')
     report = dict(status='NO_DATA', as_of=as_of.isoformat(), asset=manifest.asset if manifest else None,
                   calibrated=False, executable=False, approval_required=True, source_verification='UNVERIFIED_CALLER_DECLARATION',
                   input_sha256=hashlib.sha256(data).hexdigest() if data is not None else None,
                   manifest=manifest.model_dump(mode='json') if manifest else None,
                   settings=settings.model_dump(mode='json'),
-                  configuration_hash=evidence_hash({'dawn': config.model_dump(mode='json'), 'risk': policy.model_dump(mode='json')}),
+                  configuration_hash=evidence_hash({'blue': config.model_dump(mode='json'), 'risk': policy.model_dump(mode='json')}),
                   buckets={}, candidate_haircuts_bps=None, candidate_margin_bps=None, candidate_target_ltv=None,
                   risk_policy_patch=None, blockers=[], limitations=[
                       'Prices must already be corporate-action adjusted and regime windows correctly classified by the data supplier',
@@ -156,7 +156,7 @@ def calibrate(data: bytes | None, manifest: CalibrationManifest | None, settings
     haircuts['HALTED'] = max(haircuts['HALTED'], haircuts['CORP_ACTION'])
     margin = max(config.margin_bps, int((Decimal(str(policy.market_lltv)) * quantiles['INTRADAY_BUFFER'] * 10000).to_integral_value(rounding=ROUND_CEILING)))
     try:
-        candidate = DawnConfig.model_validate(config.model_dump() | {'haircuts_bps': haircuts, 'margin_bps': margin})
+        candidate = BlueConfig.model_validate(config.model_dump() | {'haircuts_bps': haircuts, 'margin_bps': margin})
         candidate_policy = Policy.model_validate(policy.model_dump() | {'router_hmax': candidate.hmax, 'router_margin': margin / 10000})
     except ValueError:
         report['blockers'].append('Empirical losses exceed oracle/router bounds or leave no positive target LTV; no downward clamp is permitted')

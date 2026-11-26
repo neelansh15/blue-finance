@@ -1,36 +1,36 @@
 :root {
-  --dawn-app-paper: #fff;
-  --dawn-app-sheet: #f3f6fd;
-  --dawn-app-ink: #132544;
-  --dawn-app-muted: #425779;
-  --dawn-app-blue: #2040bf;
+  --blue-app-paper: #fff;
+  --blue-app-sheet: #f3f6fd;
+  --blue-app-ink: #132544;
+  --blue-app-muted: #425779;
+  --blue-app-blue: #2040bf;
 }
 
 :root[data-theme="dark"] {
-  --dawn-app-paper: #0b1530;
-  --dawn-app-sheet: #111f42;
-  --dawn-app-ink: #f3f6ff;
-  --dawn-app-muted: #b9caec;
-  --dawn-app-blue: #a6beff;
+  --blue-app-paper: #0b1530;
+  --blue-app-sheet: #111f42;
+  --blue-app-ink: #f3f6ff;
+  --blue-app-muted: #b9caec;
+  --blue-app-blue: #a6beff;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --dawn-app-paper: #0b1530;
-    --dawn-app-sheet: #111f42;
-    --dawn-app-ink: #f3f6ff;
-    --dawn-app-muted: #b9caec;
-    --dawn-app-blue: #a6beff;
+    --blue-app-paper: #0b1530;
+    --blue-app-sheet: #111f42;
+    --blue-app-ink: #f3f6ff;
+    --blue-app-muted: #b9caec;
+    --blue-app-blue: #a6beff;
   }
 }
 
 .lending-app {
   color-scheme: light dark;
-  --paper: var(--dawn-app-paper);
-  --sheet: var(--dawn-app-sheet);
-  --ink: var(--dawn-app-ink);
-  --secondary: var(--dawn-app-muted);
-  --blue: var(--dawn-app-blue);
+  --paper: var(--blue-app-paper);
+  --sheet: var(--blue-app-sheet);
+  --ink: var(--blue-app-ink);
+  --secondary: var(--blue-app-muted);
+  --blue: var(--blue-app-blue);
   --on-blue: light-dark(#fff, #0b1530);
   --rule: light-dark(#cbd8ef, #304776);
   --rule-strong: light-dark(#8ca3d1, #6882b4);

@@ -20,6 +20,6 @@ class RecommendationSigner(Protocol):
 
 
 def signing_payload(recommendation: dict, chain_id: int, market_id: str) -> dict:
-    return {"domain": "dawn-risk-recommendation-v1", "chain_id": chain_id, "market_id": market_id,
+    return {"domain": "blue-risk-recommendation-v1", "chain_id": chain_id, "market_id": market_id,
             "recommendation": {k: v for k, v in recommendation.items()
                                if k not in {"signature", "signing_status", "payload_hash"}}}

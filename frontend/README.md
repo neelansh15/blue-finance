@@ -1,6 +1,6 @@
-# Dawn Finance frontend
+# Blue Finance frontend
 
-Next.js (App Router, TypeScript) landing page for the Dawn Finance draft. Static content, no backend.
+Next.js (App Router, TypeScript) landing page for the Blue Finance draft. Static content, no backend.
 
 ```
 npm install
@@ -11,7 +11,7 @@ npm run start   # serve the production build
 
 ## Demo app (`/app`)
 
-Mocked-data demo UI. Developer controls: `/app?dev=1` or Shift+D. The demo uses the in-memory client in `src/lib/dawn/client.ts` and position math in `src/lib/dawn/math.ts`.
+Mocked-data demo UI. Developer controls: `/app?dev=1` or Shift+D. The demo uses the in-memory client in `src/lib/blue/client.ts` and position math in `src/lib/blue/math.ts`.
 
 ```
 npm test        # vitest

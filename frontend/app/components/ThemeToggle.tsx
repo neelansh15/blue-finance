@@ -16,7 +16,7 @@ function readPreference(): Theme | null {
 
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
-  document.getElementById("dawn-theme-color")?.setAttribute("content", THEME_COLORS[theme]);
+  document.getElementById("blue-theme-color")?.setAttribute("content", THEME_COLORS[theme]);
 }
 
 export default function ThemeToggle() {

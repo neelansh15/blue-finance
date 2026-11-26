@@ -1,8 +1,8 @@
 [project]
-name = "dawn-ai-risk-controller"
+name = "blue-ai-risk-controller"
 version = "0.1.0"
 requires-python = ">=3.12"
-description = "Advisory collateral risk controller for Dawn Finance"
+description = "Advisory collateral risk controller for Blue Finance"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

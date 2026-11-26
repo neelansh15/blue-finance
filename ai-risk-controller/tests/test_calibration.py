@@ -10,9 +10,9 @@ from pydantic import ValidationError
 
 from app.calibration import BUCKETS, CalibrationManifest, CalibrationSettings, calibrate, nearest_rank, read_gaps
 from app.config import Policy
-from app.dawn import DawnConfig
+from app.blue import BlueConfig
 from app.integrations.signing import evidence_hash
-from scripts.calibrate_dawn import main
+from scripts.calibrate_blue import main
 
 AS_OF = datetime(2026, 10, 1, tzinfo=timezone.utc)
 MANIFEST = CalibrationManifest(asset='BNB_STOCK_NVDA', source_reference='test-only://not-market-evidence',
@@ -39,7 +39,7 @@ def csv_bytes(data):
 
 
 def run(data, manifest=MANIFEST, settings=SETTINGS):
-    return calibrate(csv_bytes(data), manifest, settings, DawnConfig(), Policy(), AS_OF)
+    return calibrate(csv_bytes(data), manifest, settings, BlueConfig(), Policy(), AS_OF)
 
 
 def test_nearest_rank_and_non_adverse_moves():
@@ -58,7 +58,7 @@ def test_candidate_stays_non_executable_and_does_not_loosen_configured_floors():
     assert result['approval_required'] is True
     assert result['source_verification'] == 'UNVERIFIED_CALLER_DECLARATION'
     assert result['candidate_haircuts_bps']['OPEN'] == 100
-    for regime, value in DawnConfig().haircuts_bps.items():
+    for regime, value in BlueConfig().haircuts_bps.items():
         assert result['candidate_haircuts_bps'][regime] >= value
     assert result['candidate_margin_bps'] >= 200
     assert result['report_hash'] == evidence_hash({k:v for k,v in result.items() if k != 'report_hash'})
@@ -185,6 +185,6 @@ def test_cli_validates_supplied_files_and_emits_only_a_review_candidate(tmp_path
 
 def test_future_cutoff_and_mismatched_baseline_cannot_produce_reports():
     with pytest.raises(ValueError, match='not in the future'):
-        calibrate(None, None, SETTINGS, DawnConfig(), Policy(), datetime(2099,1,1,tzinfo=timezone.utc))
+        calibrate(None, None, SETTINGS, BlueConfig(), Policy(), datetime(2099,1,1,tzinfo=timezone.utc))
     with pytest.raises(ValueError, match='matching declared'):
-        calibrate(None, None, SETTINGS, DawnConfig(), Policy(router_margin=.03), AS_OF)
+        calibrate(None, None, SETTINGS, BlueConfig(), Policy(router_margin=.03), AS_OF)

@@ -106,7 +106,7 @@ def simulate(assessment: Assessment, snapshot: Snapshot, borrowers: list[Borrowe
                                 "HF = collateral × protocol oracle price × existing LLTV / debt; HF=1 is not liquidatable",
                                 "Price shocks assume an eventual protocol oracle mark; stale/weekend/issuer stress alone does not change that mark",
                                 "Router LTV changes affect advisory risk flags, not liquidation eligibility",
-                                "Only explicit oracle_price_multiplier models a DawnOracle haircut changing liquidation health",
+                                "Only explicit oracle_price_multiplier models a BlueOracle haircut changing liquidation health",
                                 "All positions liquidate concurrently; one shared finite book, allocated pro rata, no depth reuse",
                                 "Bad debt is a stressed economic shortfall after liquidation incentive; not realised onchain bad debt",
                                 "Additional collateral is an indicative lower bound; feasibility is false if depth or zero target LTV prevents restoring safety",

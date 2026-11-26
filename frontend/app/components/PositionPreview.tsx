@@ -84,7 +84,7 @@ export default function PositionPreview({
         </div>
       </dl>
       <p className="position-note">
-        Example uses a {LIQUIDATION_LTV * 100}% liquidation LTV. Dawn’s router would cap new borrowing below this ceiling.
+        Example uses a {LIQUIDATION_LTV * 100}% liquidation LTV. Blue’s router would cap new borrowing below this ceiling.
       </p>
     </div>
   );

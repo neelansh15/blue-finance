@@ -19,7 +19,7 @@ def test_existing_frontend_symbol_is_an_explicit_backend_alias(service, monkeypa
         response = client.post('/risk/advisory/NVDAB', json={'scenario':'friday','borrowers':[]})
         assert response.status_code == 200, response.text
         assert response.json()['assessment']['asset'] == 'BNB_STOCK_NVDA'
-        assert response.json()['dawn_proposal']['asset'] == 'BNB_STOCK_NVDA'
+        assert response.json()['blue_proposal']['asset'] == 'BNB_STOCK_NVDA'
 
 
 def test_optional_cors_allows_only_declared_origins_without_credentials(service, monkeypatch):

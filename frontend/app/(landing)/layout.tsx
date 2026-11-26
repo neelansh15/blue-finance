@@ -21,9 +21,9 @@ const instrumentSerif = localFont({
 
 export const metadata: Metadata = {
   icons: { icon: "/assets/brand/blue-finance-mark.png", apple: "/assets/brand/blue-finance-mark.png" },
-  title: "Dawn Finance | Market-aware lending for tokenized stocks",
+  title: "Blue Finance | Market-aware lending for tokenized stocks",
   description:
-    "Dawn Finance is a draft lending protocol for tokenized US stocks on BNB Chain, built on unmodified Morpho Blue, with a risk layer that knows when the US market is open. Prototype for BNB Bangkok. Not live.",
+    "Blue Finance is a draft lending protocol for tokenized US stocks on BNB Chain, built on unmodified Morpho Blue, with a risk layer that knows when the US market is open. Prototype for BNB Bangkok. Not live.",
 };
 
 export const viewport: Viewport = {
@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={`${instrumentSans.variable} ${instrumentSerif.variable}`}>
       <head>
-        <meta id="dawn-theme-color" name="theme-color" content={THEME_COLORS.light} suppressHydrationWarning />
+        <meta id="blue-theme-color" name="theme-color" content={THEME_COLORS.light} suppressHydrationWarning />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>{children}</body>

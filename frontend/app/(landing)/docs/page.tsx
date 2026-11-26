@@ -5,7 +5,7 @@ import { articles } from "./content";
 const overview = articles[0];
 
 export const metadata: Metadata = {
-  title: "Docs | Dawn Finance",
+  title: "Docs | Blue Finance",
   description: overview.summary,
 };
 

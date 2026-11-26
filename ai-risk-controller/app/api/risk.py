@@ -10,7 +10,7 @@ from app.integrations.market_status import AssetMarketStatus, status_failures
 from app.routing.engine import route_markets
 from app.routing.models import RoutingDecision, RoutingRequest
 from app.simulation.portfolio import default_scenarios, simulate
-from app.dawn import DawnProposal, propose_dawn
+from app.blue import BlueProposal, propose_blue
 
 router = APIRouter(prefix="/risk", tags=["Risk controller"])
 
@@ -37,7 +37,7 @@ class SimulationResponse(Model):
 
 class AdvisoryResponse(SimulationResponse):
     recommendation: Recommendation
-    dawn_proposal: DawnProposal
+    blue_proposal: BlueProposal
 
 
 class HistoryResponse(Model):
@@ -87,9 +87,9 @@ def advisory(asset: str, request: Request, body: SimulateRequest):
     recommendation = svc.recommend_assessed(assessment, snapshot, body)
     scenarios = body.scenarios if body.scenarios is not None else default_scenarios()
     results = [simulate(assessment, snapshot, body.borrowers, s, svc.policy) for s in scenarios]
-    proposal = propose_dawn(assessment, recommendation, svc.policy, request.app.state.dawn_config)
-    svc.store.put('dawn_proposal', assessment.asset, assessment.as_of.isoformat(), proposal.model_dump(mode='json'))
-    return AdvisoryResponse(assessment=assessment, recommendation=recommendation, simulations=results, dawn_proposal=proposal)
+    proposal = propose_blue(assessment, recommendation, svc.policy, request.app.state.blue_config)
+    svc.store.put('blue_proposal', assessment.asset, assessment.as_of.isoformat(), proposal.model_dump(mode='json'))
+    return AdvisoryResponse(assessment=assessment, recommendation=recommendation, simulations=results, blue_proposal=proposal)
 
 
 @router.post("/simulate/{asset}", response_model=SimulationResponse)

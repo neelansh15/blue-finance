@@ -15,7 +15,7 @@ import {
   IconSteps,
 } from "../components/Icons";
 
-const REPO = "https://github.com/neelansh15/dawn-finance/blob/main";
+const REPO = "https://github.com/neelansh15/blue-finance/blob/main";
 
 const BSTOCK_EXAMPLES = [
   { name: "NVIDIA", symbol: "NVDAB" },
@@ -34,7 +34,7 @@ const STEPS = [
   },
   {
     title: "Borrow USDT",
-    body: "Your loan limit depends on what Dawn values your collateral at during that session. The router sets the limit below Morpho’s liquidation threshold.",
+    body: "Your loan limit depends on what Blue values your collateral at during that session. The router sets the limit below Morpho’s liquidation threshold.",
   },
   {
     title: "Monitor your position",
@@ -46,7 +46,7 @@ const FEATURES = [
   {
     icon: <IconRegime />,
     title: "Adjustments for market hours",
-    body: "Dawn discounts collateral more when the underlying stock market is closed. In the fork demo, those discounts change at session boundaries.",
+    body: "Blue discounts collateral more when the underlying stock market is closed. In the fork demo, those discounts change at session boundaries.",
   },
   {
     icon: <IconOracle />,
@@ -56,7 +56,7 @@ const FEATURES = [
   {
     icon: <IconSplit />,
     title: "Stock splits",
-    body: "A 2-for-1 split can halve the displayed share price while doubling the number of shares shown. Dawn uses the token’s share multiplier and can hold the last recorded price while the feed and token update.",
+    body: "A 2-for-1 split can halve the displayed share price while doubling the number of shares shown. Blue uses the token’s share multiplier and can hold the last recorded price while the feed and token update.",
   },
   {
     icon: <IconHalt />,
@@ -104,7 +104,7 @@ const ROADMAP = [
 
 const DOCS = [
   { file: "architecture-v1.md", title: "Protocol architecture", body: "Oracle, regimes, router and liquidation design." },
-  { file: "README.md", title: "Project overview", body: "Dawn’s scope and research files." },
+  { file: "README.md", title: "Project overview", body: "Blue’s scope and research files." },
   { file: "morpho-blue.md", title: "Morpho Blue research", body: "Markets, oracles, liquidation and vaults." },
   { file: "idea-progression.md", title: "Design decisions", body: "How the project direction evolved." },
 ];
@@ -124,7 +124,7 @@ export default function Home() {
                 Borrow against tokenized stocks. <em>Keep your stock exposure.</em>
               </h1>
               <p className="lead">
-                Dawn is building USDT loans backed by tokenized US stocks. When the stock market closes, Dawn lends
+                Blue is building USDT loans backed by tokenized US stocks. When the stock market closes, Blue lends
                 against a smaller share of your collateral value to account for price gaps at the next open.
               </p>
               <div className="ctas">
@@ -184,7 +184,7 @@ export default function Home() {
             <p className="eyebrow">How it works</p>
             <h2 id="how-title">How a stock-backed USDT loan works</h2>
             <p>
-              Lenders supply USDT and borrowers put up tokenized stock. Morpho handles the loan, while Dawn sets the collateral price and checks the borrowing limit.
+              Lenders supply USDT and borrowers put up tokenized stock. Morpho handles the loan, while Blue sets the collateral price and checks the borrowing limit.
             </p>
             <figure className="collateral-figure">
               <Image
@@ -269,7 +269,7 @@ export default function Home() {
               <li>
                 <Link href="/docs">
                   <IconDoc />
-                  <span><strong>Protocol docs</strong><small>How Dawn’s contracts, risk rules and fork demo work.</small></span>
+                  <span><strong>Protocol docs</strong><small>How Blue’s contracts, risk rules and fork demo work.</small></span>
                   <IconArrow />
                 </Link>
               </li>

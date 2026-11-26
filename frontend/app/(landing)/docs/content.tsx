@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-const repo = "https://github.com/neelansh15/dawn-finance/blob/main";
+const repo = "https://github.com/neelansh15/blue-finance/blob/main";
 
 export type DocArticle = {
   slug: string;
@@ -35,13 +35,13 @@ export const sourceHref = (path: string) => `${repo}/${path}`;
 export const articles: DocArticle[] = [
   {
     slug: "",
-    title: "Dawn Finance docs",
-    summary: "Dawn is a lending prototype for tokenized US stocks on BNB Chain. It uses the US market calendar to adjust how much collateral can support a USDT loan on Morpho Blue.",
+    title: "Blue Finance docs",
+    summary: "Blue is a lending prototype for tokenized US stocks on BNB Chain. It uses the US market calendar to adjust how much collateral can support a USDT loan on Morpho Blue.",
     sections: [
       {
-        id: "why-dawn",
+        id: "why-blue",
         title: "Why market hours matter",
-        body: <p>Tokenized stocks can trade while US exchanges are closed. The next stock-market print can arrive at a different price, and a split can change the price per displayed share without changing the value of the underlying position. Dawn adjusts collateral valuation for market sessions and handles changes to the token’s display multiplier.</p>,
+        body: <p>Tokenized stocks can trade while US exchanges are closed. The next stock-market print can arrive at a different price, and a split can change the price per displayed share without changing the value of the underlying position. Blue adjusts collateral valuation for market sessions and handles changes to the token’s display multiplier.</p>,
       },
       {
         id: "protocol-at-a-glance",
@@ -49,8 +49,8 @@ export const articles: DocArticle[] = [
         body: <Table columns={["Component", "Responsibility"]} rows={[
           [<Link href="/docs/markets">Morpho Blue</Link>, "Holds isolated markets and handles supply, debt accounting, interest and liquidation."],
           [<Link href="/docs/regimes">RegimeRegistry</Link>, "Combines the US Eastern calendar with time-limited keeper overrides."],
-          [<Link href="/docs/oracle">DawnOracle</Link>, "Converts feed prices to raw collateral value, then applies market-session haircuts and freeze logic."],
-          [<Link href="/docs/router">DawnRouter</Link>, "Adds eligibility, borrowing limits and market caps to transactions routed through Dawn."],
+          [<Link href="/docs/oracle">BlueOracle</Link>, "Converts feed prices to raw collateral value, then applies market-session haircuts and freeze logic."],
+          [<Link href="/docs/router">BlueRouter</Link>, "Adds eligibility, borrowing limits and market caps to transactions routed through Blue."],
           [<Link href="/docs/liquidation">LiquidatorCallback</Link>, "Lets an operator repay debt after receiving seized collateral in Morpho’s liquidation callback."],
         ]} />,
       },
@@ -69,7 +69,7 @@ export const articles: DocArticle[] = [
   {
     slug: "markets",
     title: "Markets and accounting",
-    summary: "Dawn adds a risk layer around the canonical, unmodified Morpho Blue singleton. Each Morpho market has its own collateral, liquidity and borrow balances.",
+    summary: "Blue adds a risk layer around the canonical, unmodified Morpho Blue singleton. Each Morpho market has its own collateral, liquidity and borrow balances.",
     sections: [
       {
         id: "market-identity",
@@ -77,7 +77,7 @@ export const articles: DocArticle[] = [
         body: <><p>A market ID is the hash of five immutable parameters.</p><Table columns={["Parameter", "Meaning"]} rows={[
           [<code>loanToken</code>, "The asset lenders supply and borrowers receive. The fork demo uses BNB Chain USDT with 18 decimals."],
           [<code>collateralToken</code>, "The raw token pledged by borrowers. The deploy script creates a MockBStock named bAAPL."],
-          [<code>oracle</code>, "DawnOracle supplies the collateral price that Morpho uses for its health checks."],
+          [<code>oracle</code>, "BlueOracle supplies the collateral price that Morpho uses for its health checks."],
           [<code>irm</code>, "AdaptiveCurveIrm sets the utilization-sensitive borrowing rate."],
           [<code>lltv</code>, "The liquidation loan-to-value threshold. The fork demo uses 62.5%, expressed as 0.625 × 10¹⁸."],
         ]} /></>,
@@ -85,7 +85,7 @@ export const articles: DocArticle[] = [
       {
         id: "supplier-and-borrower-flows",
         title: "Supplier and borrower flows",
-        body: <><p>Lenders supply USDT directly to the Morpho market and receive supply shares. Withdrawals depend on available liquidity, and the market’s interest accrual changes the value of those shares. Borrowers supply collateral and take on USDT debt recorded as borrow shares. Accrued interest increases the assets owed per borrow share.</p><p>Collateral and lender supply are distinct balances. A market’s bad debt is borne by suppliers to that market. The router adds a stricter <Link href="/docs/router#borrow-limit">target LTV</Link> for new credit through Dawn. Morpho still enforces LLTV on the position itself.</p></>,
+        body: <><p>Lenders supply USDT directly to the Morpho market and receive supply shares. Withdrawals depend on available liquidity, and the market’s interest accrual changes the value of those shares. Borrowers supply collateral and take on USDT debt recorded as borrow shares. Accrued interest increases the assets owed per borrow share.</p><p>Collateral and lender supply are distinct balances. A market’s bad debt is borne by suppliers to that market. The router adds a stricter <Link href="/docs/router#borrow-limit">target LTV</Link> for new credit through Blue. Morpho still enforces LLTV on the position itself.</p></>,
       },
       {
         id: "health",
@@ -137,7 +137,7 @@ Health factor    = collateral value × LLTV ÷ accrued debt`}</code></pre><p>Wit
   {
     slug: "oracle",
     title: "Oracle and corporate actions",
-    summary: "DawnOracle turns a feed quote into a Morpho-compatible price for raw collateral. It discounts that price according to the effective regime and can fall back to a recorded observation.",
+    summary: "BlueOracle turns a feed quote into a Morpho-compatible price for raw collateral. It discounts that price according to the effective regime and can fall back to a recorded observation.",
     sections: [
       {
         id: "price",
@@ -156,16 +156,16 @@ Health factor    = collateral value × LLTV ÷ accrued debt`}</code></pre><p>Wit
       },
     ],
     sources: [
-      { path: "protocol/src/DawnOracle.sol", title: "DawnOracle" },
+      { path: "protocol/src/BlueOracle.sol", title: "BlueOracle" },
       { path: "protocol/src/interfaces/IBStockLike.sol", title: "bStock interface" },
       { path: "protocol/src/mocks/MockBStock.sol", title: "MockBStock" },
-      { path: "protocol/test/DawnOracle.t.sol", title: "Oracle tests" },
+      { path: "protocol/test/BlueOracle.t.sol", title: "Oracle tests" },
     ],
   },
   {
     slug: "router",
     title: "Borrowing and eligibility",
-    summary: "DawnRouter is the entry point for Dawn’s borrowing rules. It manages positions on the borrower’s behalf through Morpho authorization.",
+    summary: "BlueRouter is the entry point for Blue’s borrowing rules. It manages positions on the borrower’s behalf through Morpho authorization.",
     sections: [
       {
         id: "actions",
@@ -185,19 +185,19 @@ Debt limit = haircut-adjusted collateral value × target LTV`}</code></pre><p>Th
       {
         id: "eligibility-and-admin",
         title: "Eligibility and admin controls",
-        body: <><p>The configured signer signs EIP-712 <code>Eligibility(account, nonce, expiry)</code>, bound to the chain and router address. Each account nonce is consumed once. The router verifies expiry and a configured maximum validity window. The fork deploy uses a demo signer and a 15-minute window.</p><p>Admin handles market listing, the signer, margins, caps and unpausing. The guardian can pause and cut caps. Admin transfer is two-step. Morpho markets remain permissionless, so callers interacting directly with Morpho do not pass through the Dawn router’s eligibility checks or caps.</p></>,
+        body: <><p>The configured signer signs EIP-712 <code>Eligibility(account, nonce, expiry)</code>, bound to the chain and router address. Each account nonce is consumed once. The router verifies expiry and a configured maximum validity window. The fork deploy uses a demo signer and a 15-minute window.</p><p>Admin handles market listing, the signer, margins, caps and unpausing. The guardian can pause and cut caps. Admin transfer is two-step. Morpho markets remain permissionless, so callers interacting directly with Morpho do not pass through the Blue router’s eligibility checks or caps.</p></>,
       },
     ],
     sources: [
-      { path: "protocol/src/DawnRouter.sol", title: "DawnRouter" },
-      { path: "protocol/test/DawnRouter.t.sol", title: "Router tests" },
+      { path: "protocol/src/BlueRouter.sol", title: "BlueRouter" },
+      { path: "protocol/test/BlueRouter.t.sol", title: "Router tests" },
       { path: "architecture-v1.md#2-trust-assumptions-keys-and-roles", title: "Architecture and trust roles" },
     ],
   },
   {
     slug: "liquidation",
     title: "Liquidation and risk",
-    summary: "Morpho decides when a position is liquidatable. Dawn changes the collateral price Morpho reads and provides an optional callback helper for an operator to execute liquidation.",
+    summary: "Morpho decides when a position is liquidatable. Blue changes the collateral price Morpho reads and provides an optional callback helper for an operator to execute liquidation.",
     sections: [
       {
         id: "how-liquidation-works",
@@ -205,7 +205,7 @@ Debt limit = haircut-adjusted collateral value × target LTV`}</code></pre><p>Th
         body: <><ol>
           <li>Morpho checks the accrued debt against the oracle-priced collateral and LLTV.</li>
           <li>A liquidator repays debt and receives collateral under Morpho’s rules and liquidation incentive.</li>
-          <li>For the Dawn helper, Morpho transfers the collateral first and invokes <code>onMorphoLiquidate</code> before collecting the loan tokens.</li>
+          <li>For the Blue helper, Morpho transfers the collateral first and invokes <code>onMorphoLiquidate</code> before collecting the loan tokens.</li>
           <li><code>LiquidatorCallback</code> approves the repayment from pre-funded loan tokens or the proceeds of an owner-selected swap. The helper requires an authorized owner to initiate liquidation and accepts the callback from Morpho during the operation.</li>
         </ol><p>The keeper bot tracks borrowers from market events and simulates liquidations before sending in live mode. It skips frozen oracles by default. This choice applies to the bot. Other Morpho liquidators remain free to act if Morpho’s checks and token transfers succeed.</p></>,
       },
@@ -238,7 +238,7 @@ forge test`}</code></pre><p>Fork suites use <code>BSC_RPC_URL</code> or the repo
       {
         id: "fork-deployment",
         title: "Local fork deployment",
-        body: <><p><code>Deploy.s.sol</code> creates the registry, mock collateral, mock feed, oracle and router. It seeds 2026–2027 calendar dates, creates and lists the test market on the fork, optionally supplies seed liquidity and writes <code>deployments/&lt;chainId&gt;.json</code>. A local BNB fork can also report chain ID 56. The manifest identifies the fork deployment and does not establish a live Dawn market.</p><Table columns={["Fork default", "Value"]} rows={[
+        body: <><p><code>Deploy.s.sol</code> creates the registry, mock collateral, mock feed, oracle and router. It seeds 2026–2027 calendar dates, creates and lists the test market on the fork, optionally supplies seed liquidity and writes <code>deployments/&lt;chainId&gt;.json</code>. A local BNB fork can also report chain ID 56. The manifest identifies the fork deployment and does not establish a live Blue market.</p><Table columns={["Fork default", "Value"]} rows={[
           ["Morpho market", "Mock bAAPL / USDT, AdaptiveCurveIrm, 62.5% LLTV"],
           ["Oracle guardrails", "5% continuity band, 30% upward jump band, 12-hour freeze bound, 10% extra stale-price haircut"],
           ["Feed staleness", "1 hour during open and extended sessions, 4 hours overnight and 6 hours on weekends. Halt and corporate action use 1 hour."],
@@ -260,14 +260,14 @@ forge test`}</code></pre><p>Fork suites use <code>BSC_RPC_URL</code> or the repo
     sources: [
       { path: "protocol/README.md", title: "Foundry setup and deployment instructions" },
       { path: "protocol/INTERFACES.md", title: "Shared contract interfaces" },
-      { path: "protocol/script/DawnDeploy.sol", title: "Fork defaults and deployment" },
+      { path: "protocol/script/BlueDeploy.sol", title: "Fork defaults and deployment" },
       { path: "protocol/test/scenarios/Scenarios.t.sol", title: "Scenario suite" },
     ],
   },
   {
     slug: "roadmap",
     title: "Design history and open questions",
-    summary: "The initial plan explored a standalone lending core. The implementation uses canonical Morpho Blue with Dawn’s own oracle, calendar and router.",
+    summary: "The initial plan explored a standalone lending core. The implementation uses canonical Morpho Blue with Blue’s own oracle, calendar and router.",
     sections: [
       {
         id: "design-decisions",

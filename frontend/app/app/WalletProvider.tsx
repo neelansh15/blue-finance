@@ -20,8 +20,8 @@ const config = createConfig({
       metadata: {
         name: "Blue Finance",
         description: "Tokenized stock lending simulator",
-        url: "https://dawn-finance.vercel.app",
-        icons: ["https://dawn-finance.vercel.app/assets/brand/blue-finance-mark.png"],
+        url: "https://blue-finance.vercel.app",
+        icons: ["https://blue-finance.vercel.app/assets/brand/blue-finance-mark.png"],
       },
     })] : []),
   ],
@@ -34,14 +34,14 @@ const theme = {
   "--ck-secondary-button-border-radius": "0px",
   "--ck-qr-border-radius": "0px",
   "--ck-font-family": "var(--font)",
-  "--ck-focus-color": "var(--dawn-app-blue)",
-  "--ck-body-color": "var(--dawn-app-ink)",
-  "--ck-body-color-muted": "var(--dawn-app-muted)",
-  "--ck-body-action-color": "var(--dawn-app-muted)",
-  "--ck-body-background": "var(--dawn-app-paper)",
-  "--ck-body-background-secondary": "var(--dawn-app-sheet)",
-  "--ck-body-disclaimer-background": "var(--dawn-app-sheet)",
-  "--ck-body-disclaimer-color": "var(--dawn-app-muted)",
+  "--ck-focus-color": "var(--blue-app-blue)",
+  "--ck-body-color": "var(--blue-app-ink)",
+  "--ck-body-color-muted": "var(--blue-app-muted)",
+  "--ck-body-action-color": "var(--blue-app-muted)",
+  "--ck-body-background": "var(--blue-app-paper)",
+  "--ck-body-background-secondary": "var(--blue-app-sheet)",
+  "--ck-body-disclaimer-background": "var(--blue-app-sheet)",
+  "--ck-body-disclaimer-color": "var(--blue-app-muted)",
 };
 
 const options = {

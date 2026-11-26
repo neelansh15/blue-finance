@@ -8,7 +8,7 @@ type Params = {
   continuityBand: number;
 };
 
-export type DawnSnapshot = {
+export type BlueSnapshot = {
   symbol: string;
   loanSymbol: string;
   params: Params;
@@ -44,7 +44,7 @@ export function healthStatus(value: number) {
   return "healthy";
 }
 
-export function derivePosition(s: DawnSnapshot) {
+export function derivePosition(s: BlueSnapshot) {
   const multiplier = wadToNumber(s.uiMultiplier);
   const pricePerRaw = s.frozenPricePerRaw ?? s.feedPricePerUI * multiplier;
   const haircutNow = s.params.haircut[s.regime];
@@ -73,7 +73,7 @@ export function derivePosition(s: DawnSnapshot) {
   };
 }
 
-export function validateBorrow(s: DawnSnapshot, amount: number) {
+export function validateBorrow(s: BlueSnapshot, amount: number) {
   const p = derivePosition(s);
   const validAmount = Number.isFinite(amount) && amount > 0;
   const newDebt = s.debt + (validAmount ? amount : 0);
@@ -92,7 +92,7 @@ export function validateBorrow(s: DawnSnapshot, amount: number) {
   };
 }
 
-export function liquidationOutcome(s: DawnSnapshot) {
+export function liquidationOutcome(s: BlueSnapshot) {
   const p = derivePosition(s);
   const incentive = Math.min(1.15, 1 / (0.3 * s.params.lltv + 0.7));
   const liquidatable = p.healthNow < 1;

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from app.calibration import CalibrationManifest, CalibrationSettings, calibrate
 from app.config import load_policy
-from app.dawn import load_dawn_config
+from app.blue import load_blue_config
 from app.integrations.signing import evidence_hash
 
 
@@ -38,7 +38,7 @@ def main(argv=None):
                 data = file.read(10_000_001)
             if len(data) > 10_000_000:
                 raise ValueError('Calibration input exceeds 10 MB')
-        report = calibrate(data, manifest, settings, load_dawn_config(), load_policy(), as_of)
+        report = calibrate(data, manifest, settings, load_blue_config(), load_policy(), as_of)
     except (ValueError, OSError) as exc:
         # Replace an older candidate file on runtime validation failure. A stale
         # successful artifact must not masquerade as this failed invocation.

@@ -1,4 +1,4 @@
-export const THEME_KEY = "dawn-theme";
+export const THEME_KEY = "blue-theme";
 export const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
 export const THEME_COLORS = { light: "#ffffff", dark: "#0b1530" } as const;
 
@@ -11,5 +11,5 @@ export const themeInitScript = `(() => {
     if (saved === "light" || saved === "dark") theme = saved;
   } catch {}
   document.documentElement.dataset.theme = theme;
-  document.getElementById("dawn-theme-color").content = colors[theme];
+  document.getElementById("blue-theme-color").content = colors[theme];
 })();`;
