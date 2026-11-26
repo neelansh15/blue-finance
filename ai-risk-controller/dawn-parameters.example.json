@@ -1,0 +1,43 @@
+{
+  "profile": "MOCK_UI_SHARE",
+  "haircuts_bps": {
+    "OPEN": 0,
+    "EXTENDED": 400,
+    "CLOSED": 1000,
+    "WEEKEND": 1500,
+    "HALTED": 2500,
+    "CORP_ACTION": 1000
+  },
+  "staleness_seconds": {
+    "OPEN": 3600,
+    "EXTENDED": 3600,
+    "CLOSED": 14400,
+    "WEEKEND": 21600,
+    "HALTED": 3600,
+    "CORP_ACTION": 3600
+  },
+  "margin_bps": 200,
+  "total_borrow_cap_usd": 1000000.0,
+  "regime_caps_usd": {
+    "OPEN": 1000000.0,
+    "EXTENDED": 500000.0,
+    "CLOSED": 250000.0,
+    "WEEKEND": 250000.0,
+    "HALTED": 0.0,
+    "CORP_ACTION": 0.0
+  },
+  "loan_decimals": 18,
+  "continuity_band_bps": 500,
+  "jump_band_bps": 3000,
+  "max_freeze_seconds": 43200,
+  "expired_freeze_haircut_bps": 1000,
+  "eligibility_ttl_seconds": 900,
+  "max_override_seconds": 259200,
+  "keeper_can_clear": false,
+  "override_duration_seconds": 3600,
+  "refresh_margin_seconds": 600,
+  "unknown_timeout_seconds": 600,
+  "poll_seconds": 30,
+  "nasdaq_poll_seconds": 60,
+  "calendar_source": "RegimeRegistry / DawnDeploy 2026–2027; verify deployed holiday and early-close entries"
+}
