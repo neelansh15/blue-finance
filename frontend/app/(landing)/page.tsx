@@ -121,7 +121,7 @@ export default function Home() {
             <div className="hero-copy">
               <p className="eyebrow">Tokenized stock lending on BNB Chain</p>
               <h1 id="hero-title">
-                Borrow against tokenized stocks. <em>Keep your stock exposure.</em>
+                <span>Borrow against tokenized stocks.</span> <em>Keep your stock exposure.</em>
               </h1>
               <p className="lead">
                 Blue is building USDT loans backed by tokenized US stocks. When the stock market closes, Blue lends
