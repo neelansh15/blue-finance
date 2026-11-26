@@ -1,6 +1,5 @@
-import PositionPreview from "./components/PositionPreview";
 import RegimeExplorer from "./components/RegimeExplorer";
-import Reveal from "./components/Reveal";
+import SiteNav from "./components/SiteNav";
 import {
   IconArrow,
   IconDoc,
@@ -37,7 +36,7 @@ const STEPS = [
 const FEATURES = [
   {
     icon: <IconRegime />,
-    title: "Market-hour adjustments",
+    title: "Adjustments for market hours",
     body: "A regime registry tracks market hours, halts and corporate actions. The oracle starts adjusting collateral value before the close to reduce the impact of a sudden change.",
   },
   {
@@ -48,7 +47,7 @@ const FEATURES = [
   {
     icon: <IconSplit />,
     title: "Stock splits and dividends",
-    body: "Dawn accounts for the bStock display multiplier so a split can change the displayed balance without creating an artificial drop in collateral value.",
+    body: "The oracle accounts for changes to the bStock display multiplier. That protects against false price jumps when splits or dividends change the displayed balance.",
   },
   {
     icon: <IconHalt />,
@@ -104,207 +103,151 @@ const DOCS = [
 export default function Home() {
   return (
     <>
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
+      <a className="skip" href="#main">Skip to content</a>
+      <SiteNav />
 
-      <header className="nav">
-        <nav className="wrap nav-inner" aria-label="Primary">
-          <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
-            <IconLogo />
-            <span>Dawn Finance</span>
-          </a>
-          <ul className="nav-links">
-            <li><a href="#regimes">Simulator</a></li>
-            <li><a href="#how">How it works</a></li>
-            <li className="hide-sm"><a href="#risk">Risk layer</a></li>
-            <li className="hide-sm"><a href="#roadmap">Roadmap</a></li>
-            <li className="hide-sm"><a href="#docs">Docs</a></li>
-          </ul>
-          <span className="nav-status">
-            <span className="status-dot" aria-hidden="true" />
-            Prototype
-          </span>
-        </nav>
-      </header>
-
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         <section className="hero" id="top" aria-labelledby="hero-title">
-          <div className="wrap hero-copy">
-            <p className="eyebrow">Tokenized US equities on BNB Chain</p>
-            <h1 id="hero-title">
-              Stock-backed lending <span>that follows market hours.</span>
-            </h1>
-            <p className="lead">
-              Borrow stablecoins using tokenized US stocks as collateral. Dawn adjusts borrowing power as US
-              markets open and close.
-            </p>
-            <div className="ctas">
-              <a className="btn btn-primary" href="#regimes">
-                Try the simulator
-                <IconArrow />
-              </a>
-              <a className="btn btn-quiet" href={`${REPO}/architecture-v1.md`}>
-                Read the architecture
-                <IconArrow />
-              </a>
+          <div className="wrap hero-sheet">
+            <div className="hero-copy">
+              <p className="eyebrow">Tokenized stock lending on BNB Chain</p>
+              <h1 id="hero-title">
+                The stock market closes. <em>Collateral keeps trading.</em>
+              </h1>
+              <p className="lead">
+                Borrow stablecoins against tokenized US stocks. Dawn adjusts borrowing power to account for the
+                risk of price gaps when the underlying market reopens.
+              </p>
+              <div className="ctas">
+                <a className="btn" href="#regimes">Explore the simulator <IconArrow /></a>
+                <a className="text-link" href={`${REPO}/architecture-v1.md`}>Read the architecture <IconArrow /></a>
+              </div>
             </div>
-          </div>
-        </section>
 
-        <section className="market-demo" id="regimes" aria-labelledby="regimes-title">
-          <div className="wrap">
-            <div className="panel">
-              <div className="demo-head">
-                <div>
-                  <p className="kicker">Market-hours simulator</p>
-                  <h2 id="regimes-title">See borrowing power change</h2>
+            <figure className="market-clock" id="problem">
+              <figcaption>
+                <strong>Trading hours</strong>
+                <span>Weekday · US Eastern</span>
+              </figcaption>
+              <p className="sr-only">
+                The regular US stock session runs from 9:30 a.m. to 4 p.m. Eastern on weekdays. Tokenized stocks
+                can trade around the clock, including weekends.
+              </p>
+              <div className="clock-rows" aria-hidden="true">
+                <span>US stocks <small>Regular session</small></span>
+                <div className="clock-rail clock-rail-stock"><i /></div>
+                <span>Tokenized stocks <small>24/7</small></span>
+                <div className="clock-rail clock-rail-token"><i /></div>
+                <div className="clock-axis">
+                  <span>00:00</span><span>09:30</span><span>16:00</span><span>24:00</span>
                 </div>
-                <span className="illustrative-tag">Illustrative</span>
               </div>
-              <div className="demo-body">
-                <RegimeExplorer />
-                <p className="panel-foot">
-                  Move the slider or select a point on the chart. Times are US Eastern. The haircuts are examples
-                  and will be calibrated against historical price gaps.
-                </p>
-              </div>
-            </div>
+            </figure>
           </div>
         </section>
 
-        <section className="section gap-section" id="problem" aria-labelledby="problem-title">
-          <Reveal className="wrap gap-layout">
-            <div className="section-head">
-              <p className="kicker">The market gap</p>
-              <h2 id="problem-title">The token can trade while the stock market is closed</h2>
-              <p className="intro">
-                Onchain trading continues after hours. When the underlying market reopens, the stock can jump past
-                its last traded price. Dawn values collateral more conservatively outside regular hours.
-              </p>
+        <section className="wrap market-demo" id="regimes" aria-labelledby="regimes-title" tabIndex={-1}>
+          <div className="demo-heading">
+            <div>
+              <h2 id="regimes-title">One position, through the trading week</h2>
+              <p>Choose a session or scrub the timeline to see what changes for the same loan.</p>
             </div>
-            <dl className="market-facts">
-              <div>
-                <dt>Tokenized stocks</dt>
-                <dd className="fact-figure num">24/7</dd>
-                <dd>Onchain trading</dd>
-              </div>
-              <div>
-                <dt>Underlying stocks</dt>
-                <dd className="fact-figure num">6.5<span>h</span></dd>
-                <dd>Regular US session per weekday</dd>
-              </div>
-            </dl>
-          </Reveal>
-        </section>
-
-        <section className="section section-raised" id="how" aria-labelledby="how-title">
-          <div className="wrap">
-            <Reveal className="section-head">
-              <p className="kicker">How it works</p>
-              <h2 id="how-title">From stock collateral to a stablecoin loan</h2>
-              <p className="intro">
-                Morpho Blue handles lending in isolated markets. Dawn adds a router and oracle to manage the risks
-                specific to tokenized stocks.
-              </p>
-            </Reveal>
-            <div className="loan-layout">
-              <ol className="flow">
-                {STEPS.map((step, index) => (
-                  <li className="flow-step" key={step.title}>
-                    <span className="flow-n num" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-                    <div>
-                      <h3>{step.title}</h3>
-                      <p>{step.body}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              <PositionPreview />
-            </div>
+            <span className="demo-caption">Illustrative · US Eastern</span>
           </div>
+          <RegimeExplorer />
         </section>
 
-        <section className="section" id="risk" aria-labelledby="risk-title">
-          <div className="wrap">
-            <Reveal className="section-head">
-              <p className="kicker">The risk layer</p>
-              <h2 id="risk-title">How Dawn handles equity risk</h2>
-              <p className="intro">
-                One isolated market per collateral and loan pair limits how bad debt can spread. Dawn’s risk layer
-                also accounts for market events that affect the token or the underlying stock.
+        <section className="wrap editorial-section" id="how" aria-labelledby="how-title" tabIndex={-1}>
+          <div className="editorial-intro">
+            <p className="eyebrow">How it works</p>
+            <h2 id="how-title">From stock collateral to a stablecoin loan</h2>
+            <p>
+              Morpho Blue handles lending in isolated markets. Dawn adds a router and oracle to manage the risks
+              specific to tokenized stocks.
+            </p>
+          </div>
+          <ol className="flow">
+            {STEPS.map((step, index) => (
+              <li key={step.title}>
+                <span className="flow-n num" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="risk-section" id="risk" aria-labelledby="risk-title" tabIndex={-1}>
+          <div className="wrap editorial-section">
+            <div className="editorial-intro">
+              <p className="eyebrow">Risk design</p>
+              <h2 id="risk-title">Built for the way stocks trade</h2>
+              <p>
+                Each collateral and loan pair has its own market. Dawn’s risk layer also accounts for events
+                that affect the token or the underlying stock.
               </p>
-            </Reveal>
-            <div className="features">
-              {FEATURES.map((feature) => (
-                <article className="feature" key={feature.title}>
-                  <span className="feature-icon">{feature.icon}</span>
-                  <div>
-                    <h3>{feature.title}</h3>
-                    <p>{feature.body}</p>
-                  </div>
-                </article>
+              <a className="text-link" href={`${REPO}/architecture-v1.md#12-per-risk-table`}>
+                Read the risk analysis <IconArrow />
+              </a>
+            </div>
+            <div className="risk-list">
+              {FEATURES.map((feature, index) => (
+                <details key={feature.title} open={index === 0}>
+                  <summary>
+                    <span className="risk-icon">{feature.icon}</span>
+                    <span>{feature.title}</span>
+                    <span className="disclosure-icon" aria-hidden="true" />
+                  </summary>
+                  <p>{feature.body}</p>
+                </details>
               ))}
             </div>
           </div>
         </section>
 
-        <section className="section section-raised" id="roadmap" aria-labelledby="roadmap-title">
-          <div className="wrap">
-            <Reveal className="section-head">
-              <p className="kicker">Roadmap</p>
-              <h2 id="roadmap-title">One market for the prototype</h2>
-              <p className="intro">The BNB Bangkok prototype focuses on NVDAB collateral and USDT borrowing. Later phases are proposed.</p>
-            </Reveal>
+        <div className="wrap project-layout">
+          <section id="roadmap" aria-labelledby="roadmap-title" tabIndex={-1}>
+            <p className="eyebrow">Roadmap</p>
+            <h2 id="roadmap-title">One market for the prototype</h2>
             <ol className="roadmap">
               {ROADMAP.map((stage) => (
-                <li className={`stage${stage.now ? " stage-now" : ""}`} key={stage.tag}>
+                <li className={stage.now ? "stage-now" : undefined} key={stage.tag}>
                   <p className="stage-tag">{stage.tag}</p>
-                  <h3>{stage.title}</h3>
-                  <ul>
-                    {stage.items.map((item) => <li key={item}>{item}</li>)}
-                  </ul>
+                  <div>
+                    <h3>{stage.title}</h3>
+                    <ul>{stage.items.map((item) => <li key={item}>{item}</li>)}</ul>
+                  </div>
                 </li>
               ))}
             </ol>
-          </div>
-        </section>
+          </section>
 
-        <section className="section" id="docs" aria-labelledby="docs-title">
-          <Reveal className="wrap docs-layout">
-            <div className="section-head">
-              <p className="kicker">Documentation</p>
-              <h2 id="docs-title">Read the design</h2>
-              <p className="intro">Explore the architecture, research and decisions behind the prototype.</p>
-            </div>
+          <section id="docs" aria-labelledby="docs-title" tabIndex={-1}>
+            <p className="eyebrow">Documentation</p>
+            <h2 id="docs-title">Read the design</h2>
             <ul className="docs">
               {DOCS.map((doc) => (
                 <li key={doc.file}>
                   <a href={`${REPO}/${doc.file}`}>
-                    <span className="doc-icon"><IconDoc /></span>
-                    <span className="doc-text">
-                      <strong>{doc.title}</strong>
-                      <span>{doc.body}</span>
-                    </span>
-                    <span className="doc-arrow"><IconArrow /></span>
+                    <IconDoc />
+                    <span><strong>{doc.title}</strong><small>{doc.body}</small></span>
+                    <IconArrow />
                   </a>
                 </li>
               ))}
             </ul>
-          </Reveal>
-        </section>
+          </section>
+        </div>
       </main>
 
       <footer className="footer">
         <div className="wrap footer-inner">
-          <a className="brand brand-footer" href="#top" aria-label="Dawn Finance, back to top">
+          <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
             <IconLogo />
             <span>Dawn Finance</span>
           </a>
-          <div>
-            <p className="disclaimer">BNB Bangkok prototype, Nov 2026. Not live.</p>
-            <p className="small">Built on BNB Chain and Morpho Blue. Parameters are subject to change. Simulator values are illustrative and do not constitute financial advice.</p>
-          </div>
+          <p>Built on BNB Chain and Morpho Blue</p>
+          <p>BNB Bangkok prototype · Not live</p>
         </div>
       </footer>
     </>
