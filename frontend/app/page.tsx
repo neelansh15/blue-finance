@@ -1,236 +1,387 @@
+import PositionPreview from "./components/PositionPreview";
+import RegimeExplorer from "./components/RegimeExplorer";
+import Reveal from "./components/Reveal";
+import {
+  IconArrow,
+  IconDoc,
+  IconHalt,
+  IconIsolated,
+  IconLogo,
+  IconOracle,
+  IconRegime,
+  IconShield,
+  IconSplit,
+  IconSteps,
+} from "./components/Icons";
+
+const REPO = "https://github.com/neelansh15/dawn-finance/blob/main";
+
+const FEATURES = [
+  {
+    icon: <IconRegime />,
+    title: "Regime-aware borrowing power",
+    body: "A regime registry tracks Open, Extended, Closed, Weekend, Halted and Corporate-action states. The oracle applies a haircut per regime and ramps it in before the close instead of stepping.",
+  },
+  {
+    icon: <IconOracle />,
+    title: "Conservative oracle",
+    body: "Collateral is valued at the lower of the primary feed and a DEX TWAP. A missing or stale source adds a haircut. In the normal path the oracle never reverts, so liquidations keep working.",
+  },
+  {
+    icon: <IconSplit />,
+    title: "Corporate actions",
+    body: "bStock splits and reinvested dividends arrive through a display multiplier. Dawn prices per raw token, blocks new borrows around the event and freezes to the last good price until a continuity check passes.",
+  },
+  {
+    icon: <IconHalt />,
+    title: "Halts and pauses",
+    body: "Keepers watch the Nasdaq halt feed and the token pause manager. On a halt, caps are cut, new borrows stop and the price freezes with a haircut for a bounded time.",
+  },
+  {
+    icon: <IconShield />,
+    title: "Compliance handling",
+    body: "Borrows through the router need a short-lived eligibility attestation: geo checks, sanctions screening and a simulation of the token's own compliance check for the address.",
+  },
+  {
+    icon: <IconSteps />,
+    title: "Gentler liquidations",
+    body: "Opt-in PreLiquidation enables smaller partial closes before the LLTV. Morpho Blue liquidation stays permissionless, and Dawn's backstop bot has no special privileges.",
+  },
+];
+
+const STEPS = [
+  {
+    n: "01",
+    title: "Check eligibility",
+    body: "The eligibility service checks location, sanctions and the token's compliance rules for your address, then signs a short-lived attestation.",
+  },
+  {
+    n: "02",
+    title: "Post a tokenized stock",
+    body: "Supply a bStock as collateral through the Dawn router into an isolated market on Morpho Blue. Balances are shown in UI units.",
+  },
+  {
+    n: "03",
+    title: "Borrow stablecoins",
+    body: "The router sizes your limit from the oracle price, the current regime and a target LTV stricter than the market LLTV.",
+  },
+  {
+    n: "04",
+    title: "Stay ahead of the gap",
+    body: "Keepers update the regime, watch splits, dividends and halts, and route any liquidation through gentler partial closes first.",
+  },
+];
+
+const ROADMAP = [
+  {
+    tag: "Now",
+    title: "Hackathon demo",
+    when: "BNB Bangkok, Nov 2026",
+    items: [
+      "One NVDAB / USDT market at 62.5% LLTV, testnet or mainnet fork",
+      "DawnOracle v0 with regime haircuts and bounded freeze",
+      "Router v0 with regime-based target LTV",
+    ],
+    now: true,
+  },
+  {
+    tag: "Phase 2",
+    title: "Production plumbing",
+    when: "Planned",
+    items: ["Wrapped collateral for router-only borrowing", "Eligibility service and Vault V2 with caps", "PreLiquidation onboarding and halt monitor"],
+  },
+  {
+    tag: "Phase 3",
+    title: "Parameters and breadth",
+    when: "Planned",
+    items: ["Gap-quantile pipeline for haircuts and LLTVs", "More bStocks and NAV-accumulating tokens", "Dividend ex-date logic and audits"],
+  },
+  {
+    tag: "Later",
+    title: "Leverage and shorting",
+    when: "Exploratory",
+    items: ["Leverage vault on the same markets and risk layer", "Shorting once borrowable equity-token supply exists"],
+  },
+];
+
+const DOCS = [
+  { file: "architecture-v1.md", title: "Architecture v1", body: "The design on unmodified Morpho Blue: oracle, regimes, splits, halts, dividends, liquidation." },
+  { file: "README.md", title: "README", body: "Project overview and the research files." },
+  { file: "morpho-blue.md", title: "Morpho Blue research", body: "Market model, oracle, liquidation and vaults." },
+  { file: "idea-progression.md", title: "Idea progression", body: "How the direction evolved and why." },
+];
+
 export default function Home() {
   return (
     <>
-      <a className="skip" href="#main">Skip to content</a>
+      <a className="skip" href="#main">
+        Skip to content
+      </a>
 
       <header className="nav">
-        <nav className="wrap" aria-label="Primary">
+        <nav className="wrap nav-inner" aria-label="Primary">
           <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
-            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-              <circle cx="16" cy="19" r="8" fill="#F2C14E"/>
-              <path d="M0 32 L9 18 L14 24 L21 13 L32 28 L32 32 Z" fill="#3E5568"/>
-              <path d="M0 32 L6 26 L12 30 L20 22 L32 32 Z" fill="#1E2A38"/>
-            </svg>
-            <span>Dawn Finance</span>
+            <IconLogo />
+            <span>Dawn</span>
           </a>
-          <ul>
-            <li className="hide-sm"><a href="#problem">Problem</a></li>
-            <li><a href="#how-it-works">How it works</a></li>
-            <li className="hide-sm"><a href="#roadmap">Roadmap</a></li>
-            <li><a href="#docs">Docs</a></li>
+          <ul className="nav-links">
+            <li>
+              <a href="#how">How it works</a>
+            </li>
+            <li>
+              <a href="#risk">Risk layer</a>
+            </li>
+            <li className="hide-sm">
+              <a href="#roadmap">Roadmap</a>
+            </li>
+            <li className="hide-sm">
+              <a href="#docs">Docs</a>
+            </li>
           </ul>
+          <span className="nav-status">
+            <span className="status-dot" aria-hidden="true" />
+            Draft, not live
+          </span>
         </nav>
       </header>
 
       <main id="main">
-        <section className="hero" id="top" aria-labelledby="hero-title" style={{ borderTop: 0 }}>
-          <div className="wrap hero-inner">
-            <span className="draft-chip">Draft prototype · not live</span>
-            <h1 id="hero-title">Dawn Finance</h1>
-            <p className="lead">Borrow stablecoins against tokenized US stocks, with a risk layer that knows when the market is open.</p>
-            <p className="sub">Isolated lending markets on unmodified Morpho Blue, on BNB Chain. Tokens trade 24/7; the stock market does not. Dawn prices that gap in.</p>
-            <div className="ctas">
-              <a className="btn btn-primary" href="#how-it-works">How Dawn works</a>
-              <a className="btn btn-ghost" href="architecture-v1.md">Read the architecture</a>
-              <a className="btn btn-ghost" href="README.md">README</a>
-            </div>
-          </div>
-
-          <div className="scene">
-            <svg viewBox="0 0 1440 360" preserveAspectRatio="xMidYMax slice" role="img" aria-labelledby="scene-title">
-              <title id="scene-title">Illustration: a soft sunrise glowing from behind layered gray-blue mountain ridges.</title>
-              <defs>
-                <radialGradient id="sun" cx="50%" cy="100%" r="60%">
-                  <stop offset="0%" stopColor="#FFFBEA" stopOpacity="1"/>
-                  <stop offset="25%" stopColor="#FFF1B8" stopOpacity="0.95"/>
-                  <stop offset="60%" stopColor="#F2C14E" stopOpacity="0.22"/>
-                  <stop offset="100%" stopColor="#FFF1B8" stopOpacity="0"/>
-                </radialGradient>
-                <linearGradient id="far" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8FA3B5"/>
-                  <stop offset="100%" stopColor="#7D93A7"/>
-                </linearGradient>
-                <linearGradient id="mid" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#5D7488"/>
-                  <stop offset="100%" stopColor="#3E5568"/>
-                </linearGradient>
-              </defs>
-              <ellipse className="glow" cx="720" cy="250" rx="620" ry="230" fill="url(#sun)"/>
-              <g className="ridge-far">
-                <path fill="url(#far)" d="M-20 250 L90 200 L180 222 L300 150 L410 198 L520 168 L620 210 L720 176 L830 206 L940 142 L1060 196 L1170 160 L1290 204 L1380 178 L1460 200 L1460 360 L-20 360 Z"/>
-              </g>
-              <g className="ridge-mid">
-                <path fill="url(#mid)" d="M-20 290 L120 236 L230 268 L360 214 L480 262 L600 240 L700 276 L820 226 L960 270 L1080 232 L1210 274 L1330 244 L1460 268 L1460 360 L-20 360 Z"/>
-              </g>
-              <path fill="#1E2A38" d="M-20 330 L140 290 L300 318 L460 284 L640 322 L800 296 L980 326 L1150 292 L1300 318 L1460 300 L1460 360 L-20 360 Z"/>
+        {/* Hero */}
+        <section className="hero" id="top" aria-labelledby="hero-title">
+          <div className="hero-sky" aria-hidden="true">
+            <div className="sun" />
+            <svg className="ridges" viewBox="0 0 1440 320" preserveAspectRatio="xMidYMax slice" focusable="false">
+              <path className="ridge-far" d="M0 210 L120 168 L230 190 L360 120 L480 172 L600 140 L720 186 L840 150 L960 182 L1080 118 L1210 170 L1330 140 L1440 166 L1440 320 L0 320 Z" />
+              <path className="ridge-mid" d="M0 250 L140 200 L260 232 L400 186 L540 236 L680 208 L800 244 L940 196 L1080 240 L1220 204 L1340 236 L1440 214 L1440 320 L0 320 Z" />
+              <path className="ridge-near" d="M0 292 L170 256 L330 284 L500 252 L680 290 L860 262 L1040 294 L1220 258 L1440 284 L1440 320 L0 320 Z" />
             </svg>
           </div>
-        </section>
 
-        <section id="problem" aria-labelledby="problem-title">
-          <div className="wrap">
-            <p className="eyebrow">The problem</p>
-            <h2 id="problem-title">Tokens trade 24/7. The stock market does not.</h2>
-            <p className="intro">A tokenized stock can change hands on a Saturday, but the US equity it tracks only trades in set sessions. When the market reopens, the price can jump past where it closed. Lending protocols built for always-on crypto assets treat every hour the same and ignore that gap risk.</p>
-            <ul className="gaps">
-              <li><strong>Overnight</strong><span>The market closes each evening. News lands before the next open.</span></li>
-              <li><strong>Weekends</strong><span>Two days with no primary-market price discovery, then one reopen.</span></li>
-              <li><strong>Holidays and halts</strong><span>Exchange holidays, trading halts and suspensions stretch the gap further.</span></li>
-            </ul>
-          </div>
-        </section>
-
-        <section id="how-it-works" aria-labelledby="how-title">
-          <div className="wrap">
-            <p className="eyebrow">How Dawn works</p>
-            <h2 id="how-title">A risk layer on top of Morpho Blue</h2>
-            <p className="intro">Dawn does not fork the lending core. It creates isolated markets on the canonical, unmodified Morpho Blue deployment and puts its logic in the oracle, a router and offchain keepers.</p>
-
-            <div className="grid grid-3">
-              <article className="card">
-                <div className="icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-                </div>
-                <h3>Isolated markets on Morpho Blue</h3>
-                <p>One market per stock and loan asset. Bad debt in one market never touches another. Accounting, borrow, repay and liquidation stay in Morpho Blue, unmodified.</p>
-              </article>
-              <article className="card">
-                <div className="icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                </div>
-                <h3>Market-hours-aware pricing</h3>
-                <p>A regime registry tracks open, extended, closed, weekend or holiday, halted and corporate-action states. The oracle applies a haircut per regime, so borrowing power shrinks when the market is shut, and ramps down before the close instead of stepping.</p>
-              </article>
-              <article className="card">
-                <div className="icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
-                </div>
-                <h3>Conservative oracle</h3>
-                <p>Collateral is valued at the more conservative of the primary price feed and a DEX TWAP. If a source is stale or missing, an extra haircut applies. In the normal path the oracle never reverts, so liquidations keep working.</p>
-              </article>
-              <article className="card">
-                <div className="icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
-                </div>
-                <h3>Stock-specific events</h3>
-                <p>Splits via display multipliers, issuer pauses and whitelists, trading halts and reinvested dividends. Around these events new borrows pause and the price freezes to the last good value for a bounded time, so a split does not look like a crash.</p>
-              </article>
-              <article className="card">
-                <div className="icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.5-1-1.6-1.5-3-1.5-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.5-.5-3-1.5"/><path d="M12 6v2M12 16v2"/></svg>
-                </div>
-                <h3>Stablecoin-only borrowing</h3>
-                <p>In v1 you post a tokenized stock and borrow stablecoins. That keeps risk one-sided: only the collateral price matters, with one oracle and one rate curve per market.</p>
-              </article>
-              <article className="card">
-                <div className="icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
-                </div>
-                <h3>Liquidation</h3>
-                <p>Morpho Blue liquidation stays permissionless. Dawn plans opt-in pre-liquidation for smaller, gentler partial liquidations, and runs its own backstop bot with no special privileges.</p>
-              </article>
+          <div className="wrap hero-grid">
+            <div className="hero-copy">
+              <p className="eyebrow">
+                <span className="eyebrow-dot" aria-hidden="true" />
+                Lending for tokenized US stocks on BNB Chain
+              </p>
+              <h1 id="hero-title">
+                Borrow against stocks that never sleep, <span className="h1-soft">priced for markets that do.</span>
+              </h1>
+              <p className="lead">
+                Dawn lets you post bStocks and borrow stablecoins on unmodified Morpho Blue. Its risk layer knows when the
+                US market is open and adjusts borrowing power before the gap, not after it.
+              </p>
+              <div className="ctas">
+                <a className="btn btn-primary" href={`${REPO}/architecture-v1.md`}>
+                  Read the architecture
+                  <IconArrow />
+                </a>
+                <a className="btn btn-quiet" href="#how">
+                  How it works
+                </a>
+              </div>
+              <ul className="built-on" aria-label="Built on">
+                <li>Morpho Blue, unmodified</li>
+                <li>BNB Chain</li>
+                <li>bStocks (BEP-677 multiplier)</li>
+              </ul>
             </div>
 
-            <div className="card chart-card">
-              <figure aria-labelledby="chart-caption">
-                <span className="chart-label">Illustrative only, not real data</span>
-                <h3 id="chart-title">Borrowing power across a week</h3>
-                <div className="chart-scroll" tabIndex={0} role="region" aria-label="Illustrative chart of borrowing power across a week, scrollable on small screens">
-                  <svg viewBox="0 0 780 260" role="img" aria-labelledby="chart-svg-title chart-svg-desc">
-                    <title id="chart-svg-title">Illustrative borrowing power by market regime, Monday to Sunday</title>
-                    <desc id="chart-svg-desc">A stepped line with no real values. Borrowing power is highest during each weekday's regular US session, ramps down shortly before the close, is lower in extended hours, lower again overnight, and lowest from Friday evening through the weekend until Monday's pre-market.</desc>
-                    {/* weekend shading */}
-                    <rect className="c-weekend" x="543.3" y="30" width="216.7" height="180"/>
-                    {/* regular session bands (approx. 9:30-16:00 US Eastern) */}
-                    <rect className="c-open" x="99.6" y="30" width="27.1" height="180"/>
-                    <rect className="c-open" x="199.6" y="30" width="27.1" height="180"/>
-                    <rect className="c-open" x="299.6" y="30" width="27.1" height="180"/>
-                    <rect className="c-open" x="399.6" y="30" width="27.1" height="180"/>
-                    <rect className="c-open" x="499.6" y="30" width="27.1" height="180"/>
-                    {/* regime gridlines */}
-                    <line className="c-grid" x1="60" y1="50" x2="760" y2="50"/>
-                    <line className="c-grid" x1="60" y1="95" x2="760" y2="95"/>
-                    <line className="c-grid" x1="60" y1="135" x2="760" y2="135"/>
-                    <line className="c-grid" x1="60" y1="190" x2="760" y2="190"/>
-                    <line className="c-axis" x1="60" y1="210" x2="760" y2="210"/>
-                    <line className="c-axis" x1="60" y1="30" x2="60" y2="210"/>
-                    {/* y labels */}
-                    <text className="c-text" x="52" y="54" textAnchor="end">Open</text>
-                    <text className="c-text" x="52" y="99" textAnchor="end">Ext.</text>
-                    <text className="c-text" x="52" y="139" textAnchor="end">Closed</text>
-                    <text className="c-text" x="52" y="194" textAnchor="end">Wknd</text>
-                    <text className="c-text-strong" x="60" y="20">Higher borrowing power ↑</text>
-                    {/* line */}
-                    <path className="c-line" d="M60.0 190 L76.7 190 L76.7 95 L99.6 95 L103.0 50 L122.5 50 L126.7 95 L143.3 95 L143.3 135 L160.0 135 L176.7 135 L176.7 95 L199.6 95 L203.0 50 L222.5 50 L226.7 95 L243.3 95 L243.3 135 L260.0 135 L276.7 135 L276.7 95 L299.6 95 L303.0 50 L322.5 50 L326.7 95 L343.3 95 L343.3 135 L360.0 135 L376.7 135 L376.7 95 L399.6 95 L403.0 50 L422.5 50 L426.7 95 L443.3 95 L443.3 135 L460.0 135 L476.7 135 L476.7 95 L499.6 95 L503.0 50 L522.5 50 L526.7 95 L543.3 95 L543.3 190 L760.0 190"/>
-                    {/* x labels */}
-                    <text className="c-text" x="110" y="230" textAnchor="middle">Mon</text>
-                    <text className="c-text" x="210" y="230" textAnchor="middle">Tue</text>
-                    <text className="c-text" x="310" y="230" textAnchor="middle">Wed</text>
-                    <text className="c-text" x="410" y="230" textAnchor="middle">Thu</text>
-                    <text className="c-text" x="510" y="230" textAnchor="middle">Fri</text>
-                    <text className="c-text" x="610" y="230" textAnchor="middle">Sat</text>
-                    <text className="c-text" x="710" y="230" textAnchor="middle">Sun</text>
-                    <text className="c-text" x="651" y="250" textAnchor="middle">Weekend: lowest borrowing power</text>
-                  </svg>
-                </div>
-                <figcaption id="chart-caption">
-                  Shape only: no real haircut values, no axis numbers. Shaded columns mark the regular US session (US Eastern time). The drop just before each close is the ramp that de-risks positions ahead of the overnight or weekend gap. Holidays and halts would follow the weekend or halted level. Actual haircuts would come from a historical gap model that has not been finalized.
-                  <ul className="chips" aria-label="Status legend used in the interface">
-                    <li><span className="chip chip-ok">Healthy</span></li>
-                    <li><span className="chip chip-warn">Market closed: reduced borrowing power</span></li>
-                    <li><span className="chip chip-risk">Liquidation risk</span></li>
-                  </ul>
-                </figcaption>
-              </figure>
+            <div className="hero-card">
+              <PositionPreview />
             </div>
           </div>
         </section>
 
-        <section id="roadmap" aria-labelledby="roadmap-title">
+        {/* Problem */}
+        <section className="section" id="problem" aria-labelledby="problem-title">
           <div className="wrap">
-            <p className="eyebrow">Roadmap</p>
-            <h2 id="roadmap-title">Start narrow, add leverage later</h2>
-            <p className="intro">Draft plan. Nothing here is live or scheduled.</p>
-            <ol className="roadmap">
-              <li className="now">
-                <span className="stage">v1</span>
-                <span className="when">Prototype, BNB Bangkok</span>
-                <h3>Stablecoin borrowing</h3>
-                <p>Post a tokenized US stock, borrow stablecoins, with market-hours-aware limits and a conservative oracle. The hackathon demo runs on a testnet or mainnet fork.</p>
-              </li>
-              <li>
-                <span className="stage">v1.5</span>
-                <span className="when">Later</span>
-                <h3>Leverage vault</h3>
-                <p>Leveraged long positions on tokenized stocks, built on the same isolated markets and risk layer.</p>
-              </li>
-              <li>
-                <span className="stage">v2</span>
-                <span className="when">Later</span>
-                <h3>Shorting</h3>
-                <p>Borrowing the equity tokens themselves, which needs borrowable equity-token supply.</p>
-              </li>
+            <Reveal className="section-head">
+              <p className="kicker">The gap</p>
+              <h2 id="problem-title">Tokens trade 24/7. The stock market does not.</h2>
+              <p className="intro">
+                A bStock can change hands on a Saturday, but the share it tracks only trades in set US sessions. When the
+                market reopens, price can jump past where it closed. Lending built for always-on crypto treats every hour
+                the same.
+              </p>
+            </Reveal>
+            <div className="facts">
+              <Reveal as="article" className="fact">
+                <p className="fact-figure num">
+                  6.5<span>h</span>
+                </p>
+                <p className="fact-label">Regular US session per weekday (9:30 to 16:00 ET). The rest is extended, overnight or weekend.</p>
+              </Reveal>
+              <Reveal as="article" className="fact" delay={80}>
+                <p className="fact-figure num">
+                  56<span>%</span>
+                </p>
+                <p className="fact-label">
+                  Of bStock volume trades outside regular hours.
+                  <span className="source">Binance Research, Oct 20 2026</span>
+                </p>
+              </Reveal>
+              <Reveal as="article" className="fact" delay={160}>
+                <p className="fact-figure num">
+                  8<span>:1</span>
+                </p>
+                <p className="fact-label">
+                  SNDKB split, delivered through a multiplier change. A naive oracle reads it as a crash.
+                  <span className="source">Binance, Nov 11 2026</span>
+                </p>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* Regime explorer */}
+        <section className="section section-raised" id="regimes" aria-labelledby="regimes-title">
+          <div className="wrap">
+            <Reveal className="section-head">
+              <p className="kicker">Borrowing power over a week</p>
+              <h2 id="regimes-title">Borrowing power follows the market clock</h2>
+              <p className="intro">
+                Drag across the week to see how the regime changes the haircut. The shape follows the design; the numbers are
+                placeholders until the gap model is finished.
+              </p>
+            </Reveal>
+            <Reveal className="panel">
+              <span className="illustrative-tag illustrative-corner">Illustrative</span>
+              <RegimeExplorer />
+              <p className="panel-foot">
+                US Eastern time. Holidays follow the weekend level and halts freeze the price with their own haircut. Real
+                haircuts would come from a historical gap model that has not been finalized.
+              </p>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="section" id="how" aria-labelledby="how-title">
+          <div className="wrap">
+            <Reveal className="section-head">
+              <p className="kicker">How it works</p>
+              <h2 id="how-title">Four steps, one isolated market</h2>
+              <p className="intro">
+                Dawn does not fork the lending core. Accounting, borrow, repay and liquidation stay in Morpho Blue. Dawn&apos;s
+                logic lives in the oracle, a router and offchain keepers.
+              </p>
+            </Reveal>
+            <ol className="flow">
+              {STEPS.map((s, i) => (
+                <Reveal as="li" key={s.n} className="flow-step" delay={i * 70}>
+                  <span className="flow-n num" aria-hidden="true">
+                    {s.n}
+                  </span>
+                  <h3>{s.title}</h3>
+                  <p>{s.body}</p>
+                </Reveal>
+              ))}
             </ol>
           </div>
         </section>
 
-        <section id="docs" aria-labelledby="docs-title">
+        {/* Risk layer */}
+        <section className="section section-raised" id="risk" aria-labelledby="risk-title">
           <div className="wrap">
-            <p className="eyebrow">Docs</p>
-            <h2 id="docs-title">Read the design</h2>
+            <Reveal className="section-head">
+              <p className="kicker">The risk layer</p>
+              <h2 id="risk-title">Built for what makes stocks different</h2>
+              <p className="intro">
+                Isolated markets keep bad debt in one market from touching another. On top of that, Dawn handles the events
+                crypto lending was never designed for.
+              </p>
+            </Reveal>
+            <div className="features">
+              {FEATURES.map((f, i) => (
+                <Reveal as="article" key={f.title} className="feature" delay={(i % 3) * 70}>
+                  <span className="feature-icon">{f.icon}</span>
+                  <h3>{f.title}</h3>
+                  <p>{f.body}</p>
+                </Reveal>
+              ))}
+            </div>
+            <Reveal className="callout">
+              <span className="feature-icon">
+                <IconIsolated />
+              </span>
+              <p>
+                <strong>Stablecoin-only borrowing in v1.</strong> You post a tokenized stock and borrow stablecoins, so only
+                the collateral price matters: one oracle and one rate curve per market.
+              </p>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Roadmap */}
+        <section className="section" id="roadmap" aria-labelledby="roadmap-title">
+          <div className="wrap">
+            <Reveal className="section-head">
+              <p className="kicker">Roadmap</p>
+              <h2 id="roadmap-title">Start narrow, widen carefully</h2>
+              <p className="intro">Draft plan. Nothing here is live or scheduled.</p>
+            </Reveal>
+            <ol className="roadmap">
+              {ROADMAP.map((r, i) => (
+                <Reveal as="li" key={r.tag} className={`stage${r.now ? " stage-now" : ""}`} delay={i * 70}>
+                  <div className="stage-head">
+                    <span className="stage-tag">{r.tag}</span>
+                    <span className="stage-when">{r.when}</span>
+                  </div>
+                  <h3>{r.title}</h3>
+                  <ul>
+                    {r.items.map((it) => (
+                      <li key={it}>{it}</li>
+                    ))}
+                  </ul>
+                </Reveal>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Docs */}
+        <section className="section section-raised" id="docs" aria-labelledby="docs-title">
+          <div className="wrap">
+            <Reveal className="section-head">
+              <p className="kicker">Docs</p>
+              <h2 id="docs-title">Read the design</h2>
+              <p className="intro">Every claim on this page traces back to these files.</p>
+            </Reveal>
             <ul className="docs">
-              <li><a href="architecture-v1.md"><strong>Architecture v1</strong><span>The design on top of unmodified Morpho Blue: oracle, regimes, splits, halts, dividends.</span></a></li>
-              <li><a href="README.md"><strong>README</strong><span>Overview of the project and its research files.</span></a></li>
-              <li><a href="idea-progression.md"><strong>Idea progression</strong><span>How the direction evolved and why each decision was made.</span></a></li>
+              {DOCS.map((d) => (
+                <li key={d.file}>
+                  <a href={`${REPO}/${d.file}`}>
+                    <span className="doc-icon">
+                      <IconDoc />
+                    </span>
+                    <span className="doc-text">
+                      <strong>{d.title}</strong>
+                      <span>{d.body}</span>
+                    </span>
+                    <span className="doc-arrow">
+                      <IconArrow />
+                    </span>
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </section>
       </main>
 
-      <footer>
-        <div className="wrap">
-          <p className="disclaimer">Draft. Prototype built for BNB Bangkok, Nov 2026. Not financial advice. Not live.</p>
-          <p className="small">Dawn Finance is a working name. Built on BNB Chain and Morpho Blue. Designs and parameters are unverified and subject to change.</p>
+      <footer className="footer">
+        <div className="wrap footer-inner">
+          <div className="brand brand-footer">
+            <IconLogo />
+            <span>Dawn Finance</span>
+          </div>
+          <div>
+            <p className="disclaimer">Draft. Prototype built for BNB Bangkok, Nov 2026. Not financial advice. Not live.</p>
+            <p className="small">
+              Dawn Finance is a working name. Built on BNB Chain and Morpho Blue. Designs and parameters are unverified and
+              subject to change. All figures in mock interfaces are illustrative.
+            </p>
+          </div>
         </div>
       </footer>
     </>
