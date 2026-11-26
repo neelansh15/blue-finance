@@ -35,7 +35,7 @@ The demo uses Friday **20 November 2026**, 11:00 and 15:30 New York time, then S
 | GET | `/risk/recommendations/{asset}?limit=100` | History and latest unexpired advisory recommendation |
 | GET | `/health` | Storage, configuration version, signing and monitoring status |
 
-Assets `NVDA` and `BNB_STOCK_NVDA` resolve to one canonical asset. Unsupported assets return 404; invalid inputs return 422; storage failure returns 503. Latest means latest **evidence time**, so replaying older scenarios does not supersede newer evidence.
+Assets `NVDA`, `NVDAB` and `BNB_STOCK_NVDA` resolve to one canonical asset. Unsupported assets return 404; invalid inputs return 422; storage failure returns 503. Latest means latest **evidence time**, so replaying older scenarios does not supersede newer evidence.
 
 ```sh
 curl -s -X POST http://127.0.0.1:8000/risk/assess/NVDA \
@@ -69,7 +69,7 @@ Enable continuous simulated monitoring by setting `RISK_POLL_SECONDS=120` before
 
 These rules are **illustrative MVP heuristics, not a validated production financial model**. Policy defaults are in `app/config.py`; `policy.example.json` is a complete editable copy. Set `RISK_CONFIG_PATH` to a JSON file and restart. Every effective configuration has a content-derived fingerprint, so changing a value changes the recommendation version even if the human-readable version is unchanged.
 
-1. One token represents one raw, normalized underlying share; prices and debt are USD, USDT=$1. No UI multiplier, split continuity, dividend adjustment, transfer eligibility, reserve, tax, interest accrual or depeg model is implemented. Teammates must supply properly adjusted prices and quantities. Supply caps are **tokens**, borrow caps are **USD**, and both are total exposure targets, not forced withdrawals or repayments.
+1. One quantity unit is a normalized displayed token/share; prices and debt are USD, USDT=$1. Raw-token oracle prices with an explicit multiplier normalize once. Dynamic split continuity, dividend adjustment, transfer eligibility, reserve, tax, interest accrual and depeg are not modelled. Teammates must supply properly adjusted prices and quantities. Supply caps are **tokens**, borrow caps are **USD**, and both are total exposure targets, not forced withdrawals or repayments.
 2. Annual volatility is sample standard deviation of daily-close log returns × √252; at least 20 daily closes are required. Timestamps must be ordered, nonfuture and plausibly daily. Maximum drawdown uses running peaks; momentum compares the last price with up to 20 preceding observations. History older than 120 hours, missing/old executable quotes, missing oracle data, reference divergence over 10%, or issuer uncertainty blocks new exposure. A quoted but empty book has zero recovery. Long irregular shutdowns require a policy review.
 3. Underlying exchange session, oracle freshness and token-market execution are separate. A closed exchange never automatically removes token bids. Calendar-derived closure risk changes stress horizon and buffers. A fresh oracle publication cannot refresh an old observation. The 24/5 fixture conservatively observes cash-session marks only; a real feed may observe overnight trades. The 24/7 smoothed fixture carries explicit lag and a minimum 2% basis haircut, even when fresh.
 4. Reference price is `min(underlying, token midpoint, available oracle)`. Adverse price loss is `max(session gap floor, 2.33 × annual volatility × sqrt(horizon_days / 252))`, with volatility loss capped at 80%. Normal/overnight/weekend/unknown gap floors are 1%/3%/8%/20%; horizon expands through closure. These floors and normal approximation need calibration using actual adverse gaps, earnings and halt data.
@@ -160,7 +160,7 @@ Before publishing an integration update, run the unit suite and the strict live 
 
 ## Backend advisory API contract
 
-Frontend code is unchanged by this PR. A frontend owner can connect a consumer or server proxy to `POST /risk/advisory/{asset}`. This service must be deployed separately; authentication and the browser's same-origin/CORS strategy belong to that integration. Browser credentials must not be forwarded automatically.
+Frontend code is unchanged by this PR. A frontend owner can connect a consumer or server proxy to `POST /risk/advisory/{asset}`. This service must be deployed separately; authentication and browser integration belong to that owner. Direct JSON requests can opt into the backend's explicit-origin CORS policy using `RISK_ALLOWED_ORIGINS=http://localhost:3000,https://frontend.example`; CORS is disabled by default, accepts GET/POST and Content-Type only, and never enables credentials or wildcard origins. A same-origin server proxy remains an alternative. Browser credentials must not be forwarded automatically.
 
 The endpoint accepts a `SimulateRequest` with an explicit `borrowers` array (`[]` for an empty account), and returns `assessment`, `recommendation`, `simulations`, and `dawn_proposal`. These share one assessed snapshot/evidence hash. Quantities are normalized displayed tokens and debt is USD; for example, a frontend storing 100,000 collateral units at 10,000 units/token and 35,000 USDT cents must send 10 tokens and USD 350. The backend never silently replaces this endpoint's empty account with its synthetic portfolio. Raw-token oracle prices require an explicit UI multiplier as described below.
 
@@ -170,7 +170,7 @@ curl -X POST http://127.0.0.1:8000/risk/advisory/NVDA \
   -d '{"scenario":"friday","borrowers":[{"borrower_id":"demo-position","collateral_quantity":10,"debt_usd":350,"liquidation_threshold":0.625}]}'
 ```
 
-All outputs remain advisory and require review. Consumers must show simulated data and backend reference prices explicitly, validate expiry, and keep live status checks separate from synthetic valuation. The ordinary risk endpoints support NVDA/BNB_STOCK_NVDA; a frontend NVDAB symbol requires mapping. QQQb/SPCXb and corporate-action continuity are not supported by this API. No contract-exact accounting or on-chain execution is implied.
+All outputs remain advisory and require review. Consumers must show simulated data and backend reference prices explicitly, validate expiry, and keep live status checks separate from synthetic valuation. The ordinary risk endpoints explicitly accept NVDA/NVDAB/BNB_STOCK_NVDA and return the canonical BNB_STOCK_NVDA asset. QQQb/SPCXb and corporate-action continuity are not supported by this API. No contract-exact accounting or on-chain execution is implied.
 
 `router_hmax` and `router_margin` configure the advisory DawnRouter ceiling: `market_lltv × (1 − router_hmax) − router_margin`. Defaults match the deployment example (15% and 2%), capping target LTV at 51.125%. The optimiser and proposal validator enforce that bound. Verify these settings against the deployed router; no contract reads or writes are introduced. Oracle-premium normalization also applies to this ceiling.
 

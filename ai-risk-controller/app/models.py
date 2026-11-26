@@ -1,4 +1,4 @@
-"""Validated service contracts. Money is USD; quantities are raw normalized tokens."""
+"""Money is USD; quantities are normalized displayed tokens. Raw oracle prices declare their units."""
 from datetime import datetime
 from enum import StrEnum
 import math

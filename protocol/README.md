@@ -155,3 +155,22 @@ With `jumpBandBps != 0` (placeholder 30%), an UPWARD feed move above lastGood x 
 12. **Early-close post-market hours are assumed.** Post-market is assumed to end at 17:00 ET.
 13. **Fork test results are live, not pinned.** Morpho on BSC (`0x01b0Bd309AA75547f7a37Ad7B1219A898E67a83a`) reported `isLltvEnabled(0.625e18) = true` and `isIrmEnabled(0x7112D95cB5f6b13bF5F5B94a373bB3b2B381F979) = true` on Nov 26 2026. The fork uses the latest block, not a pinned one.
 14. **MockBStock has no compliance or pause logic,** and it allows an immediate `effectiveAt`. The real token requires a future `effectiveAt`.
+
+## Mainnet deploy
+
+`script/DeployMainnet.s.sol` deploys one market on BNB Chain (chain id 56, asserted) for a REAL bStock and its REAL Atlas feed: registry, DawnOracle (per raw token, 2h live staleness), router, Morpho market (62.5% LLTV, AdaptiveCurveIrm) and listing. No mocks, no demo signer, no seed supply unless `SEED_SUPPLY` is set. All parameters are uncalibrated placeholders.
+
+Env: `ATLAS_FEED`, `BSTOCK`, `ELIGIBILITY_SIGNER`, `GUARDIAN` (required, must differ from the deployer); `KEEPER` (default deployer), `SEED_SUPPLY` (optional, USDT 18 dec).
+
+Caps (USDT, market totalBorrowAssets): total 1,000; OPEN 1,000, EXTENDED 500, CLOSED 250, WEEKEND 250, HALTED and CORP_ACTION 0. The guardian can pause and call `lowerCaps` (cannot raise); only the admin can `setCaps`.
+
+Steps (dry run by default; `--broadcast` is added deliberately by the operator):
+1. `export ATLAS_FEED=0xf569C3e52e797219eCFDc1659c3250B0BbDC693C BSTOCK=0x5b1910eAaD6450E50f816082Aa078C41F10C292f ELIGIBILITY_SIGNER=0x... GUARDIAN=0x...`
+2. Key at run time only: `--account <keystore> --sender <addr>`, or `--ledger --sender <addr>`, or `PRIVATE_KEY` typed into the shell session. Never put a key in a file.
+3. `forge script script/DeployMainnet.s.sol --rpc-url $BSC_RPC_URL --account <name> --sender <addr>` and review the simulation, then rerun with `--broadcast`.
+
+Verify after deploy: `router.admin()`, `router.guardian()`, `router.marketConfig(id)` (caps), `oracle.price()` > 0, `Morpho.idToMarketParams(id)`, and `forge verify-contract` for the three contracts. Make sure the keeper calls `oracle.update()` regularly and the holiday tables are current.
+
+### Real bStock compatibility (TSLAB, fork test `test/fork/RealBStockFork.t.sol`, 2026-11-26)
+
+On a BSC fork with the real TSLAB token, real Atlas feed and real Morpho, the full cycle works both directly on Morpho and through DawnRouter: supplyCollateral, borrow USDT, repay, withdrawCollateral. Nothing reverted. TSLAB is a beacon proxy; `transfer`/`transferFrom` call a pause check (`isTokenPaused`) and a compliance contract (`checkIsCompliant(token, address)`) for both sides, and both passed for Morpho, DawnRouter and a fresh holder at that block. Caveats: the holder balance was set with `deal()`, the router test mocks only the feed timestamp (to pass the staleness gate after warping to an OPEN session), and `uiMultiplier` was 1e18 (SNDKB, multiplier 8, was not cycled). The issuer can still pause the token or add compliance rules at any time, which would block Morpho transfers (and so repay, withdraw and liquidation); that risk is outside the protocol's control.

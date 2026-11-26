@@ -21,7 +21,7 @@ from app.services.store import AuditStore
 from app.simulation.portfolio import default_scenarios, simulate
 
 logger = logging.getLogger(__name__)
-ASSETS = {"NVDA": "BNB_STOCK_NVDA", "BNB_STOCK_NVDA": "BNB_STOCK_NVDA"}
+ASSETS = {"NVDA": "BNB_STOCK_NVDA", "NVDAB": "BNB_STOCK_NVDA", "BNB_STOCK_NVDA": "BNB_STOCK_NVDA"}
 
 
 class UnsupportedAsset(ValueError):

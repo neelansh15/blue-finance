@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from urllib.parse import urlsplit
 
 from app.integrations.market_status import LiveMarketStatusProvider
 from app.agents.issuer_agent import IssuerAgent, OpenAICompatibleProvider
@@ -84,6 +86,15 @@ def create_app(injected_service: RiskService | None = None, status_provider: Liv
     app = FastAPI(title="Dawn AI Risk Controller", version="0.1.0", lifespan=lifespan,
                   description="Advisory NVDA collateral risk. Default market, oracle, issuer and borrower inputs are SIMULATED. No transaction execution or private keys.")
     app.include_router(router)
+    origins = [origin.strip().rstrip('/') for origin in os.getenv('RISK_ALLOWED_ORIGINS', '').split(',') if origin.strip()]
+    for origin in origins:
+        parsed = urlsplit(origin)
+        if (parsed.scheme not in {'http', 'https'} or not parsed.hostname or parsed.username or parsed.password
+                or parsed.path or parsed.query or parsed.fragment):
+            raise ValueError('RISK_ALLOWED_ORIGINS requires explicit HTTP(S) origins without credentials or paths')
+    if origins:
+        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=['GET', 'POST'],
+                           allow_headers=['Content-Type'], allow_credentials=False)
 
     @app.exception_handler(UnsupportedAsset)
     async def unsupported(request: Request, exc: UnsupportedAsset):

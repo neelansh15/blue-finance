@@ -128,7 +128,7 @@ export default function Home() {
                 against a smaller share of your collateral value to account for price gaps at the next open.
               </p>
               <div className="ctas">
-                <a className="btn" href="#regimes">Try the loan simulator <IconArrow /></a>
+                <Link className="btn" href="/app/simplified">Try in Simplified Mode <IconArrow /></Link>
                 <Link className="text-link" href="/docs/markets">Read the architecture <IconArrow /></Link>
               </div>
             </div>
