@@ -33,7 +33,7 @@ assert.equal(nvda.status, "available");
 assert.equal(nvda.simulated, true);
 assert.ok(Math.abs(nvda.health_score - (100 - nvda.risk_score)) <= .051);
 assert.equal(nvda.factors.length, 5);
-for (const alias of ["NVDAB", "QQQB", "SPCXB"]) {
+for (const alias of ["NVDAB", "QQQB", "SPCXB", "TSLAB", "GOOGLB"]) {
   const row = overview.assets.find(row => row.aliases.includes(alias));
   assert.equal(row.status, "available", `${alias} coverage missing`);
   assert.equal(row.simulated, true);

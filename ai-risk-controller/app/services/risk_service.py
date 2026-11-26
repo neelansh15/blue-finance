@@ -29,6 +29,8 @@ ASSETS = {
         "BNB_STOCK_NVDA": ("NVDA", "NVDAB", "BNB_STOCK_NVDA"),
         "BNB_STOCK_QQQ": ("QQQ", "QQQB", "BNB_STOCK_QQQ"),
         "BNB_STOCK_SPCX": ("SPACEX", "SPCX", "SPCXB", "BNB_STOCK_SPCX"),
+        "BNB_STOCK_TSLA": ("TSLA", "TSLAB", "TESLA", "BNB_STOCK_TSLA"),
+        "BNB_STOCK_GOOGL": ("GOOGL", "GOOGLB", "ALPHABET", "BNB_STOCK_GOOGL"),
     }.items()
     for alias in aliases
 }

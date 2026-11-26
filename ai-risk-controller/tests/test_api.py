@@ -42,7 +42,7 @@ def test_all_endpoints_and_openapi(client):
 def test_validation_and_empty_inputs(client):
     for body in [{"liquidation_quantity": -1}, {"as_of": "2026-11-20T13:00:00"}, {"unknown": True}]:
         assert client.post("/risk/assess/NVDA", json=body).status_code == 422
-    assert client.post("/risk/assess/TSLA", json={}).status_code == 404
+    assert client.post("/risk/assess/UNKNOWN", json={}).status_code == 404
     result = client.post("/risk/simulate/NVDA", json={"borrowers": [], "scenarios": []})
     assert result.status_code == 200
     assert result.json()["simulations"] == []

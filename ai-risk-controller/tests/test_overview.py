@@ -18,8 +18,8 @@ def test_overview_cache_refresh_and_health_semantics(monkeypatch):
             assert first.headers['cache-control'] == 'no-store'
             data = first.json()
             assert data['refresh_after_seconds'] == 5
-            assert len(data['assets']) == 3
-            assert {row['asset'] for row in data['assets']} == {'BNB_STOCK_NVDA', 'BNB_STOCK_QQQ', 'BNB_STOCK_SPCX'}
+            assert len(data['assets']) == 5
+            assert {row['asset'] for row in data['assets']} == {'BNB_STOCK_NVDA', 'BNB_STOCK_QQQ', 'BNB_STOCK_SPCX', 'BNB_STOCK_TSLA', 'BNB_STOCK_GOOGL'}
             assert all(row['status'] == 'available' and row['simulated'] for row in data['assets'])
             assert 'hypothetical' in data['assets'][2]['description']
             row = data['assets'][0]
@@ -68,7 +68,7 @@ def test_asset_profiles_and_aliases_are_distinct_and_audit_is_separate():
     try:
         with TestClient(create_app(RiskService(Policy(), store))) as client:
             results = {}
-            for alias, canonical, price in [('NVDAB', 'BNB_STOCK_NVDA', 140), ('QQQb', 'BNB_STOCK_QQQ', 510), ('SpaceX', 'BNB_STOCK_SPCX', 130)]:
+            for alias, canonical, price in [('NVDAB', 'BNB_STOCK_NVDA', 140), ('QQQb', 'BNB_STOCK_QQQ', 510), ('SpaceX', 'BNB_STOCK_SPCX', 130), ('TSLAb', 'BNB_STOCK_TSLA', 380), ('Googlb', 'BNB_STOCK_GOOGL', 275)]:
                 response = client.post(f'/risk/assess/{alias}', json={'scenario': 'friday'})
                 assert response.status_code == 200, response.text
                 row = response.json()
@@ -80,11 +80,11 @@ def test_asset_profiles_and_aliases_are_distinct_and_audit_is_separate():
                 assert client.get(f'/risk/score/{alias}').json()['asset'] == canonical
                 assert client.get(f'/risk/events/{alias}').json()['asset'] == canonical
                 results[alias] = row
-            assert len({row['evidence_hash'] for row in results.values()}) == 3
-            assert len({row['metrics']['annualised_volatility'] for row in results.values()}) == 3
-            assert len({row['metrics']['depth_usd'] for row in results.values()}) == 3
+            assert len({row['evidence_hash'] for row in results.values()}) == 5
+            assert len({row['metrics']['annualised_volatility'] for row in results.values()}) == 5
+            assert len({row['metrics']['depth_usd'] for row in results.values()}) == 5
             assert results['QQQb']['score']['overall'] < results['NVDAB']['score']['overall'] < results['SpaceX']['score']['overall']
-            for alias in ['QQQB', 'SPCXB']:
+            for alias in ['QQQB', 'SPCXB', 'TSLAB', 'GOOGLB']:
                 for operation, body in [('advisory', {'borrowers': []}), ('recommend', {}), ('simulate', {})]:
                     assert client.post(f'/risk/{operation}/{alias}', json=body).status_code == 404
             assert client.post('/risk/assess/UNKNOWN', json={}).status_code == 404

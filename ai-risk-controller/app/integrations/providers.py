@@ -36,6 +36,8 @@ DEMO_PROFILES = {
     "BNB_STOCK_NVDA": DemoProfile(140, .028, 42, .01, 1, 4_000_000, .4),
     "BNB_STOCK_QQQ": DemoProfile(510, .014, 43, .004, 1.8, 8_000_000, .25),
     "BNB_STOCK_SPCX": DemoProfile(130, .048, 44, .035, .25, 750_000, .7),
+    "BNB_STOCK_TSLA": DemoProfile(380, .036, 45, .012, .8, 5_000_000, .45),
+    "BNB_STOCK_GOOGL": DemoProfile(275, .020, 46, .006, 1.4, 6_000_000, .3),
 }
 
 
