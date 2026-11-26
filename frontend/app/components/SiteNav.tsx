@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRef } from "react";
-import { IconLogo } from "./Icons";
+import { IconArrow, IconLogo } from "./Icons";
 import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [
@@ -21,7 +22,7 @@ export default function SiteNav() {
       <nav className="wrap nav-inner" aria-label="Primary">
         <a className="brand" href="#top" aria-label="Dawn Finance, back to top">
           <IconLogo />
-          <span>Dawn Finance</span>
+          <span>Dawn<span className="brand-wide"> Finance</span></span>
         </a>
         <ul className="nav-links">
           {LINKS.map(({ href, label }) => <li key={href}><a href={href}>{label}</a></li>)}
@@ -39,7 +40,7 @@ export default function SiteNav() {
               }
             }}
           >
-            <summary ref={toggle}>Menu <span className="menu-icon" aria-hidden="true" /></summary>
+            <summary ref={toggle} aria-label="Menu"><span className="nav-menu-label">Menu</span> <span className="menu-icon" aria-hidden="true" /></summary>
             <ul>
               {LINKS.map(({ href, label }) => (
                 <li key={href}>
@@ -52,6 +53,7 @@ export default function SiteNav() {
               ))}
             </ul>
           </details>
+          <Link className="btn launch-app" href="/app">Launch App <IconArrow /></Link>
         </div>
       </nav>
     </header>

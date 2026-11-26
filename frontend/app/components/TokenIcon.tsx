@@ -4,6 +4,8 @@ const TOKEN_IMAGES = {
   NVDAB: "/assets/tokens/nvdab.png",
   TSLAB: "/assets/tokens/tslab.png",
   AAPLB: "/assets/tokens/aaplb.png",
+  QQQB: "/assets/tokens/qqqb.png",
+  SPCXB: "/assets/tokens/spcxb.png",
   USDT: "/assets/tokens/usdt.png",
 } as const;
 
