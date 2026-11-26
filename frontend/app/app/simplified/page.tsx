@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import SimplifiedFlow from "./SimplifiedFlow";
-import "./simplified.css";
+import LiveApp from "../LiveApp";
 
 export const metadata: Metadata = { title: "Simplified Mode | Blue Finance" };
 
-export default function SimplifiedPage() {
-  return <SimplifiedFlow />;
+export default function Page() {
+  return <LiveApp view="simplified" />;
 }

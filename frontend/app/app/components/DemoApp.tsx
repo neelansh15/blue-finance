@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import BorrowForm from "./BorrowForm";
 import CorpActionBanner from "./CorpActionBanner";
@@ -46,6 +47,9 @@ export default function DemoApp() {
         <summary>Assess this position with the risk backend</summary>
         <RiskPanel key={JSON.stringify(riskPosition)} position={riskPosition} />
       </details>
+      <p className="live-footer">
+        <Link href="/app">Open live app</Link> · <Link href="/app/simulator/simplified">Simplified walkthrough</Link> · <Link href="/app/simulator/risk">Advisory risk</Link>
+      </p>
       <p className="illustrative dapp-foot">
         Developer controls: add ?dev=1 to the URL or press Shift+D. Not live, not audited.
       </p>

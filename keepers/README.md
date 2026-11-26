@@ -1,6 +1,22 @@
-# Blue keepers (WS6)
+# Blue keepers
 
-Off-chain keepers: session calendar, halt monitor, regime keeper (plus oracle heartbeat), demo control, liquidation bot.
+## BNB Mainnet keeper and eligibility service
+
+`pnpm bnb-automation` serves eligibility and runs the keeper for the deployed Aave V3 pool. The worker checks Nasdaq halts, Binance bStock status, the onchain calendar and token multipliers. It refreshes USDT and stock prices when needed and reports healthy stocks every four minutes. Failed or unknown checks stop healthy reports and reset the affected stock's recovery. A confirmed halt or corporate action can place a short calendar override. A price discontinuity or changed multiplier requires admin review before accepting a new reference.
+
+### Set up the roles once
+
+1. Create dedicated keeper and eligibility signer accounts. Fund the keeper with BNB for recurring transactions. The signer only signs messages off-chain. Use the existing guardian address and keep the admin on MetaMask.
+2. As the admin, call `StockBorrowControls.setRoles(keeper, guardian, signer)`, `MarketCalendar.setKeeper(keeper, true)`, and `StockPriceSource.setRoles(keeper, guardian)` on the USDT and each enabled stock price adapter. The [deployment registry](../frontend/src/lib/blue/bsc-mainnet.json) lists the addresses. Review and approve the role transactions in MetaMask. Role assignments are verified at startup.
+3. Start one always-on Render **Web Service**, with the repository root as its Root Directory so it can read the deployment registry. Use `corepack pnpm --dir keepers install --frozen-lockfile --prod=false` for Build Command and `corepack pnpm --dir keepers bnb-automation` for Start Command. Set the health check path to `/healthz`. Use a plan with continuous uptime and keep the service at one instance so the keeper nonce stays sequential.
+4. Set the variables from [`.env.bnb.example`](.env.bnb.example) in the worker's environment settings. Add only intended demo wallets to `BLUE_ELIGIBLE_ACCOUNTS`. Optionally set `BLUE_KEEPER_MARKETS` to a comma-separated subset to limit gas spending. Put keys and the random API token directly into Render's secret environment settings.
+5. In the frontend's server environment, set `BLUE_ELIGIBILITY_URL` to the worker's HTTPS origin and `BLUE_ELIGIBILITY_API_TOKEN` to the same random token. Deploy the frontend with those settings. Borrowers open **Borrow** and select **Request eligibility** for their stock. The service signs for the current nonce, and the wallet approves the onchain registration. Eligibility expires after one hour or the contract's lower maximum.
+
+The first report cycle starts four minutes after the service starts. A stock becomes borrowable after 30 minutes of healthy reports, provided the shared USDT reserve has liquidity. Allowlisted wallets still need BNB, eligible bStock collateral and enough USDT to cover repayment and interest. The keeper needs recurring BNB. Watch service logs and fund that account as needed. The service does not liquidate loans.
+
+## Earlier Morpho prototype
+
+The commands and environment variables below apply to the previous Morpho prototype.
 
     pnpm install && pnpm test          # unit tests
     pnpm smoke                         # live Binance bapi / Spot / Nasdaq RSS, prints parsed signals (--all for every bStock)

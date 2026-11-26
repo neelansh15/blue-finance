@@ -27,9 +27,14 @@ describe("nasdaq", () => {
   it("latest entry wins: unresumed halt -> halted; resumed -> ok; absent -> ok", () => {
     const items = parseNasdaqHalts(fixture);
     expect(nasdaqSignalFor(items, "PFSA").state).toBe("halted");
-    expect(nasdaqSignalFor(items, "TSLA").state).toBe("ok"); // 11/23 unresumed halt is older than 11/24 resumed halt
+    expect(nasdaqSignalFor(items, "TSLA", Date.parse("2026-11-24T16:00:00Z")).state).toBe("ok"); // 11/23 unresumed halt is older than 11/24 resumed halt
     expect(nasdaqSignalFor(items, "NVDA").state).toBe("halted");
     expect(nasdaqSignalFor(items, "AAPL").state).toBe("ok");
+  });
+  it("holds until the announced resumption time in US Eastern", () => {
+    const items = parseNasdaqHalts(fixture);
+    expect(nasdaqSignalFor(items, "TSLA", Date.parse("2026-11-24T15:09:59Z")).state).toBe("halted");
+    expect(nasdaqSignalFor(items, "TSLA", Date.parse("2026-11-24T15:10:00Z")).state).toBe("ok");
   });
   it("rate limits to once per minute, failure cached too, then unknown", async () => {
     let n = 0;

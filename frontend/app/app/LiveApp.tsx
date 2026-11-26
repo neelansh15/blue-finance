@@ -19,6 +19,17 @@ import { MARKET_STATUSES, STATUS_LABEL, type StockId } from "./markets";
 
 const actions = ["Supply USDT", "Withdraw USDT", "Supply stock", "Withdraw stock", "Borrow USDT", "Repay USDT"] as const;
 type Action = typeof actions[number];
+type View = "pool" | "earn" | "borrow" | "dashboard" | "simplified" | "risk";
+
+const views: Record<View, { title: string; initial: Action; actions: readonly Action[] }> = {
+  pool: { title: "Blue onchain", initial: "Supply USDT", actions },
+  earn: { title: "Earn with USDT", initial: "Supply USDT", actions: ["Supply USDT", "Withdraw USDT"] },
+  borrow: { title: "Borrow against stocks", initial: "Supply stock", actions: ["Supply stock", "Borrow USDT", "Repay USDT", "Withdraw stock"] },
+  dashboard: { title: "Your portfolio", initial: "Supply USDT", actions },
+  simplified: { title: "Manage your position", initial: "Supply stock", actions },
+  risk: { title: "Pool risk", initial: "Supply USDT", actions: [] },
+};
+
 type Feedback = { message: string; error?: boolean; hash?: Hex };
 
 const transactionAbi = [...poolContract.abi, ...controlsContract.abi, ...priceSourceAbi, ...tokenContract(BLUE.usdt).abi];
@@ -51,13 +62,14 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "The operation failed.";
 }
 
-export default function LiveApp() {
+export default function LiveApp({ view = "pool" }: { view?: View }) {
+  const config = views[view];
   const { address, chainId } = useAccount();
   const publicClient = usePublicClient({ chainId: bsc.id });
   const wallet = useWalletClient({ chainId: bsc.id }).data;
   const { switchChain, isPending: switching, error: switchError } = useSwitchChain();
   const [selected, setSelected] = useState<StockId>("TSLAB");
-  const [action, setAction] = useState<Action>("Supply USDT");
+  const [action, setAction] = useState<Action>(config.initial);
   const [amount, setAmount] = useState("");
   const [repayAll, setRepayAll] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -200,6 +212,29 @@ export default function LiveApp() {
     });
   }
 
+  function requestEligibility() {
+    if (!address) return;
+    void run(async send => {
+      setFeedback({ message: "Requesting eligibility for this wallet and stock…" });
+      const response = await fetch("/api/blue/eligibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ account: address, stock: stockAddress }),
+        signal: AbortSignal.timeout(18_000),
+      });
+      const signed = await response.json();
+      if (!response.ok) throw new Error(signed.error ?? "Eligibility is temporarily unavailable.");
+      if (typeof signed?.signature !== "string" || !/^0x[0-9a-fA-F]{130}$/.test(signed.signature) ||
+          typeof signed.expiry !== "string" || !/^\d{1,16}$/.test(signed.expiry)) {
+        throw new Error("The signer returned an invalid response.");
+      }
+      await send(BLUE.controls, encodeFunctionData({
+        ...controlsContract, functionName: "registerEligibility",
+        args: [stockAddress, BigInt(signed.expiry), signed.signature as Hex],
+      }), "Register eligibility");
+    });
+  }
+
   function refreshPrice(source: Address, label: string) {
     void run(send => send(source, encodeFunctionData({ abi: priceSourceAbi, functionName: "refresh" }), label));
   }
@@ -209,7 +244,7 @@ export default function LiveApp() {
       <section className="app-masthead">
         <div className="wrap">
           <div className="app-heading">
-            <h1>Blue <em>onchain.</em></h1>
+            <h1>{view === "pool" ? <>Blue <em>onchain.</em></> : config.title}</h1>
             <a href={`${explorer}/address/${BLUE.pool}`}>View pool on BscScan</a>
           </div>
           <p>BNB Smart Chain mainnet. Wallet approvals use real tokens and BNB gas.</p>
@@ -254,14 +289,14 @@ export default function LiveApp() {
           </dl>}
         </section>
 
-        <section className="app-market-panel live-controls" aria-labelledby="live-manage">
+        {config.actions.length > 0 && <section className="app-market-panel live-controls" aria-labelledby="live-manage">
           <div className="app-section-heading"><h2 id="live-manage">Manage position</h2></div>
           <form className="live-form" onSubmit={submit}>
             <label>Action<select value={action} disabled={busy} onChange={event => {
               setAction(event.target.value as Action);
               setAmount("");
               setRepayAll(false);
-            }}>{actions.map(item => <option key={item}>{item}</option>)}</select></label>
+            }}>{config.actions.map(item => <option key={item}>{item}</option>)}</select></label>
             {usesCollateral && <p>Selected stock <strong>{selected}</strong></p>}
             <label>Amount ({stockAction ? selected : "USDT"})
               <input inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount}
@@ -278,6 +313,9 @@ export default function LiveApp() {
             {wrongChain && <button type="button" disabled={switching} onClick={() => switchChain({ chainId: bsc.id })}>Switch to BNB Smart Chain</button>}
             {switchError && <p role="alert">{errorMessage(switchError)}</p>}
             {borrowMessage && <p>{borrowMessage}</p>}
+            {action === "Borrow USDT" && address && !eligible && (
+              <button type="button" disabled={!usable || busy} onClick={requestEligibility}>Request {selected} eligibility</button>
+            )}
             {amount !== "" && parsed === undefined && !repayAll && <p role="alert">Enter a positive amount, using up to 18 decimal places.</p>}
             <button className="live-primary" type="submit" disabled={!usable || busy || !amountNeeded || !!borrowMessage}>{busy ? "Wallet action in progress" : action}</button>
             {stock && stock.reserve[0] > 0n && !stock.reserve[8] && (
@@ -304,9 +342,23 @@ export default function LiveApp() {
           {feedback && <div className="live-feedback" role={feedback.error ? "alert" : "status"}>
             {feedback.message} {feedback.hash && <a href={`${explorer}/tx/${feedback.hash}`}>View transaction</a>}
           </div>}
-        </section>
+        </section>}
+        {view === "risk" && <section className="app-market-panel live-controls" aria-labelledby="live-risk">
+          <div className="app-section-heading"><h2 id="live-risk">Borrowing checks</h2></div>
+          <dl className="app-preview live-preview">
+            <div><dt>Selected stock</dt><dd>{selected}</dd></div>
+            <div><dt>Stock price ready</dt><dd>{stock?.sourceReady === undefined ? "Unavailable" : stock.sourceReady ? "Yes" : "No"}</dd></div>
+            <div><dt>USDT price ready</dt><dd>{data?.usdt.sourceReady === undefined ? "Unavailable" : data.usdt.sourceReady ? "Yes" : "No"}</dd></div>
+            <div><dt>Active loan-to-value limit</dt><dd>{stock?.limits ? `${display(stock.limits[0], 2)}%` : "Gated"}</dd></div>
+            <div><dt>Stock debt cap</dt><dd>{stock?.limits ? `${display(stock.limits[1])} USDT` : "Gated"}</dd></div>
+          </dl>
+          <p className="live-preview"><Link href="/app/simulator/risk">Open the advisory risk simulator</Link></p>
+        </section>}
       </div>
-      <p className="wrap live-footer">Hackathon deployment with prototype risk limits. <Link href="/app/simulator">Try the simulator</Link> for a pre-funded walkthrough.</p>
+      <div className="wrap live-footer">
+        {view !== "risk" && <><Link href="/app/risk">Pool risk</Link><span aria-hidden="true"> · </span></>}
+        <Link href="/app/simulator">Simulator</Link>
+      </div>
     </main>
   );
 }

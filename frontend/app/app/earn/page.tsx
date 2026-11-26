@@ -1,9 +1,8 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
-import LendingApp from "../LendingApp";
+import LiveApp from "../LiveApp";
 
-export const metadata: Metadata = { title: "Earn | Blue Finance" };
+export const metadata: Metadata = { title: "Earn with USDT | Blue Finance" };
 
-export default function EarnPage() {
-  return <Suspense><LendingApp mode="earn" /></Suspense>;
+export default function Page() {
+  return <LiveApp view="earn" />;
 }

@@ -62,7 +62,7 @@ export const articles: DocArticle[] = [
       {
         id: "demo",
         title: "Run the demo",
-        body: <><p>Connect a wallet on BNB Smart Chain with USDT and BNB for gas. Supply a small amount of USDT, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The pool launched with zero seeded USDT. For borrowing, the operator must seed liquidity, confirm keeper recovery and fresh prices, and register eligibility for the selected stock. The onchain workspace shows these gates. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
+        body: <><p>Connect a wallet on BNB Smart Chain with USDT and BNB for gas. Supply a small amount of USDT, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The pool launched with zero seeded USDT. Borrowing needs reserve liquidity, a configured keeper and signer service, fresh prices, and a wallet eligibility registration for the selected stock. The onchain workspace shows these gates. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
       },
     ],
     sources: [
@@ -316,7 +316,7 @@ forge script script/DeployBsc.s.sol:DeployBsc \
         body: <ul>
           <li>Calibrate the risk parameters in <code>BlueV3Deployment.sol</code> against price-gap history and executable liquidation depth.</li>
           <li>Confirm with Atlas which feed instances Blue should use, and decide on a second price source.</li>
-          <li>Automate keeper reporting, eligibility signing and halt monitoring. The hackathon workspace supports manual operator actions.</li>
+          <li>Activate the keeper and eligibility service and monitor its halt sources. The app supports eligibility requests from approved wallets.</li>
           <li>Confirm issuer transfer permissions for bStocks and how shared-reserve deficits are handled.</li>
           <li>Complete a security review and confirm license eligibility for production use.</li>
         </ul>,

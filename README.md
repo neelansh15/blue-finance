@@ -19,7 +19,7 @@
 
 ### Working demo
 
-Run the frontend and open `/app` for the live pool. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, a demo operator first has to supply liquidity, maintain fresh prices and keeper reports, and register wallet eligibility. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
+Run the frontend and open `/app` for the live pool. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, supply liquidity and configure the [keeper and eligibility service](keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). The borrower registers eligibility from the live app. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
 
 Open `/app/simulator` for a pre-funded walkthrough of lending, borrowing, a halt and repayment without wallet transactions.
 
@@ -144,7 +144,7 @@ Token and feed addresses are listed in the [protocol README](protocol/README.md#
 |---|---|
 | [`protocol/`](protocol/README.md) | The current Aave V3 deployment, with offline and BNB mainnet fork tests. |
 | [`frontend/`](frontend/README.md) | Landing page, onchain workspace, and pre-funded simulator. |
-| [`keepers/`](keepers/README.md) and [`demo/`](demo/README.md) | Still built for the earlier Morpho prototype. No keeper reports to the Aave pool yet. |
+| [`keepers/`](keepers/README.md) and [`demo/`](demo/README.md) | Includes the BNB Mainnet keeper and eligibility service. The older regime keeper and liquidation bot target Morpho. |
 | [`ai-risk-controller/`](ai-risk-controller/README.md) | Advisory only, on simulated data. Its Blue parameter proposals still follow the Morpho design. |
 | [`protocol-old/`](protocol-old/README.md) | The earlier prototype on Morpho Blue, kept for reference. |
 
@@ -263,7 +263,7 @@ Every value is a placeholder until calibrated. Source: [`BlueV3Deployment.sol`](
 ## Roadmap
 
 1. Calibrate limits, discounts and caps against gap risk and executable liquidation depth
-2. Connect the app and keepers to the Aave pool, and build the eligibility service
+2. Activate the BNB Mainnet keeper and eligibility service
 3. Confirm Atlas feeds and decide on a second price source
 4. Security review and license check
 5. Capped mainnet launch, with owner approval

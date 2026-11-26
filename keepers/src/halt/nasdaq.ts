@@ -57,14 +57,29 @@ function haltKey(h: NasdaqHalt): string {
 }
 
 /** Decide the state for one ticker from parsed items. Latest halt entry wins; resumption trade time set => resumed. */
-export function nasdaqSignalFor(items: NasdaqHalt[], ticker: string): Signal {
+const easternClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+});
+
+function hasResumed(halt: NasdaqHalt, nowMs: number): boolean {
+  const date = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(halt.resumptionDate);
+  const time = /^(\d{1,2}):(\d{2}):(\d{2})(\.\d+)?$/.exec(halt.resumptionTradeTime);
+  if (!date || !time) return false;
+  const parts = Object.fromEntries(easternClock.formatToParts(nowMs).map(part => [part.type, part.value]));
+  const current = `${parts.year}${parts.month}${parts.day}${parts.hour}:${parts.minute}:${parts.second}`;
+  const resumes = `${date[3]}${date[1]!.padStart(2, "0")}${date[2]!.padStart(2, "0")}${time[1]!.padStart(2, "0")}:${time[2]}:${time[3]}`;
+  return current > resumes || (current === resumes && nowMs % 1000 >= Number(time[4] ?? 0) * 1_000);
+}
+
+export function nasdaqSignalFor(items: NasdaqHalt[], ticker: string, nowMs = Date.now()): Signal {
   const mine = items.filter((i) => i.symbol === ticker.toUpperCase()).sort((a, b) => haltKey(a).localeCompare(haltKey(b)));
   const last = mine[mine.length - 1];
   if (!last) return ok("no halt entry on Nasdaq feed");
-  if (last.resumptionTradeTime) {
+  if (hasResumed(last, nowMs)) {
     return ok(`resumed ${last.resumptionDate} ${last.resumptionTradeTime} (halt ${last.reasonCode} ${last.haltDate} ${last.haltTime})`);
   }
-  return halted(`Nasdaq halt ${last.reasonCode} since ${last.haltDate} ${last.haltTime}, no resumption time`);
+  return halted(`Nasdaq halt ${last.reasonCode} since ${last.haltDate} ${last.haltTime}, trading has not resumed`);
 }
 
 export class NasdaqHaltSource implements HaltSource {
@@ -100,7 +115,7 @@ export class NasdaqHaltSource implements HaltSource {
     await this.refresh(nowMs);
     const c = this.cache!;
     if (!c.items) return unknown(`Nasdaq RSS fetch failed: ${c.error}`);
-    return nasdaqSignalFor(c.items, asset.ticker);
+    return nasdaqSignalFor(c.items, asset.ticker, nowMs);
   }
 
   /** Whole feed, for the smoke test. */
