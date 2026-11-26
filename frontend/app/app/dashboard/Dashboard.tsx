@@ -34,7 +34,7 @@ export default function Dashboard() {
       </section>
 
       <div className="wrap dashboard-positions">
-        <section aria-labelledby="borrow-positions">
+        <section className="dashboard-position-panel" aria-labelledby="borrow-positions">
           <div className="app-section-heading">
             <h2 id="borrow-positions">Borrow positions</h2>
             <span className="app-unit">{borrowed.length} {borrowed.length === 1 ? "market" : "markets"}</span>
@@ -73,7 +73,7 @@ export default function Dashboard() {
           </ul>
         </section>
 
-        <section aria-labelledby="earn-positions">
+        <section className="dashboard-position-panel" aria-labelledby="earn-positions">
           <div className="app-section-heading">
             <h2 id="earn-positions">Earn positions</h2>
             <span className="app-unit">{supplied.length} {supplied.length === 1 ? "market" : "markets"}</span>

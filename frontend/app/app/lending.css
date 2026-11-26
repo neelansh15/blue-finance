@@ -389,14 +389,21 @@
   font-size: 0.8125rem;
 }
 
-.app-market-ledger,
-.app-positions {
-  margin-top: 12px;
+.app-market-panel,
+.dashboard-position-panel {
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
 }
 
-.app-market-ledger,
-.app-positions li {
-  border: 1px solid var(--rule-strong);
+.app-market-panel .app-section-heading,
+.dashboard-position-panel .app-section-heading {
+  min-height: 64px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.app-positions {
+  margin: 0;
 }
 
 .app-market-ledger {
@@ -408,7 +415,16 @@
 
 .app-market-ledger th,
 .app-market-ledger td {
-  padding: 10px 8px;
+  padding: 12px 10px;
+}
+
+.app-market-ledger th:first-child {
+  padding-left: 16px;
+}
+
+.app-market-ledger th:last-child,
+.app-market-ledger td:last-child {
+  padding-right: 16px;
 }
 
 .app-market-ledger thead th {
@@ -492,11 +508,11 @@
 }
 
 .app-positions li {
-  padding: 12px;
+  padding: 16px;
 }
 
 .app-positions li + li {
-  margin-top: 12px;
+  border-top: 1px solid var(--rule);
 }
 
 .app-positions dl {

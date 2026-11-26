@@ -161,7 +161,7 @@ function MarketWorkspace({ mode, groups, initialMarket, initialAction }: {
       </section>
 
       <div className="wrap app-workspace">
-        <section aria-labelledby="markets-heading">
+        <section className="app-market-panel" aria-labelledby="markets-heading">
           <div className="app-section-heading">
             <h2 id="markets-heading">Markets</h2>
             <span className="app-unit"><TokenIcon symbol="USDT" size={18} /> USDT loans</span>
