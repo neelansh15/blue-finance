@@ -217,7 +217,8 @@ Everything Blue adds around Morpho: the oracle, the regime registry, the router 
 
 ## Documentation
 
-- [Architecture v2](architecture-v2.md) covers the planned hub and spoke lending design.
+- [Architecture v3](architecture-v3.md) covers the planned Aave V3 pool with shared USDT liquidity and stock-specific borrowing controls.
+- [Architecture v2](architecture-v2.md) records the earlier Aave V4 hub and spoke proposal.
 - [architecture-v1.md](architecture-v1.md): architecture on unmodified Morpho Blue
 - [implementation-plan.md](implementation-plan.md): workstreams, build order, risks
 - [morpho-blue.md](morpho-blue.md): Morpho Blue research

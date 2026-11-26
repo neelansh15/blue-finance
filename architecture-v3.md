@@ -1,0 +1,82 @@
+# Architecture v3
+
+**Blue Finance · 2026-11-27 · Aave V3 design for BNB Chain**
+
+Blue will operate **one Aave V3 pool with one shared USDT reserve**. Lenders supply USDT once. Borrowers use one eligible stock token as collateral per account, initially TSLAB or NVDAB. Both types of borrower draw from the same reserve. The pool enforces stock-specific rules modeled on Zona Lend, so a Tesla halt can stop new Tesla-backed loans while Nvidia-backed borrowing and Tesla repayment continue.
+
+V3 supersedes the [V4 hub and spoke proposal](architecture-v2.md). The [Morpho architecture](architecture-v1.md) describes the current implementation. This is a design for a separate deployment.
+
+## 1. How borrowing works
+
+```mermaid
+flowchart LR
+    L[Lenders] -->|Supply USDT| P[Blue Aave V3 Pool]
+    T[Tesla-backed borrowers] -->|Supply TSLAB| P
+    N[Nvidia-backed borrowers] -->|Supply NVDAB| P
+    P <-->|Draw and repay USDT| R[Shared USDT reserve]
+    G[Per-stock borrow controls] --> P
+    O[Stock and USDT price sources] --> P
+```
+
+1. **Lend.** A lender supplies USDT through the pool and receives interest-bearing aUSDT. Withdrawals depend on how much USDT is available.
+2. **Post collateral.** A borrower supplies TSLAB or NVDAB and enables that stock as collateral. The stock reserves are collateral only. USDT is the sole borrowable asset and does not count as collateral in the first deployment.
+3. **Borrow.** The pool checks the borrower’s active stock, eligibility, borrow permission, debt after interest, and the applicable limits. If approved, it draws from the shared USDT reserve and records variable-rate debt.
+4. **Repay or liquidate.** The borrower repays USDT plus interest and can withdraw the stock when the position permits it. Liquidators use the pool’s liquidation entry point when Aave reports an eligible position and collateral can transfer.
+
+A single USDT reserve lets either group borrow available cash without a lender or allocator moving it between stock markets. It also means USDT suppliers are exposed to both stocks. A per-stock debt ceiling limits new concentration. If a liquidation falls short, the shared reserve still bears the resulting exposure. Pin and test how the selected V3 release records a deficit, who may cover it, and how a shortfall affects supplier withdrawals. [Aave V3 market structure](https://aave.com/blog/unlimited-lending-market-structures) · [Aave V3 Pool and tokens](https://aave.com/docs/aave-v3/smart-contracts)
+
+## 2. Stock-specific borrowing controls
+
+Zona Lend uses Aave V3 Origin 3.6.0 on Robinhood Chain. Its borrow permission expires when monitoring goes silent, and its asset gate can reduce new borrowing power to zero while leaving the liquidation threshold intact. Blue follows that separation between permission to add risk and valuation of existing positions. Blue uses the BNB bStock calendar, issuer signals, and Atlas feeds. [Zona source package](https://github.com/zona-hk/zona-public/blob/main/contracts/package.json) · [Zona market hours](https://docs.zona.finance/lending/oracles)
+
+**Enforce at the pool.** The borrow path must inspect the account that will owe the debt, including for delegated borrowing. Every path that can open debt must pass the same checks, including any flash loan mode that opens debt. Disable unsupported debt-opening modes for the prototype. With debt outstanding, the account’s designated stock cannot change. Enforce this through collateral enable and disable operations, automatic collateral activation, withdrawals, and aToken transfer hooks. Repayment and liquidation must reduce the debt attributed to that stock, and the stock assignment can clear when debt reaches zero. A UI or router can bundle transactions while the pool enforces the policy. [V3.6.0 Pool entry points](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/src/contracts/protocol/pool/Pool.sol) · [V3.6.0 borrow logic](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/src/contracts/protocol/libraries/logic/BorrowLogic.sol)
+
+**Enforce two levels of caps.** Use the V3 reserve-wide USDT supply and borrow caps. Add an on-chain debt ceiling per stock, with regime-specific limits for new borrowing. Evaluate outstanding stock debt including interest plus the requested loan against that ceiling. For the prototype, validate accounting that groups scaled USDT variable debt by stock and converts it using the reserve’s current debt index. Reconcile that grouping against the pool after borrowing, all repayment paths, liquidation, and any deficit write-off. A cap reduction prevents new draws above the cap while existing debt remains outstanding.
+
+**Keep the borrow limit separate from liquidation.** The pool applies Blue’s regime discount to borrowing power and retains Aave’s configured liquidation threshold. Require the resulting position to meet both Blue’s limit and Aave’s standard validation. For example, $1,000 in collateral at a 50% base borrow LTV supports $500 in regular hours and $425 with a 15% weekend borrowing discount. If a borrower already owes $500 and has a 62.5% liquidation threshold, their health factor stays at 1.25 through the calendar change when prices and debt are held fixed. These figures are illustrative. Calibrate the launch limits against gap risk and executable liquidation depth. [Aave V3 health factor](https://aave.com/docs/aave-v3/overview)
+
+| Stock status | Borrow and withdraw with debt | Repay and liquidate |
+|---|---|---|
+| `OPEN`, `EXTENDED`, `CLOSED`, `WEEKEND` with fresh prices and permission | Check stock-specific caps and borrowing power. A withdrawal with debt must leave enough collateral under the current limits. | Repay through the pool. Liquidation uses Aave’s health factor and applicable prices. |
+| `HALTED`, `CORP_ACTION`, expired monitoring, guardian hold, or stale price for new risk | Block these actions for accounts using the affected stock. Other eligible stocks can continue drawing USDT. | Keep repayment available. Liquidation can continue if its price and transfer checks pass. |
+| Valuation unusable for liquidation | Block new risk for that stock. | Keep repayment available. Liquidation waits for a usable valuation. |
+
+The borrow restriction leaves debt-free withdrawal and collateral top-ups available when pool limits and issuer transfer rules allow them. A stock issuer can independently block collateral movement, including liquidation transfers. Avoid using a blanket pool pause for a routine stock halt so unaffected borrowers retain access and affected borrowers can reduce debt.
+
+**Permission and recovery.** Reuse `RegimeRegistry` for market hours, holidays, early closes, and overrides. The keeper renews borrow permission per stock using verified stock and issuer signals. Expired, stale, or unknown evidence cannot reopen a restriction. Reopening after a split or halt requires a fresh price consistent with the active multiplier and a configurable window of healthy evidence. Route genuine gaps outside the continuity band for review. The guardian can halt new risk or lower caps. Governance can release a guardian hold or raise caps. Reuse the EIP-712 eligibility approach with expiry, replay protection, and a chain- and pool-bound domain. The first implementation should bind eligibility to the borrowing account and market before enabling delegation.
+
+## 3. Pricing and liquidations
+
+- **Price stock and USDT in a common base currency.** Verify the Atlas feed mapping, read access, decimals, and whether the feed quotes a raw token or displayed unit for each bStock. Read `latestRoundData()` inside the validating adapter and expose the interface required by the selected V3 oracle. A raw-token price already incorporating the multiplier needs no second adjustment. Configure a USDT/USD source and test a depeg. Review the pool oracle’s fallback configuration so a rejected price cannot fall through to an unvalidated source. [Current Atlas findings](protocol/README.md#atlas-feed-findings-bsc-mainnet-probed-2026-11-26-1359-1405-utc-public-rpc) · [V3.6.0 oracle](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/src/contracts/misc/AaveOracle.sol)
+- **Use separate freshness limits.** Borrowing requires a fresh price and a live stock permission. Liquidation may use the last validated price within a bounded window while it remains compatible with the issuer state and multiplier. Once the valuation is unusable, stop liquidation for the affected stock until it recovers. A schedule change alone leaves the valuation intact. Test feed-first and multiplier-first corporate actions, plus a genuine reopening gap. [Zona liquidation behavior](https://docs.zona.finance/lending/health-factor)
+- **Use Aave’s liquidation accounting.** Replace the Morpho callback with Aave’s `liquidationCall` and read accrued debt and health from the pool. Start with a pre-funded liquidator and validate repayment sizing, collateral delivery, close factors, bonuses, and deficit handling against the pinned release. Exercise issuer permissions on actual bStock transfers separately from mock-token scenarios. [V3.6.0 Pool entry points](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/src/contracts/protocol/pool/Pool.sol)
+
+## 4. Contracts and repo changes
+
+| Area | V3 deployment or repo work |
+|---|---|
+| Aave lending core | One Blue-operated Pool with three reserves. Deploy the Pool addresses provider, configurator, access manager, oracle, interest-rate strategy, and receipt and debt token infrastructure required by the pinned release. Fund the USDT reserve through the Pool. |
+| Blue contracts | Reuse `RegimeRegistry`. Add stock borrow permissions, eligibility and debt-ceiling checks in the pool’s enforcement path, and Atlas price adapters. Keep a router optional for transaction bundling. |
+| Scripts and fixtures | Deploy a dedicated pool on a local BNB mainnet fork. Use deployer-minted stock mocks for deterministic cases and verify actual feed reads and real-token custody and transfers in separate tests. Keep exposures low for the demonstration. |
+| Keepers and frontend | Reuse market hours, issuer signals, and multiplier monitoring. Add stock permission renewal and show available USDT, accrued debt, health, stock borrowing capacity, and why a stock is blocked. Use the Pool for supply, borrow, repay, and withdraw. |
+| Advisory risk controller | Update recommendations for a Pool, stock reserve, stock debt ceiling, and separate borrowing and liquidation parameters. Keep recommendations subject to review. |
+
+## 5. Release and license
+
+**Use Aave V3 Origin 3.6.0 as the reference for the first prototype.** It matches Zona’s source baseline and gives us a concrete implementation to study. V3.7 removes the native PriceOracleSentinel and Isolation Mode debt ceilings. Blue’s stock-specific policy must be enforced independently of those features. Pick the production tag after reviewing license eligibility, fixes, audit coverage, and the required changes to the pool. [V3.6.0 license](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/LICENSE) · [Aave V3 features](https://aave.com/docs/aave-v3/overview) · [Aave V3 contract changes](https://aave.com/docs/aave-v3/smart-contracts)
+
+- **V3 Origin 3.6.0 and 3.7.0.** Their BUSL 1.1 terms include a conditional production grant, with conditions around migration of Aave users or funds, prior competing forks, and harm to Aave. The licenses specify an MIT change date of March 6, 2027 or an earlier designated date. Review the exact tag and Blue’s eligibility for any production use before that change. [V3.6.0 license](https://github.com/aave-dao/aave-v3-origin/blob/v3.6.0/LICENSE) · [V3.7.0 license](https://github.com/aave-dao/aave-v3-origin/blob/v3.7.0/LICENSE)
+- **Original V3 Core.** Its license converted to MIT by January 27, 2023. It is an older baseline and would need a review of fixes and capabilities added in later releases. [Original V3 Core license](https://github.com/aave/aave-v3-core/blob/master/LICENSE.md)
+
+## 6. Local acceptance checks
+
+| Scenario | Expected result |
+|---|---|
+| Fund the USDT reserve once and borrow against both stocks | Both borrowers draw from the same cash balance. Verify reserve caps, separate stock ceilings, interest accrual, and lender withdrawal against available cash. |
+| Halt Tesla or let its permission expire | Direct pool calls and delegated debt-opening calls fail for Tesla. Nvidia-backed borrowing continues with valid prices, permission, and liquidity. Tesla borrowers can repay. |
+| Try to bypass stock attribution | Test enabling a second stock, switching collateral while in debt, transferring aTokens, and any other route that can open or move debt. The stock assignment and ceilings remain accurate. |
+| Switch to `WEEKEND` or receive a stale report | Borrowing capacity falls or new borrowing stops according to policy. Existing liquidation health stays the same when prices and debt are held fixed. A fresh report leaves a guardian hold in place. |
+| Exercise both split update orders and a genuine price gap | Block borrowing on inconsistent prices. Prevent liquidation using a split-invalid valuation. A validated price drop updates health and allows liquidation when transfers work. |
+| Repay, liquidate, and resolve a shortfall | Verify stock debt accounting across partial repay, full repay and withdrawal, liquidation, and the selected release’s deficit path. Check that repayment works even when a collateral price is unavailable. |
+
+Before launch, confirm the production license and release, live Atlas and halt sources, issuer transfer permissions, and shared-reserve deficit handling. Calibrate parameters and review the pool modifications before using real assets. Any live Morpho position would need a borrower-approved migration that repays the original debt, withdraws collateral, and opens a new position. Mainnet broadcast requires explicit owner approval.
