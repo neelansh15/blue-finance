@@ -1,0 +1,36 @@
+{
+  "version": "market-routing-v0.1",
+  "targets": [
+    {
+      "target_id": "demo-nvda-primary",
+      "chain_id": 56,
+      "market_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "contract_address": "0x1111111111111111111111111111111111111111",
+      "collateral_asset": "BNB_STOCK_NVDA",
+      "underlying_venue": "NASDAQ",
+      "loan_asset": "USDT",
+      "market_lltv": 0.625,
+      "approved": true,
+      "enabled": true,
+      "simulated": true
+    },
+    {
+      "target_id": "demo-spy-alternative",
+      "chain_id": 56,
+      "market_id": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "contract_address": "0x2222222222222222222222222222222222222222",
+      "collateral_asset": "BNB_STOCK_SPY",
+      "underlying_venue": "NYSE_ARCA",
+      "loan_asset": "USDT",
+      "market_lltv": 0.625,
+      "approved": true,
+      "enabled": true,
+      "simulated": true
+    }
+  ],
+  "max_score": 60.0,
+  "max_annualised_volatility": 0.65,
+  "min_recovery_ratio": 0.7,
+  "observation_max_age_seconds": 300,
+  "expiry_seconds": 300
+}

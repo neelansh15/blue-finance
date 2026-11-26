@@ -99,6 +99,29 @@ docker run --rm -p 127.0.0.1:8000:8000 \
 
 The image uses Python 3.12, a nonroot user, runtime dependency lock, persistent data directory and HTTP healthcheck. Live feeds, calibrated/backtested policies, contract-exact accounting, production signing/approval workflows, authentication and monitoring infrastructure remain integration work.
 
-Validation in this workspace: 43 tests pass, including all REST routes, calendar boundaries, finite-depth recovery, parameter constraints, borrower shock/transition counts, oracle-premium safety, evidence/signing serialization, issuer fail-closed behavior, monitoring success/failure, and audit persistence. The demo completes through the REST routes; `pip check` reports no dependency conflicts. Third-party calendar/TestClient dependencies emit deprecation warnings. A Docker build could not be run because the local Docker daemon is unavailable.
+Validation before the routing extension: 43 tests passed, including all REST routes, calendar boundaries, finite-depth recovery, parameter constraints, borrower shock/transition counts, oracle-premium safety, evidence/signing serialization, issuer fail-closed behavior, monitoring success/failure, and audit persistence. The demo completes through the REST routes; `pip check` reports no dependency conflicts. Third-party calendar/TestClient dependencies emit deprecation warnings. A Docker build could not be run because the local Docker daemon is unavailable.
 
 Calendar reference: [pandas-market-calendars schedule and early-close API](https://pandas-market-calendars.readthedocs.io/en/latest/pandas_market_calendars.html).
+
+## Market risk and alternative contracts (sixth PR)
+
+`POST /risk/route/{asset}` assesses configured destinations and proposes a different contract if the current market fails its controls or quantitative checks. `KEEP_CURRENT` retains an eligible primary; `PROPOSE_ALTERNATIVE` identifies an independently eligible destination; `HOLD_NEW_EXPOSURE` means no acceptable destination exists. All responses are simulated, unsigned and pending review. Existing collateral and debt stay in their original contracts.
+
+Run `python -m scripts.market_routing_demo` for healthy, governance pause, government asset halt, global halt and high-volatility examples. A sample API request is in `routing-request.example.json`. It uses a historical simulated timestamp; expiry is tied to that timestamp.
+
+```sh
+curl -s -X POST http://127.0.0.1:8000/risk/route/NVDA \
+  -H 'Content-Type: application/json' --data-binary @routing-request.example.json
+```
+
+Set `RISK_ROUTING_CONFIG_PATH` to a server-controlled JSON file following `routing-policy.example.json` and restart the service. In Docker, bind-mount the configuration file and set the variable to its container path. Configuration binds an approved/enabled target ID to chain, market ID, contract address, collateral, underlying venue, loan asset and immutable LLTV. The default addresses and market IDs are **placeholders, not deployed contracts**. Only configured destinations can be evaluated; requests cannot supply addresses or approve targets. Market LLTV must also fit the existing governance bounds. The primary must use the configured chain and USD-valued USDT debt; cross-chain moves and incompatible loan assets are rejected. Alternatives must use a distinct contract address.
+
+Controls include observation time and source reference, government pause scope (`NONE`, `ASSET`, `VENUE`, `GLOBAL`, `UNKNOWN`), protocol-governance pause, and token-transfer pause. Missing, unknown, stale or future-dated control evidence rejects that destination. Positive asset/venue/global restrictions propagate across matching destinations even when their own reports say open. Token-transfer pauses and issuer restrictions propagate by asset; excessive/missing underlying volatility also propagates across contracts sharing that asset. Live adapters must persist active restrictions and verify their clearance; the MVP does not authenticate control reports or maintain a durable regulatory halt registry.
+
+Each market receives its own deterministic assessment and optimiser run. Default routing limits reject score ≥60, annual volatility ≥65%, recovery ratio <70%, or any underlying deterministic rejection of new borrowing. Eligible alternatives are ordered by score, volatility, then target ID. A healthy primary remains selected to avoid unnecessary switching. Evidence hashes bind input controls, risk assessments, full risk/routing policies, and destination metadata; complete decisions and evidence are retained in SQLite under `routing` records.
+
+SPY exists only as a configured, independently assessed alternative in this routing demo. Its mock provider reuses generic seeded synthetic inputs; these are not real SPY observations or evidence that SPY is safe during an NVDA halt. Ordinary risk endpoints retain their original NVDA allowlist. Other assets are evaluated only inside the server-configured routing registry, using the current US-equity calendar/one-share assumptions.
+
+Before production, integrate authenticated regulator/keeper and onchain pause observations, actual per-asset market/oracle/issuer data, verified deployment/market metadata, and an external approval/signing workflow. Switching contracts does not remove an asset-wide halt or shared volatility exposure. A different-asset destination changes exposure and requires separate approval and migration analysis. The API does not execute transactions, clear pauses, mutate immutable markets, or move existing positions. Historical replay outputs must not be treated as current executable instructions.
+
+Routing validation: **68 cumulative tests pass**. The API demo retains a healthy primary, proposes an alternative for governance/asset pauses or high volatility, and holds new exposure under a global halt.

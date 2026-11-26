@@ -5,6 +5,8 @@ from fastapi import APIRouter, Body, HTTPException, Query, Request
 from app.models import (Assessment, AssessRequest, Model, Recommendation, RiskEvent, RiskScore,
                         SimulateRequest, SimulationResult)
 from app.services.risk_service import RiskService
+from app.routing.engine import route_markets
+from app.routing.models import RoutingDecision, RoutingRequest
 
 router = APIRouter(prefix="/risk", tags=["Risk controller"])
 
@@ -84,3 +86,9 @@ def recommendations(asset: str, request: Request, limit: int = Query(100, ge=1, 
     now = datetime.now(timezone.utc)
     current = next((r for r in rows if r.timestamp <= now < r.expires_at), None)
     return HistoryResponse(asset=svc.asset_id(asset), current=current, recommendations=rows)
+
+
+@router.post("/route/{asset}", response_model=RoutingDecision,
+             summary="Assess configured markets and propose an eligible alternative contract for approval")
+def route(asset: str, request: Request, body: RoutingRequest):
+    return route_markets(service(request), asset, body, request.app.state.routing_policy)

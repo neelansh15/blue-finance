@@ -15,6 +15,7 @@ from app.config import load_policy
 from app.models import Model, SimulateRequest
 from app.services.risk_service import RiskService, UnsupportedAsset
 from app.services.store import AuditStore
+from app.routing.policy import load_routing_policy
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ def create_app(injected_service: RiskService | None = None) -> FastAPI:
             elif mode != "mock":
                 raise ValueError("Unknown ISSUER_PROVIDER")
             app.state.service = RiskService(load_policy(), AuditStore(os.getenv("RISK_DB_PATH", "risk.sqlite3")), agent=agent)
+        app.state.routing_policy = load_routing_policy()
         interval = float(os.getenv("RISK_POLL_SECONDS", "0"))
         if interval != 0 and (not 10 <= interval <= 86400):
             raise ValueError("RISK_POLL_SECONDS must be 0 (disabled) or between 10 and 86400")
