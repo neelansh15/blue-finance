@@ -242,7 +242,7 @@
       <div class="col"><h3>Ceilings per stock and session</h3><p>Debt including interest is tracked for each stock and checked on every borrow.</p></div>
       <div class="col"><h3>The trade-off</h3><p>Lenders share any shortfall across all five stocks. The ceilings limit how much one stock can contribute.</p></div>
     </div>
-    <footer><span>First listing in the deployed pool. Eligibility is a signed EIP-712 approval; the eligibility service is still to be built.</span><span class="page">5</span></footer>
+    <footer><span>First listing in the deployed pool. Eligibility is a signed EIP-712 approval. A signing service is written but not yet running.</span><span class="page">5</span></footer>
   </section></div>
 
   <!-- 6. Session limits -->
@@ -386,7 +386,7 @@
         <li>Liquidation keeps per-stock debt correct, including a deficit</li>
       </ul>
     </div>
-    <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit. The pool launched with no USDT, keeper reports and eligibility are manual, and there is no liquidation bot.</p>
+    <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit. The pool launched with no USDT. A keeper and eligibility service is written but not yet active or connected to the app, and the new pool has no liquidation bot.</p>
     <footer><span>BluePool <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC">0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</a> · Fork tests send nothing to mainnet.</span><span class="page">11</span></footer>
   </section></div>
 
@@ -418,7 +418,7 @@
     <h2>Five steps from live prototype <em>to open borrowing</em></h2>
     <ol class="steps">
       <li><h3>Calibrate risk</h3><p>Set discounts, limits and caps from historical gap data and the depth liquidators can actually sell into.</p></li>
-      <li><h3>Automate operations</h3><p>Run keepers for health and prices, add a liquidation bot and build the eligibility service.</p></li>
+      <li><h3>Activate automation</h3><p>Run the new keeper and eligibility service, connect it to the app and add a liquidation bot.</p></li>
       <li><h3>Confirm price feeds</h3><p>Confirm with Atlas which feed instances to use, and decide on a second price source.</p></li>
       <li><h3>Review and license</h3><p>Security review of the pool changes. Confirm Aave V3.6 license eligibility; it converts to MIT by March 6, 2027.</p></li>
       <li><h3>Open small</h3><p>Move admin to a multisig, fund a deficit backstop, verify issuer transfer rules, then add USDT under low caps.</p></li>
