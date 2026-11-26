@@ -524,4 +524,153 @@ contract DawnOracleTest is Test {
             assertGt(o.priceForRegime(_r(i)), 0);
         }
     }
+
+    // ------------------------------------------------------------ upward jump breaker
+
+    function _jumpOracle() internal returns (DawnOracle o) {
+        DawnOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
+        c.jumpBandBps = 3000; // +30%
+        o = new DawnOracle(c);
+    }
+
+    function test_Jump_DisabledByDefault() public {
+        feed.setAnswer(200e8);
+        assertEq(oracle.price(), 200e36);
+        assertFalse(oracle.isFrozen());
+    }
+
+    function test_Jump_WithinBandIsLive() public {
+        DawnOracle o = _jumpOracle();
+        feed.setAnswer(129e8);
+        assertFalse(o.isFrozen());
+        assertEq(o.price(), 129e36);
+        o.update();
+        assertEq(o.lastGoodPrice(), 129e36);
+    }
+
+    function test_Jump_UpwardHeldThenContinuousUnfreeze() public {
+        DawnOracle o = _jumpOracle();
+        feed.setAnswer(140e8); // +40%, e.g. feed-first reverse split or a bad print
+        assertTrue(o.isFrozen(), "pending jump reported");
+        assertEq(o.price(), P100, "pending jump never served");
+
+        vm.expectEmit(address(o));
+        emit DawnOracle.JumpRejected(140e36, P100);
+        o.update();
+        assertTrue(o.jumpFrozen());
+        assertTrue(o.isFrozen());
+        assertEq(o.lastGoodPrice(), P100, "jump not recorded");
+        assertEq(o.price(), P100);
+
+        regStub.set(WEEKEND); // routine regime change while jump-frozen: haircut still applies
+        feed.setAnswer(140e8);
+        assertEq(o.price(), 90e36);
+        regStub.set(OPEN);
+
+        feed.setAnswer(90e8); // live below last good while jump-frozen: lower price served at once
+        assertEq(o.price(), 90e36);
+        feed.setAnswer(103e8); // back within the 5% continuity band
+        o.update();
+        assertFalse(o.jumpFrozen());
+        assertFalse(o.isFrozen());
+        assertEq(o.price(), 103e36);
+    }
+
+    function test_Jump_FallBelowReferenceUnfreezes() public {
+        DawnOracle o = _jumpOracle();
+        feed.setAnswer(140e8);
+        o.update();
+        feed.setAnswer(60e8); // downward moves are accepted even from a jump freeze
+        o.update();
+        assertFalse(o.isFrozen());
+        assertEq(o.lastGoodPrice(), 60e36);
+        assertEq(o.price(), 60e36);
+    }
+
+    function test_Jump_DownwardNeverFrozen() public {
+        DawnOracle o = _jumpOracle();
+        feed.setAnswer(40e8); // -60% gap: must stay live so liquidations work
+        assertFalse(o.isFrozen());
+        assertEq(o.price(), 40e36);
+        o.update();
+        assertFalse(o.isFrozen());
+        assertEq(o.lastGoodPrice(), 40e36);
+    }
+
+    function test_Jump_ForceUnfreezeAfterMaxFreeze() public {
+        DawnOracle o = _jumpOracle();
+        feed.setAnswer(140e8);
+        o.update();
+        vm.prank(admin);
+        vm.expectRevert(DawnOracle.FreezeNotExpired.selector);
+        o.forceUnfreeze();
+        vm.warp(T0 + 12 hours + 1);
+        feed.setAnswer(140e8);
+        assertEq(o.price(), 90e36, "expired-freeze haircut while held");
+        vm.prank(admin);
+        o.forceUnfreeze();
+        assertFalse(o.jumpFrozen());
+        assertEq(o.price(), 140e36);
+    }
+
+    function test_Jump_SupersededByRegistryFreeze() public {
+        DawnOracle o = _jumpOracle();
+        feed.setAnswer(140e8);
+        o.update();
+        regStub.set(HALTED);
+        o.update();
+        assertFalse(o.jumpFrozen(), "now a HALTED freeze");
+        assertEq(o.frozenRegime() == _r(HALTED), true);
+        regStub.set(OPEN);
+        feed.setAnswer(60e8); // below reference, but this is no longer a jump freeze: continuity rules
+        o.update();
+        assertTrue(o.isFrozen());
+        assertEq(o.price(), 85e36, "HALTED haircut on frozen last good");
+    }
+
+    function test_Jump_ConstructorValidation() public {
+        DawnOracle.Config memory c = _cfg(address(feed), address(regStub), address(stock), 18, true);
+        c.jumpBandBps = 500; // must exceed the continuity band
+        vm.expectRevert(DawnOracle.InvalidConfig.selector);
+        new DawnOracle(c);
+        c.jumpBandBps = 1_000_001;
+        vm.expectRevert(DawnOracle.InvalidConfig.selector);
+        new DawnOracle(c);
+        c.jumpBandBps = 501;
+        new DawnOracle(c);
+    }
+
+    /// Fuzz: with the breaker on, price() never exceeds the last good price by more than the band.
+    function testFuzz_Jump_NeverServesAboveBand(uint256 answer, bool doUpdate) public {
+        DawnOracle o = _jumpOracle();
+        answer = bound(answer, 1, 1e12);
+        feed.setAnswer(int256(answer));
+        if (doUpdate) o.update();
+        assertLe(o.price() * 10_000, P100 * 13_000);
+    }
+
+    // ------------------------------------------------------------ calendar haircut floor
+
+    /// Frontend placeholders: CORP_ACTION (10%) below WEEKEND (15%). A keeper CORP_ACTION flag on a weekend
+    /// must not lower the haircut: the calendar regime acts as a floor.
+    function test_CalendarFloor_CorpActionBelowWeekend() public {
+        RegimeRegistry reg = new RegimeRegistry(admin, address(this), 1 days, false);
+        DawnOracle.Config memory c = _cfg(address(feed), address(reg), address(stock), 18, true);
+        c.haircutsBps = [uint16(0), 400, 1000, 1500, 2500, 1000];
+        DawnOracle o = new DawnOracle(c);
+
+        vm.warp(1_795_280_400 + 1 weeks); // Sat Nov 28 12:00 ET
+        feed.setAnswer(100e8);
+        o.update();
+        assertEq(o.price(), 85e36, "WEEKEND 15%");
+        reg.setOverride(address(stock), IRegimeRegistry.Regime.CORP_ACTION, 1 hours);
+        assertEq(o.price(), 85e36, "CORP_ACTION 10% floored at WEEKEND 15%");
+        assertEq(o.priceForRegime(IRegimeRegistry.Regime.CORP_ACTION), 90e36, "preview has no floor");
+        o.update();
+        assertEq(o.price(), 85e36, "still floored once frozen");
+
+        c.haircutsBps = [uint16(0), 400, 1000, 900, 2500, 1000]; // WEEKEND below CLOSED still rejected
+        vm.expectRevert(DawnOracle.InvalidConfig.selector);
+        new DawnOracle(c);
+    }
 }

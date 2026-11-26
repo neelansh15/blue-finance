@@ -20,6 +20,16 @@ import {IRegimeRegistry, RegimeLib} from "./interfaces/IRegimeRegistry.sol";
 ///              haircut of the most conservative of (current regime, freeze cause).
 ///   Unfreeze: update() in a normal regime, with a valid feed price within continuityBandBps of lastGoodPrice.
 ///              After maxFreeze, the registry admin may force-unfreeze to the live feed price.
+///   Haircut:   the haircut served is the LARGEST haircut of every regime that applies: the effective regime,
+///              the calendar regime (price() only), the freeze cause while frozen, and CORP_ACTION while the
+///              multiplier differs. A keeper override can therefore never lower the haircut below the calendar's,
+///              whatever the configured haircut sizes are.
+///   Jump breaker (upward only, optional): with an unchanged multiplier, a normal regime and no freeze, a live
+///              price above lastGoodPrice x (1 + jumpBandBps) is not accepted. price() serves
+///              min(live, lastGood) and update() records a jump freeze. A jump freeze ends when the live price is
+///              back within continuityBandBps of lastGood or below it, or by forceUnfreeze after maxFreeze.
+///              Downward jumps are deliberately NOT frozen: serving a stale higher price would let anyone borrow
+///              against overvalued collateral directly on Morpho (the router is bypassable). See README.
 ///
 /// @dev price() never reverts once a first good price exists: every external read is a bounded low-level
 ///      staticcall with return-size checks, and all arithmetic is range-checked before use. The only revert is
@@ -42,6 +52,7 @@ contract DawnOracle is IOracle {
         uint64 maxFreeze;
         uint16 continuityBandBps;
         uint16 expiredFreezeHaircutBps;
+        uint32 jumpBandBps; // 0 disables the upward jump breaker; otherwise must exceed continuityBandBps
     }
 
     uint256 internal constant BPS = 10_000;
@@ -51,6 +62,7 @@ contract DawnOracle is IOracle {
     uint256 public constant MAX_ANSWER = 1e40;
     uint256 public constant MIN_RAW_PRICE = 1e4; // keeps price() > 0 after max haircuts (>= 25% left)
     uint256 public constant MAX_RAW_PRICE = 1e60; // far above any real price; keeps Morpho math in range
+    uint256 public constant MAX_JUMP_BAND_BPS = 1_000_000; // 100x
 
     IAtlasFeed public immutable ATLAS_FEED;
     IRegimeRegistry public immutable REGISTRY;
@@ -64,6 +76,7 @@ contract DawnOracle is IOracle {
     uint64 public immutable MAX_FREEZE;
     uint16 public immutable CONTINUITY_BAND_BPS;
     uint16 public immutable EXPIRED_FREEZE_HAIRCUT_BPS;
+    uint32 public immutable JUMP_BAND_BPS;
     uint256 internal immutable HAIRCUTS_PACKED; // 6 x 16 bits
     uint256 internal immutable STALENESS_PACKED; // 6 x 32 bits
 
@@ -77,10 +90,13 @@ contract DawnOracle is IOracle {
     IRegimeRegistry.Regime public frozenRegime;
     /// uiMultiplier that lastGoodPrice was computed with.
     uint256 public lastMultiplier;
+    /// True while the current freeze was caused only by the upward jump breaker.
+    bool public jumpFrozen;
 
     event Frozen(uint64 at);
     event Unfrozen(uint256 price);
     event PriceRecorded(uint256 rawPrice, uint64 observedAt, uint256 multiplier);
+    event JumpRejected(uint256 livePrice, uint256 lastGoodPrice);
 
     error NoPrice();
     error InvalidConfig();
@@ -97,15 +113,19 @@ contract DawnOracle is IOracle {
         if (c.maxFreeze == 0) revert InvalidConfig();
         if (c.continuityBandBps == 0 || c.continuityBandBps > MAX_HAIRCUT_BPS) revert InvalidConfig();
         if (c.expiredFreezeHaircutBps > MAX_HAIRCUT_BPS) revert InvalidConfig();
+        if (c.jumpBandBps != 0 && (c.jumpBandBps <= c.continuityBandBps || c.jumpBandBps > MAX_JUMP_BAND_BPS)) {
+            revert InvalidConfig();
+        }
 
-        // Haircuts must be bounded and non-decreasing in conservativeness order
-        // OPEN, EXTENDED, CLOSED, WEEKEND, CORP_ACTION, HALTED, so that a more conservative regime
-        // (the only move a keeper can make) never raises the price.
-        uint8[6] memory order = [0, 1, 2, 3, 5, 4];
+        // Haircuts must be bounded. Routine regimes must be non-decreasing (OPEN <= EXTENDED <= CLOSED <= WEEKEND)
+        // and HALTED >= CORP_ACTION, so that a keeper move within either group never raises the price.
+        // CORP_ACTION/HALTED may be below WEEKEND: price() never serves less than the calendar regime's haircut
+        // (see _calendarFloorBps), so a keeper override cannot raise the price in that case either.
         for (uint256 i; i < 6; ++i) {
             if (c.haircutsBps[i] > MAX_HAIRCUT_BPS || c.stalenessSec[i] == 0) revert InvalidConfig();
-            if (i > 0 && c.haircutsBps[order[i]] < c.haircutsBps[order[i - 1]]) revert InvalidConfig();
+            if (i > 0 && i < 4 && c.haircutsBps[i] < c.haircutsBps[i - 1]) revert InvalidConfig();
         }
+        if (c.haircutsBps[4] < c.haircutsBps[5]) revert InvalidConfig();
 
         // If decimals() is readable now, it must match the configured value (feed may be whitelist-only).
         (bool okDec, uint256 dec) = _staticUint(c.atlasFeed, abi.encodeWithSelector(IAtlasFeed.decimals.selector));
@@ -132,6 +152,7 @@ contract DawnOracle is IOracle {
         MAX_FREEZE = c.maxFreeze;
         CONTINUITY_BAND_BPS = c.continuityBandBps;
         EXPIRED_FREEZE_HAIRCUT_BPS = c.expiredFreezeHaircutBps;
+        JUMP_BAND_BPS = c.jumpBandBps;
 
         uint256 h;
         uint256 s;
@@ -171,12 +192,13 @@ contract DawnOracle is IOracle {
 
     /// @inheritdoc IOracle
     function price() external view returns (uint256) {
-        return _price(_currentRegime());
+        return _price(_currentRegime(), _calendarFloorBps());
     }
 
     /// Price the oracle would return if the effective regime were `r` (UI "health at weekend", router previews).
+    /// Hypothetical: applies `r` and the freeze state, but not the current calendar floor.
     function priceForRegime(IRegimeRegistry.Regime r) external view returns (uint256) {
-        return _price(r);
+        return _price(r, 0);
     }
 
     function haircutBps(IRegimeRegistry.Regime r) public view returns (uint16) {
@@ -190,7 +212,10 @@ contract DawnOracle is IOracle {
     /// True if price() is currently served from lastGoodPrice by the freeze logic.
     function isFrozen() external view returns (bool) {
         (bool mOk, uint256 m) = _multiplier();
-        return frozenSince != 0 || _currentRegime().isFreezeRegime() || !mOk || m != lastMultiplier;
+        IRegimeRegistry.Regime r = _currentRegime();
+        if (frozenSince != 0 || r.isFreezeRegime() || !mOk || m != lastMultiplier) return true;
+        (bool ok, uint256 p,) = _readAtlas(r, m);
+        return ok && _jumpUp(p, lastGoodPrice); // pending jump that update() has not recorded yet
     }
 
     /// Live Atlas price per raw token (pre-haircut) under the current regime's staleness, for keepers/UI.
@@ -220,6 +245,7 @@ contract DawnOracle is IOracle {
             } else if (cause.rank() > frozenRegime.rank()) {
                 frozenRegime = cause;
             }
+            jumpFrozen = false; // a registry or multiplier freeze supersedes a jump freeze
             // Stay frozen while the registry says so, or while the multiplier cannot be read.
             if (freezeRegime || !mOk) return lastGoodPrice;
             // Normal regime with a new multiplier: fall through and try the continuity check right away
@@ -231,12 +257,23 @@ contract DawnOracle is IOracle {
 
         if (frozenSince != 0) {
             uint256 ref = lastGoodPrice;
-            if (ref != 0 && !_continuous(p, ref)) return ref; // stay frozen
+            // A jump freeze also ends when the price falls below the reference: downward moves are accepted.
+            if (ref != 0 && !_continuous(p, ref) && !(jumpFrozen && p < ref)) return ref; // stay frozen
             frozenSince = 0;
             frozenRegime = IRegimeRegistry.Regime.OPEN;
+            jumpFrozen = false;
             _record(p, ts, m, true);
             emit Unfrozen(p);
             return p;
+        }
+
+        if (_jumpUp(p, lastGoodPrice)) {
+            frozenSince = uint64(block.timestamp);
+            frozenRegime = r;
+            jumpFrozen = true;
+            emit Frozen(uint64(block.timestamp));
+            emit JumpRejected(p, lastGoodPrice);
+            return lastGoodPrice;
         }
 
         _record(p, ts, m, false);
@@ -257,28 +294,52 @@ contract DawnOracle is IOracle {
         if (!ok) revert LivePriceUnavailable();
         frozenSince = 0;
         frozenRegime = IRegimeRegistry.Regime.OPEN;
+        jumpFrozen = false;
         _record(p, ts, m, true);
         emit Unfrozen(p);
     }
 
     // ================================================================ internals
 
-    function _price(IRegimeRegistry.Regime r) internal view returns (uint256) {
+    /// @param floorBps minimum haircut: the calendar regime's haircut for price(), 0 for previews
+    function _price(IRegimeRegistry.Regime r, uint256 floorBps) internal view returns (uint256) {
         (bool mOk, uint256 m) = _multiplier();
         bool mChanged = !mOk || m != lastMultiplier;
         uint64 fs = frozenSince;
+        uint256 h = _max(haircutBps(r), floorBps);
+        if (fs != 0) h = _max(h, haircutBps(frozenRegime));
 
-        if (fs == 0 && !r.isFreezeRegime() && !mChanged) {
+        if (!r.isFreezeRegime() && !mChanged && (fs == 0 || jumpFrozen)) {
             (bool ok, uint256 p,) = _readAtlas(r, m);
-            if (ok) return _applyHaircut(p, haircutBps(r));
             // Feed missing/stale/reverting: fall back to the last good price (same multiplier).
-            return _servedLastGood(haircutBps(r));
+            if (!ok) return _servedLastGood(h);
+            if (fs == 0 && !_jumpUp(p, lastGoodPrice)) return _applyHaircut(p, h);
+            // Upward jump (pending or recorded): never serve more than the last good price.
+            uint256 live = _applyHaircut(p, h);
+            uint256 lg = _servedLastGood(h);
+            return live < lg ? live : lg;
         }
 
-        IRegimeRegistry.Regime hr = r;
-        if (fs != 0) hr = RegimeLib.moreConservative(hr, frozenRegime);
-        if (mChanged) hr = RegimeLib.moreConservative(hr, IRegimeRegistry.Regime.CORP_ACTION);
-        return _servedLastGood(haircutBps(hr));
+        if (mChanged) h = _max(h, haircutBps(IRegimeRegistry.Regime.CORP_ACTION));
+        return _servedLastGood(h);
+    }
+
+    function _jumpUp(uint256 p, uint256 ref) internal view returns (bool) {
+        uint256 band = JUMP_BAND_BPS;
+        // p, ref <= 1e60 and band <= 1e6, so both products stay below 1e67.
+        return band != 0 && ref != 0 && p * BPS > ref * (BPS + band);
+    }
+
+    function _max(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a > b ? a : b;
+    }
+
+    /// Haircut of the current calendar regime, or 0 if the registry does not expose calendarRegime().
+    function _calendarFloorBps() internal view returns (uint256) {
+        (bool ok, uint256 v) =
+            _staticUint(address(REGISTRY), abi.encodeWithSelector(IRegimeRegistry.calendarRegime.selector));
+        if (!ok || v > uint256(type(IRegimeRegistry.Regime).max)) return 0;
+        return haircutBps(IRegimeRegistry.Regime(v));
     }
 
     function _servedLastGood(uint256 hBps) internal view returns (uint256) {
