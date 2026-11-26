@@ -496,6 +496,24 @@ For each asset a and regime r ∈ {overnight, weekend/holiday, halt-resume, corp
 
 ---
 
+## Decision: no shorting in this version (Nov 26, 2026)
+
+**Decision.** Dawn v1 supports one direction only: stock (bStock) as collateral, stablecoin as the loan asset. Shorting, meaning stablecoin collateral with a bStock as the loan asset, is not built in this version. Morpho Blue can express it as a separate market (loan token = bStock, collateral = stablecoin) without core changes, so it stays a possible later addition. The reasons below are design reasoning, not measured data.
+
+**Why not now**
+1. **Unbounded loss.** A long position's loss is capped by the stock reaching zero. A short's debt grows with the price, and an upward gap while the underlying market is closed (earnings, takeover) can pass the liquidation threshold before anyone can act. Upside tails are often fatter than downside ones.
+2. **Liquidators must hold the stock.** A short liquidation repays debt in the bStock, so the liquidator first has to buy it. Off-hours exit depth is thin (see the DEX depth rows in the verification log).
+3. **Halts and corporate actions.** A halted stock that reopens sharply higher, or a buyout priced at a premium, raises the debt while liquidation is impossible. Splits and dividends change the debt through the multiplier.
+4. **Transfer rules.** A paused token or a borrower who fails the compliance check can make repay and liquidation revert, which leaves positions stuck and can block lender withdrawals.
+5. **Lender supply.** The stock has to be lent by someone, and that lender takes the loss if a short goes bad. Utilization can spike when borrow supply is scarce.
+6. **Oracle direction.** For shorts the conservative price is the higher one, so the oracle router and the market-hours haircut would need a direction-aware design.
+
+**Weekend-only halt considered and rejected as sufficient.** Halting new shorts over the weekend does not remove the gap risk of shorts already open at the close, and it misses weeknight gaps, holidays, mid-session halts and corporate actions. If shorting is added later, it needs a pre-close price mark-up, per-stock caps on short debt, and event-based restrictions, not a weekend rule alone. On Morpho Blue the halt has to come from the oracle: a reverting oracle blocks borrow, withdrawCollateral and liquidate, while repay and supply keep working.
+
+**What exists on BNB Chain today (read Nov 26, 2026).** Lista Lending has one live bStock loan market that I found: a vault lending NVDAB against USDT, USD1 or U collateral (deployed Aug 25, 2026; about 351.9 NVDAB, roughly $52K, deposited; utilization 99.96%). Lista's docs describe bStocks only as collateral for stablecoin loans. Venus does not list bStocks as borrowable per CertiK (Aug 12, 2026), and its Nov 10 Spoke announcement describes them as collateral to borrow USDT, USDC or U; I found no later change. Other stock-lending platforms I looked at (Paboxo and Arcus on Robinhood Chain, Spout on Solana) are stablecoin-borrow only. Not checked: the other Lista stocks one by one, and how Lista's displayed negative borrow rates are computed.
+
+---
+
 ## 14. Open questions
 
 1. Do Atlas bStock feeds quote per UI share or per raw token? What happened on-chain at SNDKB's `effectiveAt` versus the feed restart? This is decisive for §4.
