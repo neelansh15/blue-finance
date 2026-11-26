@@ -84,3 +84,11 @@ export function parseAmount(value: string, scale: number) {
   const amount = Math.round(Number(value) * scale);
   return Number.isSafeInteger(amount) ? amount : 0;
 }
+
+export function accountTotals(positions: Positions) {
+  return MARKETS.reduce((total, market) => ({
+    collateral: total.collateral + collateralValue(market, positions[market.id]),
+    debt: total.debt + positions[market.id].debt,
+    supplied: total.supplied + positions[market.id].supplied,
+  }), { collateral: 0, debt: 0, supplied: 0 });
+}

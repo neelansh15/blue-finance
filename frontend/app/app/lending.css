@@ -13,12 +13,37 @@
 .app-nav {
   justify-content: space-between;
   min-height: 66px;
+  gap: 12px;
 }
 
 .app-nav-actions,
 .app-asset,
 .app-unit {
   gap: 10px;
+}
+
+.app-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-nav-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding-inline: clamp(8px, 1.5vw, 18px);
+  border-bottom: 2px solid transparent;
+  text-decoration: none;
+  font-weight: 550;
+}
+
+.app-nav-links a:hover,
+.app-nav-links a[aria-current="page"] {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  background: var(--sheet);
 }
 
 .app-demo-label,
@@ -30,7 +55,7 @@
 }
 
 .app-masthead {
-  padding-block: 34px 22px;
+  padding-block: 22px 18px;
   border-bottom: 1px solid var(--rule);
   background-color: var(--sheet);
   background-image:
@@ -46,7 +71,7 @@
 }
 
 .app-heading h1 {
-  font-size: clamp(2rem, 5vw, 4rem);
+  font-size: clamp(1.875rem, 4vw, 3.5rem);
   letter-spacing: -0.02em;
   font-weight: 545;
   line-height: 1;
@@ -57,25 +82,17 @@
   font: italic 400 1.17em/1 var(--font-instrument-serif), Georgia, serif;
 }
 
-.app-heading .eyebrow {
-  margin-bottom: 10px;
-}
-
-.app-intro {
-  margin-top: 9px;
-  color: var(--secondary);
-}
-
 .app-session {
   display: grid;
   gap: 6px;
-  min-width: 206px;
-  padding: 12px 14px;
+  min-width: 170px;
+  padding: 8px 10px;
   border: 1px solid var(--rule-strong);
   background: var(--paper);
 }
 
-.app-session select {
+.app-session select,
+.app-action-choice select {
   width: 100%;
   min-height: 36px;
   padding: 4px 6px;
@@ -89,6 +106,53 @@
 .app-session p,
 .app-amount-heading span,
 .app-message,
+.app-feedback:empty {
+  margin-top: 0;
+}
+
+.app-risk-details {
+  margin-top: 6px;
+}
+
+.app-risk-details summary {
+  padding-block: 8px;
+  color: var(--blue);
+  font-size: 0.8125rem;
+}
+
+.dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dashboard-secondary {
+  background: var(--paper);
+  color: var(--blue);
+}
+
+.dashboard-secondary:hover {
+  background: var(--sheet);
+  border-color: var(--blue);
+}
+
+.dashboard-positions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(24px, 4vw, 58px);
+  padding-block: 26px;
+}
+
+.dashboard-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--blue);
+  font-size: 0.8125rem;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
 .app-footnote {
   color: var(--secondary);
   font-size: 0.8125rem;
@@ -98,9 +162,14 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   max-width: 720px;
-  margin-top: 22px;
+  margin-top: 16px;
   border: 1px solid var(--rule-strong);
   background: var(--paper);
+}
+
+.app-summary-pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 440px;
 }
 
 .app-summary > div {
@@ -129,7 +198,7 @@
   grid-template-columns: minmax(0, 1.55fr) minmax(340px, 1fr);
   align-items: start;
   gap: clamp(24px, 4vw, 58px);
-  padding-block: 34px;
+  padding-block: 26px;
 }
 
 .app-section-heading,
@@ -139,8 +208,7 @@
   gap: 12px;
 }
 
-.app-section-heading h2,
-.app-positions-heading {
+.app-section-heading h2 {
   font-size: 1.5rem;
 }
 
@@ -158,7 +226,7 @@
 .app-market-head,
 .app-market-row {
   display: grid;
-  grid-template-columns: minmax(125px, 1.2fr) minmax(70px, 0.65fr) minmax(110px, 0.85fr) 16px;
+  grid-template-columns: minmax(114px, 1.25fr) minmax(64px, 0.65fr) minmax(64px, 0.65fr) minmax(102px, 0.95fr) 16px;
   align-items: center;
   gap: 10px;
   padding: 12px 13px;
@@ -202,10 +270,6 @@
   color: var(--secondary);
 }
 
-.app-positions-heading {
-  margin-top: 32px;
-}
-
 .app-positions li {
   padding: 12px;
 }
@@ -232,7 +296,7 @@
 }
 
 .app-ticket-head {
-  padding: 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--rule);
   background-color: var(--plot);
   background-image: linear-gradient(90deg, var(--plot-grid) 1px, transparent 1px);
@@ -241,55 +305,40 @@
 }
 
 .app-ticket-head h2 {
-  margin-top: 3px;
-  font-size: 1.375rem;
-}
-
-.app-ticket-head p {
-  color: var(--plot-muted);
+  font-size: 1.25rem;
 }
 
 .app-ticket-body {
-  padding: 16px;
+  padding: 14px 16px;
 }
 
-.app-mode,
-.app-actions {
+.app-action-choice {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
 }
 
-.app-mode {
-  margin-bottom: 13px;
+.app-action-choice label {
+  font-weight: 600;
 }
 
-.app-mode button,
-.app-actions button,
+.app-action-choice select {
+  min-height: 44px;
+  background: var(--paper);
+}
+
 .app-amount button {
   min-height: 44px;
   padding: 3px 6px;
-  border: 1px solid var(--rule);
-  background: var(--paper);
-  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  background: var(--sheet);
+  color: var(--blue);
   font: 550 0.875rem/1.2 var(--font-instrument-sans), system-ui, sans-serif;
 }
 
-.app-mode button[aria-pressed="true"] {
-  border-color: var(--blue);
-  background: var(--blue);
-  color: var(--on-blue);
-}
-
-.app-actions button[aria-pressed="true"],
-.app-amount button {
-  border-color: var(--rule-strong);
-  background: var(--sheet);
-  color: var(--blue);
-}
-
 .app-amount-heading {
-  margin-block: 17px 6px;
+  margin-block: 13px 6px;
 }
 
 .app-amount-heading label {
@@ -325,7 +374,7 @@
 }
 
 .app-preview {
-  margin-block: 14px;
+  margin-block: 10px;
   border-block: 1px solid var(--rule);
 }
 
@@ -368,7 +417,6 @@
 }
 
 .app-feedback {
-  min-height: 1.25em;
   margin-top: 8px;
   font-size: 0.875rem;
 }
@@ -378,7 +426,8 @@
 }
 
 @media (max-width: 920px) {
-  .app-workspace {
+  .app-workspace,
+  .dashboard-positions {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -387,14 +436,47 @@
   }
 }
 
+.app-mobile-status {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  .app-nav-simulation {
+    display: none;
+  }
+
+  .app-mobile-status {
+    display: block;
+    margin-bottom: 8px;
+  }
+}
+
 @media (max-width: 540px) {
+  .app-brand-wide {
+    display: none;
+  }
+
+  .app-nav-links a {
+    font-size: 0.875rem;
+  }
+
+  .app-nav {
+    gap: 6px;
+  }
+
   .app-session {
+    grid-template-columns: auto minmax(74px, 1fr);
+    align-items: center;
     width: 100%;
+  }
+
+  .app-session p {
+    grid-column: 1 / -1;
   }
 
   .app-market-head,
   .app-market-row {
-    grid-template-columns: minmax(102px, 1fr) auto minmax(0, auto) 16px;
+    grid-template-columns: minmax(84px, 1fr) 62px 62px 16px;
     gap: 7px;
     padding-inline: 8px;
   }
@@ -404,11 +486,18 @@
   }
 
   .app-market-liquidity {
-    overflow-wrap: anywhere;
+    display: none;
   }
 
   .app-market-row .app-asset img {
     width: 28px;
     height: 28px;
+  }
+}
+
+
+@media (max-width: 360px) {
+  .app-nav .brand span {
+    display: none;
   }
 }
