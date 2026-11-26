@@ -328,6 +328,55 @@
   background: var(--paper);
 }
 
+.earn-action-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid var(--rule-strong);
+  background: var(--sheet);
+}
+
+.earn-action-picker label {
+  position: relative;
+}
+
+.earn-action-picker input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.earn-action-picker label span {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding-inline: 8px;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+
+.earn-action-picker input:hover + span {
+  border-color: var(--rule-strong);
+}
+
+.earn-action-picker input:checked + span {
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-blue);
+}
+
+.earn-action-picker input:focus-visible + span {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
 .app-amount button {
   min-height: 44px;
   padding: 3px 6px;

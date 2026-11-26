@@ -165,12 +165,25 @@ function MarketWorkspace({ mode, actions, initialMarket, initialAction }: {
 
           <div className="app-ticket-body">
             <form onSubmit={submit}>
-              <div className="app-action-choice">
-                <label htmlFor="market-action">Action</label>
-                <select id="market-action" value={action} onChange={event => selectAction(event.target.value as Action)}>
-                  {actions.map(next => <option key={next} value={next}>{ACTIONS[next].label}</option>)}
-                </select>
-              </div>
+              {isLender ? (
+                <fieldset className="earn-action-picker">
+                  <legend className="sr-only">Earn action</legend>
+                  {LENDER_ACTIONS.map(next => (
+                    <label key={next}>
+                      <input type="radio" name="earn-action" value={next} checked={action === next}
+                        onChange={() => selectAction(next)} />
+                      <span>{next === "lend" ? "Supply" : "Withdraw"}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ) : (
+                <div className="app-action-choice">
+                  <label htmlFor="market-action">Action</label>
+                  <select id="market-action" value={action} onChange={event => selectAction(event.target.value as Action)}>
+                    {actions.map(next => <option key={next} value={next}>{ACTIONS[next].label}</option>)}
+                  </select>
+                </div>
+              )}
 
               <div className="app-amount-heading">
                 <label htmlFor="action-amount">Amount</label>
