@@ -1,101 +1,103 @@
-import { derivePosition, healthStatus, type BlueSnapshot, type Regime } from "../../../src/lib/blue/client";
+import {
+  BORROWING_DISCOUNT, RISK, STATUS_LABEL, isScheduledStatus, positionMetrics,
+  type MarketStatus, type PoolState, type StockId,
+} from "../../../src/lib/blue/client";
 import { hf, pct, units, usd } from "./format";
 
-export const REGIME_TITLE: Record<Regime, string> = {
-  OPEN: "Open",
-  EXTENDED: "Extended",
-  CLOSED: "Closed",
-  WEEKEND: "Weekend",
-  HALTED: "Halted",
-  CORP_ACTION: "Corporate action",
-};
-export const pillClass = (r: Regime) => (r === "CORP_ACTION" ? "pill-corp" : `pill-${r.toLowerCase()}`);
+export const STATUS_TITLE = STATUS_LABEL;
+export const pillClass = (status: MarketStatus) => (status === "CORP_ACTION" ? "pill-corp" : `pill-${status.toLowerCase()}`);
 
-const STATUS_WORD = {
-  healthy: "Healthy",
-  caution: "Watch",
-  risk: "At risk",
-  liquidatable: "Liquidatable",
-} as const;
+export function healthStatus(value: number | null) {
+  if (value === null) return "healthy";
+  if (value < 1) return "liquidatable";
+  if (value < 1.1) return "risk";
+  if (value < 1.3) return "caution";
+  return "healthy";
+}
 
-function Health({ label, value }: { label: string; value: number }) {
-  const st = healthStatus(value);
-  const cls = st === "liquidatable" ? "risk" : st;
+const STATUS_WORD = { healthy: "Healthy", caution: "Watch", risk: "At risk", liquidatable: "Liquidatable" } as const;
+
+export function StatusPill({ status }: { status: MarketStatus }) {
   return (
-    <div className="dapp-health">
-      <span className="dapp-health-label">{label}</span>
-      <span className={`health-val num status-${cls}`}>
-        {hf(value)} <span className="health-word">{STATUS_WORD[st]}</span>
-      </span>
-    </div>
+    <span className={`pill ${pillClass(status)}`} aria-live="polite" data-testid="status-badge">
+      <span className="pill-dot" aria-hidden="true" />
+      {STATUS_TITLE[status]}
+      {isScheduledStatus(status) && <span className="num"> &middot; {pct(BORROWING_DISCOUNT[status], 0)} borrowing discount</span>}
+    </span>
   );
 }
 
-export default function PositionCard({ s }: { s: BlueSnapshot }) {
-  const p = derivePosition(s);
-  const frozen = p.oracle.frozen;
+export default function PositionCard({ state, stock }: { state: PoolState; stock: StockId }) {
+  const account = state.account;
+  const p = positionMetrics(state);
+  const shown = p.stock ?? stock;
+  const price = state.stocks[shown].price;
+  const health = healthStatus(p.healthFactor);
   return (
     <section className="preview dapp-card" aria-labelledby="pos-title">
       <div className="preview-head">
         <div>
           <p className="preview-kicker">Your position</p>
           <h2 className="preview-title" id="pos-title">
-            {s.symbol} <span aria-hidden="true">/</span>
-            <span className="sr-only"> collateral, borrowing </span> {s.loanSymbol}
+            {shown} <span aria-hidden="true">/</span>
+            <span className="sr-only"> collateral, borrowing </span> USDT
           </h2>
         </div>
-        <span className={`pill ${pillClass(s.regime)}`} aria-live="polite" data-testid="regime-badge">
-          <span className="pill-dot" aria-hidden="true" />
-          {REGIME_TITLE[s.regime]} <span className="num">&middot; haircut {pct(p.haircutNow, 0)}</span>
-        </span>
+        <StatusPill status={p.status ?? state.schedule} />
       </div>
 
       <dl className="preview-stats">
         <div>
-          <dt>Collateral (UI units)</dt>
+          <dt>Collateral</dt>
           <dd>
-            <span className="num" data-testid="ui-balance">{units(p.uiBalance)}</span> <span className="unit">{s.symbol}</span>
-            <span className="sub num">
-              raw {units(s.collateralRaw, 2)} &times; m {p.multiplier.toFixed(2)}
-            </span>
+            <span className="num">{units(account.collateral)}</span> <span className="unit">{shown}</span>
+            <span className="sub num">Atlas price {usd(price)} per token</span>
           </dd>
         </div>
         <div>
           <dt>Collateral value</dt>
+          <dd><span className="num key">{usd(p.value)}</span>
+            <span className="sub num">{p.valuation.usable ? "live Atlas price" : `price unusable: ${p.valuation.reason}`}</span></dd>
+        </div>
+        <div>
+          <dt>Debt (bluDebtUSDT)</dt>
           <dd>
-            <span className="num key">{usd(p.valueNow)}</span>
-            <span className="sub num">
-              {usd(p.grossValue)} before haircut{frozen ? ", frozen price" : ""}
-            </span>
+            <span className="num">{usd(account.debt)}</span>
+            <span className="sub num">liquidation threshold {pct(RISK.liquidationThreshold)}</span>
           </dd>
         </div>
         <div>
-          <dt>Debt</dt>
+          <dt>Borrow limit</dt>
           <dd>
-            <span className="num">{s.debt.toFixed(2)}</span> <span className="unit">{s.loanSymbol}</span>
-            <span className="sub num">LTV {pct(p.ltvNow)} of {pct(s.params.lltv)} LLTV</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Can still borrow</dt>
-          <dd>
-            <span className="num">{p.available.toFixed(2)}</span> <span className="unit">{s.loanSymbol}</span>
-            <span className="sub num">limit LTV {pct(p.target)}</span>
+            <span className="num">{usd(p.borrowLimit)}</span>
+            <span className="sub num">borrow LTV {pct(p.borrowLtv)} &middot; {usd(p.headroom)} unused</span>
           </dd>
         </div>
       </dl>
 
       <div className="dapp-healths">
-        <Health label="Health now" value={p.healthNow} />
-        <Health label="Health at weekend" value={p.healthWeekend} />
+        <div className="dapp-health">
+          <span className="dapp-health-label">Health factor</span>
+          {p.valuation.usable || account.debt === 0 ? (
+            <span className={`health-val num status-${health === "liquidatable" ? "risk" : health}`} data-testid="health">
+              {hf(p.healthFactor)} <span className="health-word">{STATUS_WORD[health]}</span>
+            </span>
+          ) : (
+            // Without a usable price the pool cannot compute health, so liquidation pauses too.
+            <span className="health-val num status-caution" data-testid="health">
+              Paused <span className="health-word">until the price is usable</span>
+            </span>
+          )}
+        </div>
+        <div className="dapp-health">
+          <span className="dapp-health-label">Liquidation price</span>
+          <span className="health-val num">{p.liquidationPrice === null ? "none" : usd(p.liquidationPrice)}</span>
+        </div>
       </div>
-      <p className="dapp-liq num">
-        Liquidation price in UI units: {usd(p.liquidationPriceUI)} per {s.symbol} (feed now {usd(s.feedPricePerUI)}).
-      </p>
       <p className="illustrative">
-        <span className="illustrative-tag">Placeholder</span>
-        Weekend health applies the placeholder weekend haircut ({pct(s.params.haircut.WEEKEND, 0)}) to today&apos;s price.
-        Haircuts of 0 / 4% / 10% / 15% are illustrative, not calibrated.
+        <span className="illustrative-tag">Rule</span>
+        The market status changes only how much you can borrow (and withdraw while in debt). Health factor and
+        liquidation always use the {pct(RISK.liquidationThreshold)} liquidation threshold at the live Atlas price.
       </p>
     </section>
   );

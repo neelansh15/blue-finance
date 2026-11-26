@@ -44,6 +44,18 @@ describe("shared server Atlas cache", () => {
     expect((await get("__proto__")).status).toBe(404);
     expect(rpc.readContract).toHaveBeenCalledTimes(6);
   });
+  it("covers exactly the five listed bStocks in order and rejects others", async () => {
+    const { BSTOCK_FEEDS } = await import("./prices");
+    expect(Object.keys(BSTOCK_FEEDS)).toEqual(["TSLAB", "NVDAB", "QQQB", "SPCXB", "GOOGLB"]);
+    const { GET, } = await import("../../../app/api/atlas/prices/[symbol]/route");
+    for (const symbol of ["QQQB", "SPCXB", "GOOGLB"]) {
+      const response = await GET(new Request("http://localhost"), { params: Promise.resolve({ symbol }) });
+      expect(response.status).toBe(200);
+      expect((await response.json()).symbol).toBe(symbol);
+    }
+    const rejected = await GET(new Request("http://localhost"), { params: Promise.resolve({ symbol: "AAPLB" }) });
+    expect(rejected.status).toBe(404);
+  });
   it("invalid oracle rounds remain unavailable for the cache period", async () => {
     const { getAtlasPrice } = await import("./server");
     rpc.readContract.mockImplementation(async ({ functionName }) => functionName === "decimals" ? 8 :

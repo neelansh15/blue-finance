@@ -7,7 +7,7 @@ import { IconArrow } from "./Icons";
 import ThemeToggle from "./ThemeToggle";
 
 const LINKS = [
-  { href: "#regimes", label: "Simulator" },
+  { href: "#market-status", label: "Simulator" },
   { href: "#how", label: "How it works" },
   { href: "#risk", label: "Risk design" },
   { href: "#roadmap", label: "Roadmap" },

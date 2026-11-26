@@ -1,20 +1,25 @@
 "use client";
 
-import { createContext, useContext, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import type { Regime } from "../components/regimes";
-import { STARTING_POSITIONS, type Positions } from "./markets";
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createBlueClient, type BlueClient, type PoolState } from "../../src/lib/blue/client";
 
-const DemoAccount = createContext<{
-  positions: Positions;
-  setPositions: Dispatch<SetStateAction<Positions>>;
-  regime: Regime;
-  setRegime: Dispatch<SetStateAction<Regime>>;
-} | null>(null);
+type DemoAccountValue = { client: BlueClient; state: PoolState };
 
+const DemoAccount = createContext<DemoAccountValue | null>(null);
+
+/** One simulated pool shared by every app page, so demo controls affect Borrow, Earn and the dashboard alike. */
 export function DemoAccountProvider({ children }: { children: ReactNode }) {
-  const [positions, setPositions] = useState(STARTING_POSITIONS);
-  const [regime, setRegime] = useState<Regime>("open");
-  return <DemoAccount.Provider value={{ positions, setPositions, regime, setRegime }}>{children}</DemoAccount.Provider>;
+  const [client] = useState(() => createBlueClient());
+  const state = useSyncExternalStore(client.subscribe, client.getState, client.getState);
+
+  // Follow the US Eastern clock after hydration, then re-check every minute.
+  useEffect(() => {
+    client.demo.syncClock();
+    const timer = setInterval(() => client.demo.syncClock(), 60_000);
+    return () => clearInterval(timer);
+  }, [client]);
+
+  return <DemoAccount.Provider value={{ client, state }}>{children}</DemoAccount.Provider>;
 }
 
 export function useDemoAccount() {

@@ -1,24 +1,21 @@
 import { AnimatedValue } from "./AnimatedValue";
 import TokenIcon from "./TokenIcon";
-import { ILLUSTRATIVE_HAIRCUT } from "./regimes";
+import { BASE_LTV, LIQUIDATION_THRESHOLD } from "./market-status";
 
-// Example position and the proposed liquidation LTV from architecture-v1, section 13.
-const COLLATERAL_UNITS = 50;
+// Example position: the market status discount changes borrowing power, never health.
 const COLLATERAL_VALUE = 10_000;
-const DEBT = 3_600;
-const LIQUIDATION_LTV = 0.625;
-const REGULAR_CEILING = COLLATERAL_VALUE * LIQUIDATION_LTV;
-const WEEKEND_HEALTH = (REGULAR_CEILING * (1 - ILLUSTRATIVE_HAIRCUT.weekend)) / DEBT;
+const DEBT = 4_000;
+const HEALTH = (COLLATERAL_VALUE * LIQUIDATION_THRESHOLD) / DEBT;
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
-function amounts(haircut: number) {
-  const adjusted = COLLATERAL_VALUE * (1 - haircut);
-  const ceiling = adjusted * LIQUIDATION_LTV;
-  const reduction = REGULAR_CEILING - ceiling;
+function amounts(discount: number) {
+  const borrowLtv = BASE_LTV * (1 - discount);
+  const limit = COLLATERAL_VALUE * borrowLtv;
+  const reduction = COLLATERAL_VALUE * BASE_LTV - limit;
   return {
-    adjusted: currency.format(adjusted),
-    ceiling: currency.format(ceiling),
-    health: `${(ceiling / DEBT).toFixed(2)}×`,
+    borrowLtv: `${(borrowLtv * 100).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`,
+    limit: currency.format(limit),
+    headroom: currency.format(Math.max(0, limit - DEBT)),
     comparison: reduction >= 0.005
       ? `−${currency.format(reduction)} vs. regular session`
       : "Regular-session baseline",
@@ -26,16 +23,16 @@ function amounts(haircut: number) {
 }
 
 export default function PositionPreview({
-  haircut,
-  animatedHaircut,
+  discount,
+  animatedDiscount,
   id,
 }: {
-  haircut: number;
-  animatedHaircut: number;
+  discount: number;
+  animatedDiscount: number;
   id: string;
 }) {
-  const actual = amounts(haircut);
-  const visual = amounts(animatedHaircut);
+  const actual = amounts(discount);
+  const visual = amounts(animatedDiscount);
 
   return (
     <div className="position" role="group" aria-labelledby={id}>
@@ -54,37 +51,38 @@ export default function PositionPreview({
       </header>
 
       <dl className="position-ceiling">
-        <dt>Illustrative borrowing ceiling</dt>
+        <dt>Borrow limit</dt>
         <dd className="num" aria-live="polite">
-          <AnimatedValue value={actual.ceiling}>{visual.ceiling}</AnimatedValue>
+          <AnimatedValue value={actual.limit}>{visual.limit}</AnimatedValue>
         </dd>
         <dd><AnimatedValue value={actual.comparison}>{visual.comparison}</AnimatedValue></dd>
       </dl>
 
       <dl className="position-metrics">
         <div>
-          <dt>Collateral · {COLLATERAL_UNITS} NVDAB</dt>
+          <dt>Collateral value</dt>
           <dd className="num">{currency.format(COLLATERAL_VALUE)}</dd>
         </div>
         <div>
-          <dt>Value after haircut</dt>
-          <dd className="num"><AnimatedValue value={actual.adjusted}>{visual.adjusted}</AnimatedValue></dd>
+          <dt>Borrow LTV</dt>
+          <dd className="num"><AnimatedValue value={actual.borrowLtv}>{visual.borrowLtv}</AnimatedValue></dd>
         </div>
         <div>
           <dt>Debt</dt>
           <dd className="num">{DEBT.toLocaleString("en-US")} USDT</dd>
         </div>
         <div>
-          <dt>Liquidation health</dt>
-          <dd className="num"><AnimatedValue value={actual.health}>{visual.health}</AnimatedValue></dd>
+          <dt>Can still borrow</dt>
+          <dd className="num"><AnimatedValue value={actual.headroom}>{visual.headroom}</AnimatedValue></dd>
         </div>
         <div>
-          <dt>Weekend health</dt>
-          <dd className="num">{WEEKEND_HEALTH.toFixed(2)}×</dd>
+          <dt>Health factor</dt>
+          <dd className="num">{HEALTH.toFixed(2)}× at every status</dd>
         </div>
       </dl>
       <p className="position-note">
-        Example uses a {LIQUIDATION_LTV * 100}% liquidation LTV. Blue’s router would cap new borrowing below this ceiling.
+        The market status discount lowers borrowing power only. Health factor and liquidation use the
+        {" "}{LIQUIDATION_THRESHOLD * 100}% liquidation threshold whatever the status.
       </p>
     </div>
   );

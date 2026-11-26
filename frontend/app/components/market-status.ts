@@ -1,30 +1,39 @@
-// Illustrative regime model used by the landing-page mock UI.
-// None of these haircuts are protocol parameters. Real values would come from
-// the gap-quantile pipeline described in architecture-v1.md, section 11.
+// Market status schedule for the landing-page explorer. Mirrors MarketCalendar.sol
+// (US Eastern time) without holidays, early closes or halts, and uses the prototype
+// borrowing discounts from protocol/script/BlueV3Deployment.sol.
+//
+// The borrowing discount lowers borrowing power only (and withdrawals while in debt).
+// Health factor and liquidation always use the 62.5% liquidation threshold.
 
-export type Regime = "open" | "extended" | "closed" | "weekend";
+/** Scheduled market status. Lowercase values double as CSS class suffixes (band-open, pill-open). */
+export type SessionStatus = "open" | "extended" | "closed" | "weekend";
 
-export const REGIME_LABEL: Record<Regime, string> = {
+export const BASE_LTV = 0.5;
+export const LIQUIDATION_THRESHOLD = 0.625;
+
+export const STATUS_LABEL: Record<SessionStatus, string> = {
   open: "Open",
   extended: "Extended",
   closed: "Closed",
   weekend: "Weekend",
 };
 
-export const REGIME_NOTE: Record<Regime, string> = {
-  open: "Regular US session. Full borrowing power.",
-  extended: "Pre-market or after-hours. Thinner primary price discovery, small haircut.",
-  closed: "Overnight. The token still trades, the stock does not. Larger haircut.",
-  weekend: "No primary market until Monday pre-market. Largest routine haircut.",
+export const STATUS_NOTE: Record<SessionStatus, string> = {
+  open: "Regular US session. Full borrowing power: 50% borrow LTV.",
+  extended: "Pre-market or after-hours. 4% borrowing discount: 48% borrow LTV.",
+  closed: "Weekday overnight, including Sunday from 8pm. The token trades, the stock does not. 10% discount: 45% borrow LTV.",
+  weekend: "Friday 8pm until Sunday 8pm, and exchange holidays. 15% discount: 42.5% borrow LTV.",
 };
 
-/** Illustrative haircut per regime (fraction of collateral value). */
-export const ILLUSTRATIVE_HAIRCUT: Record<Regime, number> = {
+/** Borrowing discount per market status (fraction of base borrowing power). */
+export const BORROWING_DISCOUNT: Record<SessionStatus, number> = {
   open: 0,
   extended: 0.04,
   closed: 0.1,
   weekend: 0.15,
 };
+
+export const borrowLtvFor = (status: SessionStatus) => BASE_LTV * (1 - BORROWING_DISCOUNT[status]);
 
 export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -32,28 +41,22 @@ export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 export const STEPS_PER_DAY = 48;
 export const WEEK_STEPS = STEPS_PER_DAY * 7;
 
-/** Regime for a half-hour step (US Eastern), simplified: no holidays or halts. */
-export function regimeAt(step: number): Regime {
+/** Market status for a half-hour step (US Eastern), following MarketCalendar.sol without holidays. */
+export function statusAt(step: number): SessionStatus {
   const day = Math.floor(step / STEPS_PER_DAY); // 0 = Mon
   const t = (step % STEPS_PER_DAY) / 2; // hour of day, 0..23.5
-  const weekday = day <= 4;
-  if (!weekday) return "weekend";
-  if (day === 4 && t >= 20) return "weekend"; // Friday evening onward
-  if (day === 0 && t < 4) return "weekend"; // until Monday pre-market
-  if (t >= 9.5 && t < 16) return "open";
-  if ((t >= 4 && t < 9.5) || (t >= 16 && t < 20)) return "extended";
-  return "closed";
+  if (day === 5) return "weekend"; // Saturday
+  if (day === 6) return t < 20 ? "weekend" : "closed"; // Sunday: overnight session from 8pm
+  if (t < 4) return "closed";
+  if (t < 9.5) return "extended";
+  if (t < 16) return "open";
+  if (t < 20) return "extended";
+  return day === 4 ? "weekend" : "closed"; // Friday evening starts the weekend
 }
 
-/**
- * Illustrative haircut at a step. The haircut ramps in during the last
- * 30 minutes of the regular session instead of stepping at the close.
- */
-export function haircutAt(step: number): number {
-  const r = regimeAt(step);
-  const t = (step % STEPS_PER_DAY) / 2;
-  if (r === "open" && t >= 15.5) return ILLUSTRATIVE_HAIRCUT.extended / 2;
-  return ILLUSTRATIVE_HAIRCUT[r];
+/** Borrowing discount at a step. Changes only at status boundaries, as on-chain. */
+export function discountAt(step: number): number {
+  return BORROWING_DISCOUNT[statusAt(step)];
 }
 
 export function formatStep(step: number): string {

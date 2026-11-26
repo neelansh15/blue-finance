@@ -1,32 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { MARKETS, STARTING_POSITIONS } from "../../../app/app/markets";
-import { createBlueClient, numberToWad } from "../blue/client";
+import { createBlueClient, initialPoolState } from "../blue/client";
 import { demoPosition, lendingPosition, requestForPosition } from "./adapter";
 import { isExpired, parseAdvisory, parseMarketStatus, parseRiskRequest, statusFresh } from "./contracts";
 
 describe("advisory account adapter", () => {
-  it("converts cents and scaled tokens, and never substitutes synthetic borrowers", () => {
-    const position = lendingPosition(MARKETS[0], STARTING_POSITIONS.NVDAB);
-    expect(position).toMatchObject({ quantity: 10, debtUsd: 350, uiPriceUsd: 200 });
+  it("converts cents and token units, and never substitutes synthetic borrowers", () => {
+    const position = lendingPosition(initialPoolState(), "NVDAB");
+    expect(position).toMatchObject({ quantity: 20, debtUsd: 900, uiPriceUsd: 150.65 });
     const body = requestForPosition(position, "friday");
-    expect(body.borrowers).toEqual([{ borrower_id: "demo-position", collateral_quantity: 10, debt_usd: 350, liquidation_threshold: .625 }]);
+    expect(body.borrowers).toEqual([{ borrower_id: "demo-position", collateral_quantity: 20, debt_usd: 900, liquidation_threshold: .625 }]);
     expect(parseRiskRequest(body)).toEqual(body);
     expect(requestForPosition({ ...position, quantity: 0, debtUsd: 0 }, "baseline").borrowers).toEqual([]);
   });
 
-  it("normalizes uiMultiplier and blocks unsupported frozen or halted positions", async () => {
+  it("normalizes the multiplier and blocks halted, split or unpriced positions", () => {
     const client = createBlueClient();
-    const snapshot = await client.getSnapshot();
-    expect(demoPosition({ ...snapshot, uiMultiplier: numberToWad(2) }).quantity).toBe(20);
-    client.demo.announceSplit(2);
-    expect(() => requestForPosition(demoPosition({ ...snapshot, regime: "HALTED" }), "baseline")).toThrow(/halted/);
-    const split = await client.getSnapshot();
-    expect(() => requestForPosition(demoPosition(split), "baseline")).toThrow(/frozen/);
+    const state = client.getState();
+    expect(demoPosition({ ...state, stocks: { ...state.stocks, NVDAB: { ...state.stocks.NVDAB, multiplier: 2, acceptedMultiplier: 2 } } }).quantity).toBe(40);
+    client.demo.halt("NVDAB");
+    expect(() => requestForPosition(demoPosition(client.getState()), "baseline")).toThrow(/halted/);
+    client.demo.clearStatus("NVDAB");
+    client.demo.changeMultiplier("NVDAB", 2);
+    expect(() => requestForPosition(demoPosition(client.getState()), "baseline")).toThrow(/usable price/);
   });
 
-  it("rejects unsupported markets, invalid balances and unbounded browser payloads", () => {
-    expect(() => requestForPosition(lendingPosition(MARKETS[1], STARTING_POSITIONS.QQQB), "baseline")).toThrow(/NVDAb only/);
-    const p = lendingPosition(MARKETS[0], STARTING_POSITIONS.NVDAB);
+  it("rejects unsupported stocks, invalid balances and unbounded browser payloads", () => {
+    expect(() => requestForPosition(lendingPosition(initialPoolState(), "QQQB"), "baseline")).toThrow(/NVDAB only/);
+    const p = lendingPosition(initialPoolState(), "NVDAB");
     expect(() => requestForPosition({ ...p, quantity: NaN }, "baseline")).toThrow();
     expect(() => requestForPosition({ ...p, quantity: 0 }, "baseline")).toThrow(/without collateral/);
     expect(() => parseRiskRequest({ scenario: "__proto__", borrowers: [] })).toThrow();

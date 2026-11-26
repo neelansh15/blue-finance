@@ -36,265 +36,291 @@ export const articles: DocArticle[] = [
   {
     slug: "",
     title: "Blue Finance docs",
-    summary: "Blue is a lending prototype for tokenized US stocks on BNB Chain. It uses the US market calendar to adjust how much collateral can support a USDT loan on Morpho Blue.",
+    summary: "Blue is a lending prototype for tokenized US stocks on BNB Chain. It runs one Aave V3 pool with a shared USDT reserve and uses the US market calendar to limit new borrowing against each stock.",
     sections: [
       {
         id: "why-blue",
         title: "Why market hours matter",
-        body: <p>Tokenized stocks can trade while US exchanges are closed. The next stock-market print can arrive at a different price, and a split can change the price per displayed share without changing the value of the underlying position. Blue adjusts collateral valuation for market sessions and handles changes to the token’s display multiplier.</p>,
+        body: <p>Tokenized stocks can trade while US exchanges are closed. The next stock-market print can arrive at a different price, and a split can change the price per displayed share without changing the value of the underlying position. Blue lowers new borrowing power outside regular hours, keeps liquidation rules fixed, and blocks new loans around halts and corporate actions.</p>,
       },
       {
         id: "protocol-at-a-glance",
         title: "Protocol at a glance",
         body: <Table columns={["Component", "Responsibility"]} rows={[
-          [<Link href="/docs/markets">Morpho Blue</Link>, "Holds isolated markets and handles supply, debt accounting, interest and liquidation."],
-          [<Link href="/docs/regimes">RegimeRegistry</Link>, "Combines the US Eastern calendar with time-limited keeper overrides."],
-          [<Link href="/docs/oracle">BlueOracle</Link>, "Converts feed prices to raw collateral value, then applies market-session haircuts and freeze logic."],
-          [<Link href="/docs/router">BlueRouter</Link>, "Adds eligibility, borrowing limits and market caps to transactions routed through Blue."],
-          [<Link href="/docs/liquidation">LiquidatorCallback</Link>, "Lets an operator repay debt after receiving seized collateral in Morpho’s liquidation callback."],
+          [<Link href="/docs/markets">BluePool</Link>, "One Aave V3.6 pool on BNB Chain. A shared USDT reserve plus five collateral-only bStock reserves: TSLAB, NVDAB, QQQB, SPCXB and GOOGLB."],
+          [<Link href="/docs/borrowing-rules">StockBorrowControls</Link>, "Signed eligibility, keeper heartbeat, guardian hold and per-stock debt caps that gate new borrowing."],
+          [<Link href="/docs/oracle">StockPriceSource</Link>, "Prices each stock from Atlas with separate standards for liquidation and new borrowing. USDT is priced by Chainlink."],
+          [<Link href="/docs/market-status">MarketCalendar</Link>, "Gives each stock a market status from the US Eastern calendar, with bounded keeper and admin overrides."],
+          [<Link href="/docs/liquidation">Liquidation</Link>, "Aave’s standard liquidationCall at a fixed 62.5% threshold."],
         ]} />,
       },
       {
         id: "prototype-scope",
         title: "What you can try",
-        body: <p>The <Link href="/app/dashboard">app</Link> uses simulated positions and balances. The contract demo creates one MockBStock/USDT market on a local BNB mainnet fork. Read the <Link href="/docs/development">fork and testing guide</Link> to reproduce the contract scenarios, or <Link href="/docs/roadmap">see what still needs verification</Link> before a live deployment.</p>,
+        body: <p>The <Link href="/app/dashboard">app</Link> uses simulated positions and balances. No real transactions are sent. The contracts deploy to a local Anvil fork of BNB Chain with the real bStocks, Atlas feeds and USDT. Read the <Link href="/docs/development">fork and testing guide</Link> to reproduce the contract scenarios, or <Link href="/docs/roadmap">see what still needs verification</Link> before a live deployment. The earlier Morpho Blue prototype is archived in <code>protocol-old/</code>.</p>,
       },
     ],
     sources: [
-      { path: "architecture-v1.md", title: "Architecture v1" },
+      { path: "architecture-v3.md", title: "Architecture v3" },
+      { path: "protocol/README.md", title: "Protocol README" },
       { path: "implementation-plan.md", title: "Implementation plan" },
-      { path: "protocol-old/README.md", title: "Protocol README" },
     ],
   },
   {
     slug: "markets",
-    title: "Markets and accounting",
-    summary: "Blue adds a risk layer around the canonical, unmodified Morpho Blue singleton. Each Morpho market has its own collateral, liquidity and borrow balances.",
+    title: "Pool model and accounting",
+    summary: "Blue runs one Aave V3 pool with a single USDT reserve. Lenders and borrowers share the same liquidity, and each account borrows against one collateral stock.",
     sections: [
       {
-        id: "market-identity",
-        title: "Market identity",
-        body: <><p>A market ID is the hash of five immutable parameters.</p><Table columns={["Parameter", "Meaning"]} rows={[
-          [<code>loanToken</code>, "The asset lenders supply and borrowers receive. The fork demo uses BNB Chain USDT with 18 decimals."],
-          [<code>collateralToken</code>, "The raw token pledged by borrowers. The deploy script creates a MockBStock named bAAPL."],
-          [<code>oracle</code>, "BlueOracle supplies the collateral price that Morpho uses for its health checks."],
-          [<code>irm</code>, "AdaptiveCurveIrm sets the utilization-sensitive borrowing rate."],
-          [<code>lltv</code>, "The liquidation loan-to-value threshold. The fork demo uses 62.5%, expressed as 0.625 × 10¹⁸."],
-        ]} /></>,
+        id: "reserves",
+        title: "Reserves and tokens",
+        body: <><p>BluePool is built on Aave V3 Origin 3.6.0. It has six reserves.</p><Table columns={["Reserve", "Role"]} rows={[
+          [<code>USDT</code>, "The only borrowable asset. Lenders supply it and borrowers draw it from the same shared liquidity."],
+          [<code>TSLAB, NVDAB, QQQB, SPCXB, GOOGLB</code>, "Real bStock tokens on BNB Chain. Collateral only. Each account uses one collateral stock."],
+        ]} /><p>Lenders receive <strong>bluUSDT</strong>, Blue’s name for the Aave aToken. Borrower debt is recorded as <strong>bluDebtUSDT</strong>, an Aave variable debt token. Withdrawals depend on how much USDT is available. Flash loans are disabled in the prototype.</p></>,
       },
       {
         id: "supplier-and-borrower-flows",
         title: "Supplier and borrower flows",
-        body: <><p>Lenders supply USDT directly to the Morpho market and receive supply shares. Withdrawals depend on available liquidity, and the market’s interest accrual changes the value of those shares. Borrowers supply collateral and take on USDT debt recorded as borrow shares. Accrued interest increases the assets owed per borrow share.</p><p>Collateral and lender supply are distinct balances. A market’s bad debt is borne by suppliers to that market. The router adds a stricter <Link href="/docs/router#borrow-limit">target LTV</Link> for new credit through Blue. Morpho still enforces LLTV on the position itself.</p></>,
+        body: <><p>Lenders supply USDT once, and borrowers do not need a lender or allocator to move cash between stock markets. Borrowers supply one stock, enable it as collateral and borrow USDT at a variable rate. Accrued interest increases the debt.</p><p>Because liquidity is shared, USDT suppliers are exposed to losses across all listed stocks. Per-stock debt caps limit new concentration. Aave isolation enforces one active stock per account, and Blue tracks each stock’s accrued USDT debt from Aave’s scaled debt and the current reserve index.</p></>,
+      },
+      {
+        id: "parameters",
+        title: "Risk parameters",
+        body: <><Table columns={["Parameter", "Value"]} rows={[
+          ["Base LTV", "50% for every stock"],
+          ["Liquidation threshold", "62.5% for every stock"],
+          ["Liquidation bonus", "5%"],
+        ]} /><p>These are prototype values and need calibration against gap history and executable liquidation depth before launch.</p></>,
       },
       {
         id: "health",
         title: "Position health",
-        body: <><pre><code>{`Collateral value = raw collateral × adjusted oracle price
-Health factor    = collateral value × LLTV ÷ accrued debt`}</code></pre><p>With debt outstanding, a health factor below 1 indicates that the position can be liquidated by Morpho, subject to on-chain rounding and execution. Lower prices, larger haircuts and accrued interest can all reduce health. The fork test checks that the demo LLTV and IRM are enabled and that the singleton accepts market creation and supply.</p></>,
+        body: <><pre><code>{`Collateral value = collateral × stock price
+Health factor    = collateral value × 62.5% ÷ debt`}</code></pre><p>A health factor below 1 makes the position liquidatable. The threshold does not depend on market status, so a calendar change alone leaves the health factor unchanged when prices and debt are fixed.</p></>,
       },
     ],
     sources: [
-      { path: "protocol-old/src/interfaces/IMorpho.sol", title: "Morpho interface and market ID" },
-      { path: "protocol-old/test/fork/MorphoBnbFork.t.sol", title: "BNB fork market tests" },
-      { path: "morpho-blue.md", title: "Morpho Blue research notes" },
+      { path: "protocol/src/BluePool.sol", title: "BluePool" },
+      { path: "protocol/script/BlueV3Deployment.sol", title: "Pool and reserve configuration" },
+      { path: "architecture-v3.md#1-how-borrowing-works", title: "How borrowing works" },
     ],
   },
   {
-    slug: "regimes",
-    title: "Market regimes",
-    summary: "RegimeRegistry computes the US Eastern trading session on-chain and lets keepers add bounded overrides for individual assets or the whole registry.",
+    slug: "market-status",
+    title: "Market status",
+    summary: "MarketCalendar computes each stock’s status from the US Eastern calendar. The status sets that stock’s borrowing discount and debt cap.",
     sections: [
       {
         id: "calendar",
-        title: "Session calendar",
-        body: <><Table columns={["Regime", "When it applies (ET)", "Demo haircut"]} rows={[
-          [<code>OPEN</code>, "Regular session, 09:30–16:00.", "0%"],
-          [<code>EXTENDED</code>, "Pre-market 04:00–09:30 and post-market 16:00–20:00.", "4%"],
-          [<code>CLOSED</code>, "Ordinary overnight hours, 20:00–04:00.", "10%"],
-          [<code>WEEKEND</code>, "Friday evening through Sunday 20:00 and configured holidays.", "15%"],
-          [<code>CORP_ACTION</code>, "Override for a split or other corporate action.", "10% base"],
-          [<code>HALTED</code>, "Override for a halt or a paused asset.", "25% base"],
-        ]} /><p>EasternCalendar computes daylight saving time. On configured early-close days the regular session ends at 13:00 and the extended session ends at 17:00. Friday’s post-market close and overnight periods leading into configured holidays enter <code>WEEKEND</code>. Sunday after 20:00 is <code>CLOSED</code> unless Monday is a holiday. The admin maintains the holiday and early-close tables.</p></>,
+        title: "Status and borrowing discount",
+        body: <><Table columns={["Status", "When it applies (ET)", "Borrowing discount"]} rows={[
+          [<code>OPEN</code>, "Regular session, 9:30am to 4:00pm.", "0%"],
+          [<code>EXTENDED</code>, "Pre-market and after-hours.", "4%"],
+          [<code>CLOSED</code>, "Weekday overnight.", "10%"],
+          [<code>WEEKEND</code>, "Weekends and exchange holidays.", "15%"],
+          [<code>HALTED</code>, "Trading halt set by the keeper or admin.", "New borrowing blocked"],
+          [<code>CORP_ACTION</code>, "Split or other corporate action in progress.", "New borrowing blocked"],
+        ]} /><p>The discount lowers borrowing power only. For example, $1,000 of collateral at the 50% base LTV supports $500 in regular hours and $425 with the 15% weekend discount. The health factor and liquidation use the 62.5% threshold and do not change with the calendar. These figures are illustrative.</p></>,
       },
       {
         id: "overrides",
-        title: "Keeper overrides",
-        body: <><p><code>regime(asset)</code> picks the most conservative of the calendar, the active asset override and the active global override at <code>address(0)</code>. The order is Open → Extended → Closed → Weekend → Corporate action → Halted. This order is separate from the ABI enum numbering, where <code>HALTED = 4</code> and <code>CORP_ACTION = 5</code>.</p><p>Admin and keepers can set an override within the configured duration, up to the contract’s 30-day hard cap. An existing override can only move to an equal or more conservative state and keep or extend its expiry. <code>OPEN</code> is unavailable as an override. Admin can clear one, and keepers can clear only when <code>keeperCanClear</code> is enabled.</p><p>The oracle keeps the current calendar haircut as a floor. For example, a corporate-action override with a 10% base haircut still carries at least 15% during the configured weekend regime.</p></>,
+        title: "Keeper and admin overrides",
+        body: <p>The schedule comes from the on-chain US Eastern calendar. The keeper or admin can apply a stricter status for a limited time, never a looser one. The deployer can set holidays, early closes and temporary overrides through <code>MarketCalendar</code>. Before launch the holiday calendar must be seeded.</p>,
       },
       {
-        id: "signals",
-        title: "Off-chain signals",
-        body: <p>The keeper code combines Nasdaq halt notices, Binance asset and spot status, and a multiplier-event watcher. An unavailable source counts as unknown. Clearing a latched signal requires healthy sources and a fresh price within the continuity band. The keeper also schedules oracle updates. The scripts default to dry run.</p>,
+        id: "halts",
+        title: "Halts and corporate actions",
+        body: <p><code>HALTED</code> and <code>CORP_ACTION</code> block new borrowing for that stock only. Other stocks continue drawing USDT from the shared reserve, and repayment always works. Set <code>CORP_ACTION</code> before a known split. Otherwise a feed that updates before the multiplier looks like a crash and can trigger liquidations.</p>,
       },
     ],
     sources: [
-      { path: "protocol-old/src/RegimeRegistry.sol", title: "RegimeRegistry" },
-      { path: "protocol-old/src/libraries/EasternCalendar.sol", title: "EasternCalendar" },
+      { path: "protocol/src/MarketCalendar.sol", title: "MarketCalendar" },
+      { path: "protocol/src/libraries/EasternCalendar.sol", title: "EasternCalendar" },
       { path: "keepers/README.md", title: "Keeper behavior and configuration" },
     ],
   },
   {
     slug: "oracle",
-    title: "Oracle and corporate actions",
-    summary: "BlueOracle turns a feed quote into a Morpho-compatible price for raw collateral. It discounts that price according to the effective regime and can fall back to a recorded observation.",
+    title: "Pricing and corporate actions",
+    summary: "StockPriceSource reads Atlas feeds and applies one standard for valuation and liquidation and a stricter one for new borrowing. USDT is priced by Chainlink.",
     sections: [
       {
         id: "price",
-        title: "From feed price to collateral value",
-        body: <><p>The Atlas adapter reads <code>latestAnswer()</code> and <code>latestTimestamp()</code>. If the feed quotes per displayed share, it multiplies the quote by <code>uiMultiplier() / 10¹⁸</code>. If the feed quotes per raw token, it uses the quote directly. The contract adjusts for feed decimals and scales the result by <code>10^(36 + loanDecimals − collateralDecimals)</code> for Morpho.</p><p><code>price()</code> then applies the highest applicable haircut from the current regime, the calendar floor and any active freeze. <code>priceForRegime()</code> is a hypothetical view that retains freeze behavior and omits the current calendar floor. The price source in this implementation is the Atlas-style adapter.</p></>,
+        title: "Valuation and liquidation price",
+        body: <><p>Health and liquidation read the live Atlas round when all of these hold.</p><ul>
+          <li>The round is under 24 hours old.</li>
+          <li>The price is inside a fixed price band for the stock.</li>
+          <li>The multiplier matches the one from the last accepted price.</li>
+          <li>The stock is not in <code>CORP_ACTION</code>.</li>
+        </ul><p>A large move is accepted for valuation, so a genuine crash reaches liquidators immediately without waiting for review. Atlas bStock feeds quote per raw token and have 8 decimals.</p></>,
       },
       {
-        id: "fallback",
-        title: "Staleness, freezes and recovery",
-        body: <><p>Reverting, invalid or stale feed reads use the last good pre-haircut price. After the observation exceeds <code>MAX_FREEZE</code> in age, a separate haircut applies. Before the first valid observation, a fallback read can revert with <code>NoPrice()</code>. A failing registry read is treated as a halt.</p><p>A halt, corporate action or unreadable or changed multiplier triggers freeze handling. Anyone can call <code>update()</code> to record observations. Once the regime and feed allow it, a fresh price inside the continuity band can clear a freeze. For a persistent gap, the registry admin can call <code>forceUnfreeze()</code> after the freeze period, with a normal regime and valid live price.</p><p>The optional upward jump breaker holds large increases above the configured band against the recorded price. During a jump freeze the oracle can still serve a lower live price. The breaker needs independent review.</p></>,
+        id: "borrow-price",
+        title: "Price for new borrowing",
+        body: <p>New borrowing also needs the keeper to have accepted a round under 2 hours old. A move of more than 20% stops new loans until the admin calls <code>acceptReference()</code>. Anyone can call <code>refresh()</code> on the price source to accept new feed rounds that pass the checks.</p>,
+      },
+      {
+        id: "usdt-and-second-source",
+        title: "USDT and a second source",
+        body: <><p>USDT is priced from Chainlink’s USDT/USD feed. A round over an hour old stops new borrowing, and valuation accepts rounds up to 24 hours old.</p><p><strong>The demo prices every stock with Atlas alone.</strong> StockPriceSource supports an optional second feed that must agree with Atlas before new borrowing, never for liquidation. <code>AproCrossCheck.sol</code> holds an APRO setup for TSLAB, NVDAB, QQQB and SPCXB. It is not used in the demo, because APRO feeds only answer contracts APRO has whitelisted.</p></>,
       },
       {
         id: "splits",
         title: "Splits and UI units",
-        body: <><p>Displayed balance equals raw balance × the display multiplier. In a 2-for-1 split, a $200 UI share becomes $100 and the multiplier doubles. The raw balance stays the same and the scaled quote remains $200 per raw unit once both inputs agree.</p><p>The intermediate readings can disagree. The watcher uses <code>UIMultiplierUpdated(old, new, effectiveAt)</code> to flag <code>CORP_ACTION</code> before a scheduled change. A feed-first downward move without that flag can still be priced as a live gap. The demo mocks support scheduling a multiplier and simulating feed failure.</p></>,
+        body: <p>Displayed balance equals raw balance × the display multiplier. In a 2-for-1 split, a $200 UI share becomes $100 and the multiplier doubles, while the raw balance and the per-raw-token value stay the same. A changed multiplier stops pricing until the admin accepts a round that reflects it. The keeper sets <code>CORP_ACTION</code> ahead of an announced split so a feed-first update is not read as a crash.</p>,
       },
     ],
     sources: [
-      { path: "protocol-old/src/BlueOracle.sol", title: "BlueOracle" },
-      { path: "protocol-old/src/interfaces/IBStockLike.sol", title: "bStock interface" },
-      { path: "protocol-old/src/mocks/MockBStock.sol", title: "MockBStock" },
-      { path: "protocol-old/test/BlueOracle.t.sol", title: "Oracle tests" },
+      { path: "protocol/src/StockPriceSource.sol", title: "StockPriceSource" },
+      { path: "protocol/src/interfaces/IPriceFeed.sol", title: "Price feed interface" },
+      { path: "protocol/script/AproCrossCheck.sol", title: "Optional APRO module" },
+      { path: "protocol/script/BscMainnet.sol", title: "BNB Chain feed addresses" },
     ],
   },
   {
-    slug: "router",
-    title: "Borrowing and eligibility",
-    summary: "BlueRouter is the entry point for Blue’s borrowing rules. It manages positions on the borrower’s behalf through Morpho authorization.",
+    slug: "borrowing-rules",
+    title: "Borrowing rules and eligibility",
+    summary: "StockBorrowControls gates every new loan with eligibility, a keeper heartbeat, a guardian hold and per-stock debt caps. Repayment is never blocked.",
     sections: [
       {
-        id: "actions",
-        title: "Position actions",
-        body: <Table columns={["Call", "Behavior"]} rows={[
-          [<code>supply<wbr />Collateral<wbr />And<wbr />Borrow</code>, "Optionally pulls raw collateral approved to the router and supplies it to Morpho. Borrowing requires a signed eligibility attestation and router authorization in Morpho. A deposit with zero borrow needs no attestation."],
-          [<code>withdraw<wbr />Collateral</code>, "Requires Morpho authorization. While debt exists, it checks pause, regime and oracle gates and requires the post-withdrawal position to remain within target LTV. With zero debt those router risk gates do not apply."],
-          [<code>repay</code>, "Anyone can repay on behalf of a position. Pass assets or shares, using the outstanding shares for a full repay. Morpho’s callback pulls the exact loan-token amount from the approved payer. Repay remains available during a router pause."],
-        ]} />,
+        id: "borrow-checks",
+        title: "Checks on a new borrow",
+        body: <><p>The pool checks the debt owner’s signed eligibility, the stock’s current borrow permission, the LTV for the stock’s current market status, and USDT caps. Borrowing is blocked for a stock when:</p><ul>
+          <li>its status is <code>HALTED</code> or <code>CORP_ACTION</code>;</li>
+          <li>the keeper heartbeat has lapsed and the 30-minute recovery window has not completed;</li>
+          <li>a guardian hold is set;</li>
+          <li>the price is too old or needs admin review for new borrowing.</li>
+        </ul><p>Other stocks keep borrowing, and repayment always works.</p></>,
       },
       {
-        id: "borrow-limit",
-        title: "Target LTV and caps",
-        body: <><pre><code>{`Target LTV = LLTV × (1 − largest routine haircut) − margin
-Debt limit = haircut-adjusted collateral value × target LTV`}</code></pre><p>The largest routine haircut is cached at listing from <code>OPEN</code>, <code>EXTENDED</code>, <code>CLOSED</code> and <code>WEEKEND</code>. The fork defaults give <strong>51.125%</strong> before the current oracle haircut is applied to collateral. Borrows also check the post-accrual total market debt against both the market cap and the active regime cap.</p><p>Borrowing and withdrawals with debt are blocked when the router is paused, the regime is <code>HALTED</code> or <code>CORP_ACTION</code>, or the oracle is frozen or lacks a fresh price. <code>borrowLimit()</code> is a debt ceiling preview. Available liquidity, existing debt, caps and the transaction-time checks also affect execution.</p></>,
+        id: "caps",
+        title: "Per-stock debt caps",
+        body: <p>Each stock has a debt cap that tightens as its status becomes more conservative. A cap reduction prevents new draws above the cap while existing debt remains outstanding. USDT also has reserve-wide supply and borrow caps.</p>,
+      },
+      {
+        id: "withdrawals",
+        title: "Withdrawals with debt",
+        body: <p>A missed heartbeat alone still lets borrowers withdraw collateral within the current limit when the price is valid, as on Zona Lend. A halt, corporate action or guardian hold blocks withdrawals while the account has debt.</p>,
       },
       {
         id: "eligibility-and-admin",
         title: "Eligibility and admin controls",
-        body: <><p>The configured signer signs EIP-712 <code>Eligibility(account, nonce, expiry)</code>, bound to the chain and router address. Each account nonce is consumed once. The router verifies expiry and a configured maximum validity window. The fork deploy uses a demo signer and a 15-minute window.</p><p>Admin handles market listing, the signer, margins, caps and unpausing. The guardian can pause and cut caps. Admin transfer is two-step. Morpho markets remain permissionless, so callers interacting directly with Morpho do not pass through the Blue router’s eligibility checks or caps.</p></>,
+        body: <p>A configured signer signs an eligibility for each borrower and stock. The borrower registers it on the controls contract against <code>eligibilityDigest(borrower, stock, nonces(borrower), expiry)</code>. The keeper reports each stock’s health and renews borrow permission. The guardian can hold borrowing or lower caps, and the admin can release a hold or raise caps.</p>,
       },
     ],
     sources: [
-      { path: "protocol-old/src/BlueRouter.sol", title: "BlueRouter" },
-      { path: "protocol-old/test/BlueRouter.t.sol", title: "Router tests" },
-      { path: "architecture-v1.md#2-trust-assumptions-keys-and-roles", title: "Architecture and trust roles" },
+      { path: "protocol/src/StockBorrowControls.sol", title: "StockBorrowControls" },
+      { path: "protocol/src/BluePool.sol", title: "BluePool" },
+      { path: "architecture-v3.md#2-stock-specific-borrowing-controls", title: "Stock-specific borrowing controls" },
     ],
   },
   {
     slug: "liquidation",
     title: "Liquidation and risk",
-    summary: "Morpho decides when a position is liquidatable. Blue changes the collateral price Morpho reads and provides an optional callback helper for an operator to execute liquidation.",
+    summary: "Blue uses Aave’s standard liquidationCall. A position is liquidatable when its health factor falls below 1 at the fixed 62.5% threshold.",
     sections: [
       {
         id: "how-liquidation-works",
         title: "Liquidation flow",
-        body: <><ol>
-          <li>Morpho checks the accrued debt against the oracle-priced collateral and LLTV.</li>
-          <li>A liquidator repays debt and receives collateral under Morpho’s rules and liquidation incentive.</li>
-          <li>For the Blue helper, Morpho transfers the collateral first and invokes <code>onMorphoLiquidate</code> before collecting the loan tokens.</li>
-          <li><code>LiquidatorCallback</code> approves the repayment from pre-funded loan tokens or the proceeds of an owner-selected swap. The helper requires an authorized owner to initiate liquidation and accepts the callback from Morpho during the operation.</li>
-        </ol><p>The keeper bot tracks borrowers from market events and simulates liquidations before sending in live mode. It skips frozen oracles by default. This choice applies to the bot. Other Morpho liquidators remain free to act if Morpho’s checks and token transfers succeed.</p></>,
+        body: <ol>
+          <li>Aave computes the health factor: collateral value × 62.5% ÷ debt.</li>
+          <li>Below 1, any liquidator can call <code>liquidationCall</code>, repay part of the debt in USDT and receive collateral with a 5% bonus.</li>
+          <li>The price comes from the live Atlas round under the valuation rules above, so a genuine crash reaches liquidators immediately.</li>
+          <li>If collateral cannot cover the debt, Aave’s deficit accounting records the bad debt.</li>
+        </ol>,
       },
       {
         id: "risk-boundaries",
         title: "Where the buffer stops",
-        body: <><p>The fork tests cover positions opened at or below target LTV across ordinary session changes with a stable underlying price. A <code>HALTED</code> override, a genuine price gap, accrued interest or an extra stale-price haircut can still make a position liquidatable.</p><p>Collateral transfer restrictions or an issuer pause can block liquidation even when a position is unhealthy. If collateral is insufficient to cover repayment, Morpho accounts for the loss within that market. The demo assumes USDT is worth one US dollar and does not model a depeg.</p></>,
+        body: <><p>The borrowing discount and base LTV leave room below the 62.5% threshold for ordinary session changes. A genuine price gap, accrued interest or a halt can still make a position liquidatable.</p><p>The bStock issuer can pause a token or change its compliance rules, which would block supply, withdrawal and liquidation transfers. A shortfall is shared across the USDT reserve, so USDT suppliers carry exposure to every listed stock. Liquidation stops for a stock while its valuation is unusable, for example during <code>CORP_ACTION</code>.</p></>,
       },
     ],
     sources: [
-      { path: "protocol-old/src/LiquidatorCallback.sol", title: "LiquidatorCallback" },
-      { path: "protocol-old/test/LiquidatorCallback.t.sol", title: "Callback tests" },
-      { path: "protocol-old/test/scenarios/Scenarios.t.sol", title: "Fork scenario tests" },
-      { path: "keepers/README.md#liquidation-bot", title: "Liquidation bot" },
+      { path: "protocol/src/BluePool.sol", title: "BluePool" },
+      { path: "protocol/test/BluePool.t.sol", title: "Pool scenario tests" },
+      { path: "architecture-v3.md#3-pricing-and-liquidations", title: "Pricing and liquidations" },
     ],
   },
   {
     slug: "development",
     title: "Build, fork and test",
-    summary: "The Solidity project lives in protocol-old/ and uses Foundry. The deploy script and fork tests share market creation and configuration code.",
+    summary: "The Solidity project lives in protocol/ and uses Foundry with Aave V3 Origin 3.6.0. DeployBsc.s.sol deploys the BNB Chain listing, and you rehearse it on a local Anvil fork first.",
     sections: [
       {
         id: "setup",
         title: "Build locally",
-        body: <><p>The project pins Solidity 0.8.28 and Shanghai EVM. Install the pinned forge-std dependency before building.</p><pre><code>{`cd protocol-old
+        body: <><pre><code>{`cd protocol
+npm ci
 forge install foundry-rs/forge-std@v1.9.7 --no-git
 forge build
-forge test`}</code></pre><p>Fork suites use <code>BSC_RPC_URL</code> or the repository’s default BNB endpoint. Unavailable RPCs can cause fork tests to skip. Check the test output for skips when validating fork behavior.</p></>,
+forge test`}</code></pre><p>Test tokens and test feeds live in <code>test/utils/</code> and are never deployed. The fork suites are skipped unless you set <code>BLUE_RUN_BNB_FORK_TESTS=true</code> and point <code>BSC_RPC_URL</code> at a BNB mainnet RPC. They run in Foundry’s local fork and send nothing to BNB mainnet.</p></>,
+      },
+      {
+        id: "tests",
+        title: "Test suites",
+        body: <Table columns={["Suite", "What it covers"]} rows={[
+          [<code>BluePoolTest</code>, "Offline scenarios with test bStocks, test feeds and test USDT, so halts, splits and price gaps can be scripted."],
+          [<code>BluePoolBnbForkTest</code>, "The same scenarios with real USDT in a local BNB mainnet fork."],
+          [<code>BscMainnetForkTest</code>, "The real listing: all five bStocks, their Atlas feeds and Chainlink USDT/USD. A TSLAB loan goes through supply, borrow, repay and withdraw."],
+          [<code>AproCrossCheckForkTest</code>, "The optional APRO module against live feeds. It agrees with Atlas once whitelisting is simulated, and refuses contracts APRO has not whitelisted."],
+        ]} />,
       },
       {
         id: "fork-deployment",
         title: "Local fork deployment",
-        body: <><p><code>Deploy.s.sol</code> creates the registry, mock collateral, mock feed, oracle and router. It seeds 2026–2027 calendar dates, creates and lists the test market on the fork, optionally supplies seed liquidity and writes <code>deployments/&lt;chainId&gt;.json</code>. A local BNB fork can also report chain ID 56. The manifest identifies the fork deployment and does not establish a live Blue market.</p><Table columns={["Fork default", "Value"]} rows={[
-          ["Morpho market", "Mock bAAPL / USDT, AdaptiveCurveIrm, 62.5% LLTV"],
-          ["Oracle guardrails", "5% continuity band, 30% upward jump band, 12-hour freeze bound, 10% extra stale-price haircut"],
-          ["Feed staleness", "1 hour during open and extended sessions, 4 hours overnight and 6 hours on weekends. Halt and corporate action use 1 hour."],
-          ["Router allowances", "2 percentage-point margin. Total cap 1M USDT. Regime caps are 1M open, 500k extended, 250k closed and weekend, zero halted or corporate action."],
-          ["Keeper and signer", "3-day override duration limit, keeper clearing disabled by default, 15-minute attestation window"],
-        ]} /><p>These parameters are illustrative. The demo signer is public by design. Follow the repository’s local-fork instructions for deployment options.</p></>,
+        body: <><p><code>DeployBsc.s.sol</code> deploys the real listing. Start an Anvil fork, set <code>BLUE_KEEPER</code>, <code>BLUE_GUARDIAN</code> and <code>BLUE_SIGNER</code> (the guardian must differ from the deployer), then run the script against the local RPC.</p><pre><code>{`anvil --fork-url "$BSC_RPC_URL" --chain-id 56
+
+forge script script/DeployBsc.s.sol:DeployBsc \
+  --rpc-url http://127.0.0.1:8545 \
+  --account <local-keystore> --sender <local-deployer>`}</code></pre><p>The script checks the chain ID and USDT code, and refuses a non-Anvil RPC unless <code>BLUE_ALLOW_MAINNET=true</code>. A mainnet broadcast needs explicit owner approval. Set <code>BLUE_SEED_USDT</code> to seed the reserve.</p></>,
       },
       {
-        id: "demo-scenarios",
-        title: "What the tests demonstrate",
-        body: <ol>
-          <li>Borrow in regular market hours through the router.</li>
-          <li>Move to the weekend and observe reduced borrowing capacity. Variants exercise every routine session and the higher haircut in a halt.</li>
-          <li>Apply a 2-for-1 split and compare the multiplier-aware oracle with a naive oracle. A variant covers a feed-first update with the keeper flag set.</li>
-          <li>Move the price down and exercise Morpho liquidation through the callback helper.</li>
-        </ol>,
+        id: "listing",
+        title: "BNB Chain listing",
+        body: <p><code>BscMainnet.sol</code> holds the token and feed addresses for TSLAB, NVDAB, QQQB, SPCXB, GOOGLB, USDT and the Chainlink USDT/USD feed, checked on-chain on November 27, 2026. The Atlas feed addresses are the instances Lista lists, and reads are open to any caller.</p>,
       },
     ],
     sources: [
-      { path: "protocol-old/README.md", title: "Foundry setup and deployment instructions" },
-      { path: "protocol-old/INTERFACES.md", title: "Shared contract interfaces" },
-      { path: "protocol-old/script/BlueDeploy.sol", title: "Fork defaults and deployment" },
-      { path: "protocol-old/test/scenarios/Scenarios.t.sol", title: "Scenario suite" },
+      { path: "protocol/README.md", title: "Build, test and deploy instructions" },
+      { path: "protocol/script/DeployBsc.s.sol", title: "DeployBsc script" },
+      { path: "protocol/script/BscMainnet.sol", title: "BNB Chain listing" },
+      { path: "protocol/test/BscMainnetFork.t.sol", title: "BscMainnetForkTest" },
+      { path: "protocol/test/AproCrossCheckFork.t.sol", title: "AproCrossCheckForkTest" },
     ],
   },
   {
     slug: "roadmap",
     title: "Design history and open questions",
-    summary: "The initial plan explored a standalone lending core. The implementation uses canonical Morpho Blue with Blue’s own oracle, calendar and router.",
+    summary: "The first prototype used Morpho Blue with a custom oracle and router. The current design is one Aave V3 pool with stock-specific borrowing controls.",
     sections: [
       {
         id: "design-decisions",
         title: "What carried forward",
-        body: <p>The v0 plan proposed isolated markets, stablecoin lending, US session awareness, and special handling of splits and transfer restrictions. Architecture v1 chose the Morpho singleton for accounting and liquidation. The fork prototype uses a single feed adapter, stepped haircuts and Morpho’s liquidation incentive. The initial plan also explored a DEX TWAP, pre-close ramps and regime-specific incentives, which are outside the current contracts.</p>,
+        body: <p>The earlier plans proposed stablecoin lending against stocks, US session awareness and special handling of splits and transfer restrictions. Architecture v1 used isolated Morpho Blue markets, and v3 replaces them with one Aave V3 pool and a shared USDT reserve. The calendar carried over as <code>MarketCalendar</code>. The Morpho prototype is archived in <code>protocol-old/</code> for reference.</p>,
+      },
+      {
+        id: "license",
+        title: "License",
+        body: <p>BluePool and the deployment scripts build on Aave V3 Origin 3.6.0 under BUSL-1.1. It becomes available under the MIT license on March 6, 2027, or an earlier date the Aave DAO records. Blue’s own contracts (StockBorrowControls, StockPriceSource, MarketCalendar) are MIT.</p>,
       },
       {
         id: "verification",
-        title: "Open verification work",
+        title: "Before launch",
         body: <ul>
-          <li>Confirm live Atlas feed units, access permissions and timing around bStock multiplier changes.</li>
-          <li>Verify issuer transfer and compliance requirements for Morpho, the router and liquidators. The mock lacks those controls.</li>
-          <li>Calibrate haircuts and caps against price-gap history and executable exit liquidity. Review the upward jump breaker and the feed-first split case.</li>
-          <li>Maintain the holiday calendar, keeper heartbeat and fallback processes. Validate the live halt signals and dividend timing.</li>
+          <li>Calibrate the risk parameters in <code>BlueV3Deployment.sol</code> against price-gap history and executable liquidation depth.</li>
+          <li>Confirm with Atlas which feed instances Blue should use, and decide on a second price source.</li>
+          <li>Seed the holiday calendar and integrate the keepers and halt signals.</li>
+          <li>Confirm issuer transfer permissions for bStocks and how shared-reserve deficits are handled.</li>
+          <li>Complete a security review and confirm license eligibility for production use.</li>
         </ul>,
-      },
-      {
-        id: "later-phases",
-        title: "Later phases",
-        body: <p>The plan calls for a collateral wrapper to enforce the router-only path, a real eligibility service, curated Vault V2 liquidity, PreLiquidation onboarding, production operations and audits. Additional collateral markets, dividend-specific logic, leverage and shorting remain future work.</p>,
       },
     ],
     sources: [
       { path: "idea-progression.md", title: "Idea progression" },
-      { path: "architecture-v0.md", title: "Initial architecture draft" },
-      { path: "architecture-v1.md", title: "Architecture v1 and open questions" },
-      { path: "implementation-plan.md", title: "Implementation plan" },
+      { path: "architecture-v1.md", title: "Architecture v1 (Morpho, archived)" },
+      { path: "architecture-v3.md", title: "Architecture v3" },
+      { path: "protocol-old/README.md", title: "Archived Morpho prototype" },
     ],
   },
 ];

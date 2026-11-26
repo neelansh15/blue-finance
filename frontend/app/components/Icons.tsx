@@ -14,7 +14,7 @@ const base: SVGProps<SVGSVGElement> = {
 };
 
 /** Clock with a sun arc: market-hours awareness. */
-export const IconRegime = () => (
+export const IconMarketStatus = () => (
   <svg {...base}>
     <path d="M3 16a9 9 0 0 1 18 0" />
     <path d="M12 16l3.5-4" />

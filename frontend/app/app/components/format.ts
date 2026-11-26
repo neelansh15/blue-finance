@@ -1,11 +1,13 @@
-import { wadToNumber } from "../../../src/lib/blue/client";
+import { CENTS_PER_USDT, TOKENS_PER_UNIT } from "../../../src/lib/blue/client";
 
-export const usd = (n: number) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** USD from cents. */
+export const usd = (cents: number) =>
+  (cents / CENTS_PER_USDT).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const pct = (n: number, d = 1) => `${(n * 100).toFixed(d)}%`;
 
-export const hf = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "no debt");
+export const hf = (n: number | null) => (n === null ? "no debt" : Number.isNaN(n) ? "paused" : n.toFixed(2));
 
-export const units = (wad: bigint, d = 2) =>
-  wadToNumber(wad).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+/** Token amount from token units. */
+export const units = (amount: number, d = 4) =>
+  (amount / TOKENS_PER_UNIT).toLocaleString("en-US", { maximumFractionDigits: d });

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   icons: { icon: "/assets/brand/blue-finance-mark.png", apple: "/assets/brand/blue-finance-mark.png" },
   title: "Blue Finance: lending for tokenized US stocks on BNB Chain (draft)",
   description:
-    "Blue Finance is a draft lending protocol for tokenized US stocks on BNB Chain, built on unmodified Morpho Blue, with a risk layer that knows when the US market is open. Prototype for BNB Bangkok. Not live.",
+    "Blue Finance is a draft lending protocol for tokenized US stocks on BNB Chain: one Aave V3 pool with shared USDT liquidity, real bStock collateral and borrowing limits that follow US market hours. Prototype for BNB Bangkok. Not live.",
 };
 
 export const viewport: Viewport = {

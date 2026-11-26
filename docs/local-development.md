@@ -32,11 +32,11 @@ npm ci
 npm run dev
 ```
 
-Open [Risk](http://localhost:3000/app/risk). Click **Analyse demo position**. Friday/Saturday selections are historical replays and are labelled expired; “Now” generates fresh synthetic evidence. The position comes from your demo account, with displayed token quantities and USD debt. Borrowing or repaying in the demo changes the next assessment's inputs. QQQb/SPCXb and halted/frozen split scenarios are explicitly unsupported by this backend.
+Open [Risk](http://localhost:3000/app/risk). Click **Analyse demo position**. Friday/Saturday selections are historical replays and are labelled expired; “Now” generates fresh synthetic evidence. The position comes from your demo account, with displayed token quantities and USD debt. Borrowing or repaying in the demo changes the next assessment's inputs. QQQB/SPCXB and halted/frozen split scenarios are explicitly unsupported by this backend.
 
 `RISK_API_URL=http://127.0.0.1:8000` belongs in `frontend/.env.local` and is read only by the Next.js server. The browser uses the same origin, so the Python CORS setting can stay empty. For deployment, use the reachable backend origin rather than localhost, set it in the frontend host's server environment, and run the Python service separately. Browser cookies and authorization headers are not forwarded by the proxy. Missing/unavailable services show an error; results are never fabricated in the browser.
 
-Risk advice, current on-chain limits and the UI's illustrative borrowing limits are separate. The panel shows the backend reference price, expiry, stress scenarios and unsigned Blue router proposals. It never applies a proposal or changes liquidation thresholds. The service still needs deployment authentication/rate limits before public production use.
+Risk advice, current on-chain limits and the UI's illustrative borrowing limits are separate. The panel shows the backend reference price, expiry, stress scenarios and unsigned Blue pool proposals. It never applies a proposal or changes liquidation thresholds. The service still needs deployment authentication/rate limits before public production use.
 
 ## Optional: OpenAI issuer-document extraction
 
@@ -88,4 +88,4 @@ npm run test:integration
 npm run test:integration -- --live-status
 ```
 
-The integration smoke calls the real frontend proxy and backend for current/Friday/Saturday evidence, eight stress scenarios, an explicit empty account and unsupported markets. `FRONTEND_URL` can select another local or deployed frontend origin. Backend tests: `cd ai-risk-controller && .venv/bin/python -m pytest -q`. Keeper tests/typecheck: `cd keepers && pnpm test && pnpm typecheck`. Contract setup and tests are documented in [Morpho protocol README](../protocol-old/README.md).
+The integration smoke calls the real frontend proxy and backend for current/Friday/Saturday evidence, eight stress scenarios, an explicit empty account and unsupported markets. `FRONTEND_URL` can select another local or deployed frontend origin. Backend tests: `cd ai-risk-controller && .venv/bin/python -m pytest -q`. Keeper tests/typecheck: `cd keepers && pnpm test && pnpm typecheck`. Contract setup and tests are documented in [protocol README](../protocol/README.md).

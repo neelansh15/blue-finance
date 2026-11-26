@@ -8,10 +8,14 @@ import PositionCard from "./PositionCard";
 import { useBlue } from "./useBlue";
 import RiskPanel from "../risk/RiskPanel";
 import { demoPosition } from "../../../src/lib/risk/adapter";
+import type { StockId } from "../../../src/lib/blue/client";
 
 export default function DemoApp() {
-  const { client, snapshot, error } = useBlue();
+  const { client, state } = useBlue();
   const [dev, setDev] = useState(false);
+  const [picked, setPicked] = useState<StockId>("NVDAB");
+  // The account's collateral stock wins: one stock per account.
+  const stock = state.account.stock ?? picked;
 
   // Hidden: ?dev=1 or Shift+D toggles the demo control panel.
   useEffect(() => {
@@ -25,33 +29,23 @@ export default function DemoApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const riskPosition = demoPosition(state);
   return (
     <main id="app-main" tabIndex={-1} className="wrap dapp">
       <h1 className="dapp-title">Blue demo</h1>
       <p className="dapp-sub">
-        One market: bStock collateral, USDT loan. Mocked data, no transactions. Haircuts, margin and the continuity band
-        are placeholders.
+        One Aave V3 pool with a shared USDT reserve. One stock per account as collateral. Mocked data, no transactions.
       </p>
-      {error && (
-        <p className="dapp-banner dapp-banner-risk" role="alert">
-          Could not load data: {error}
-        </p>
-      )}
-      {!snapshot && !error && <p className="dapp-sub">Loading...</p>}
-      {snapshot && (
-        <>
-          <CorpActionBanner s={snapshot} />
-          <div className={`dapp-grid${dev && client.demo ? " dapp-grid-dev" : ""}`}>
-            <PositionCard s={snapshot} />
-            <BorrowForm s={snapshot} client={client} />
-            {dev && client.demo && <DemoPanel s={snapshot} demo={client.demo} />}
-          </div>
-          <details className="risk-embedded">
-            <summary>Assess this position with the risk backend</summary>
-            <RiskPanel key={JSON.stringify(demoPosition(snapshot))} position={demoPosition(snapshot)} />
-          </details>
-        </>
-      )}
+      <CorpActionBanner state={state} stock={stock} />
+      <div className={`dapp-grid${dev ? " dapp-grid-dev" : ""}`}>
+        <PositionCard state={state} stock={stock} />
+        <BorrowForm key={stock} state={state} stock={stock} client={client} />
+        {dev && <DemoPanel state={state} demo={client.demo} initialStock={stock} onStock={setPicked} />}
+      </div>
+      <details className="risk-embedded">
+        <summary>Assess this position with the risk backend</summary>
+        <RiskPanel key={JSON.stringify(riskPosition)} position={riskPosition} />
+      </details>
       <p className="illustrative dapp-foot">
         Developer controls: add ?dev=1 to the URL or press Shift+D. Not live, not audited.
       </p>

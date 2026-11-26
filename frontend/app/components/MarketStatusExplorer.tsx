@@ -4,61 +4,63 @@ import { useId, useMemo, useState, type CSSProperties, type PointerEvent } from 
 import { AnimatedValue, useAnimatedNumber } from "./AnimatedValue";
 import PositionPreview from "./PositionPreview";
 import {
+  BASE_LTV,
   DAYS,
-  REGIME_LABEL,
-  REGIME_NOTE,
+  STATUS_LABEL,
+  STATUS_NOTE,
   STEPS_PER_DAY,
   WEEK_STEPS,
+  discountAt,
   formatStep,
-  haircutAt,
-  regimeAt,
-  type Regime,
-} from "./regimes";
+  statusAt,
+  type SessionStatus,
+} from "./market-status";
 
 const W = 720;
 const PAD_L = 8;
 const PAD_R = 8;
 const TOP = 16;
 const BOTTOM = 168;
-const MIN_POWER = 0.8; // y-axis floor (relative power), illustrative
-const POWER_TICKS = [1, 0.9, MIN_POWER];
+const MAX_LTV = BASE_LTV; // y-axis top: borrow LTV in the regular session
+const MIN_LTV = 0.4; // y-axis floor
+const LTV_TICKS = [MAX_LTV, 0.45, MIN_LTV];
 
 const x = (step: number) => PAD_L + (step / WEEK_STEPS) * (W - PAD_L - PAD_R);
-const y = (power: number) => TOP + ((1 - power) / (1 - MIN_POWER)) * (BOTTOM - TOP);
+const y = (borrowLtv: number) => TOP + ((MAX_LTV - borrowLtv) / (MAX_LTV - MIN_LTV)) * (BOTTOM - TOP);
+const ltvText = (value: number) => `${(value * 100).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
 
 const JUMPS = [
   { label: "Regular", step: 2 * STEPS_PER_DAY + 22 },
-  { label: "Near close", step: 3 * STEPS_PER_DAY + 31 },
   { label: "Extended", step: 3 * STEPS_PER_DAY + 34 },
   { label: "Overnight", step: STEPS_PER_DAY + 44 },
   { label: "Weekend", step: 5 * STEPS_PER_DAY + 24 },
+  { label: "Sunday night", step: 6 * STEPS_PER_DAY + 42 },
 ];
 
-export default function RegimeExplorer() {
+export default function MarketStatusExplorer() {
   const [step, setStep] = useState(JUMPS[0].step);
   const id = useId();
 
-  // Contiguous regime bands and the stepped power line.
+  // Contiguous status bands and the stepped borrow-LTV line.
   const { bands, line, area } = useMemo(() => {
-    const bands: { from: number; to: number; r: Regime }[] = [];
+    const bands: { from: number; to: number; r: SessionStatus }[] = [];
     let pts = "";
     for (let s = 0; s < WEEK_STEPS; s++) {
-      const r = regimeAt(s);
+      const r = statusAt(s);
       const last = bands[bands.length - 1];
       if (last && last.r === r) last.to = s + 1;
       else bands.push({ from: s, to: s + 1, r });
-      const p = 1 - haircutAt(s);
+      const p = MAX_LTV * (1 - discountAt(s));
       pts += `${s === 0 ? "M" : "L"}${x(s).toFixed(1)} ${y(p).toFixed(1)} L${x(s + 1).toFixed(1)} ${y(p).toFixed(1)} `;
     }
     const area = `${pts}L${x(WEEK_STEPS).toFixed(1)} ${BOTTOM} L${x(0).toFixed(1)} ${BOTTOM} Z`;
     return { bands, line: pts.trim(), area };
   }, []);
 
-  const regime = regimeAt(step);
-  const h = haircutAt(step);
-  const power = 1 - h;
-  const animatedHaircut = useAnimatedNumber(h);
-  const powerPercent = Math.round(power * 100);
+  const status = statusAt(step);
+  const discount = discountAt(step);
+  const borrowLtv = MAX_LTV * (1 - discount);
+  const animatedDiscount = useAnimatedNumber(discount);
 
   function selectPoint(event: PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -72,30 +74,30 @@ export default function RegimeExplorer() {
       <div className="plot-panel">
         <div className="plot-heading">
           <div>
-            <p className="plot-label">Borrowing power</p>
+            <p className="plot-label">Borrow LTV</p>
             <p className="plot-value num">
-              <AnimatedValue value={`${powerPercent}%`}>
-                {Math.round((1 - animatedHaircut) * 100)}<span className="plot-unit">%</span>
+              <AnimatedValue value={ltvText(borrowLtv)}>
+                {(MAX_LTV * (1 - animatedDiscount) * 100).toFixed(1).replace(/\.0$/, "")}<span className="plot-unit">%</span>
               </AnimatedValue>
             </p>
           </div>
           <div className="plot-reading">
             <p className="num">{formatStep(step)}</p>
             <p>
-              {REGIME_LABEL[regime]} ·{" "}
-              <AnimatedValue value={`${Math.round(h * 100)}%`}>
-                {Math.round(animatedHaircut * 100)}%
+              {STATUS_LABEL[status]} ·{" "}
+              <AnimatedValue value={`${Math.round(discount * 100)}%`}>
+                {Math.round(animatedDiscount * 100)}%
               </AnimatedValue>{" "}
-              haircut
+              borrowing discount
             </p>
           </div>
         </div>
 
         <div className="chart">
           <div className="chart-axis" aria-hidden="true">
-            {POWER_TICKS.map((tick) => (
+            {LTV_TICKS.map((tick) => (
               <span key={tick} style={{ top: `${(y(tick) / BOTTOM) * 100}%` }}>
-                {Math.round(tick * 100)}%
+                {ltvText(tick)}
               </span>
             ))}
           </div>
@@ -109,11 +111,11 @@ export default function RegimeExplorer() {
               onPointerDown={(event) => event.button === 0 && selectPoint(event)}
               onPointerMove={(event) => event.buttons === 1 && selectPoint(event)}
             >
-              <title id={`${id}-t`}>Illustrative borrowing power across one week, by market regime</title>
+              <title id={`${id}-t`}>Borrow LTV across one week, by market status</title>
               <desc id={`${id}-d`}>
-                Percent of regular-session borrowing power. It ramps down in the last half hour before
-                the close, is slightly lower in extended hours, lower overnight, and lowest from Friday evening until
-                Monday pre-market. Values are illustrative.
+                Borrow LTV is 50% in the regular session, 48% in extended hours, 45% overnight (including Sunday from
+                8pm), and 42.5% from Friday 8pm until Sunday 8pm. The liquidation threshold stays at 62.5% throughout.
+                Prototype parameters.
               </desc>
               <defs>
                 <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
@@ -131,7 +133,7 @@ export default function RegimeExplorer() {
                   height={BOTTOM - TOP}
                 />
               ))}
-              {POWER_TICKS.map((p) => (
+              {LTV_TICKS.map((p) => (
                 <line key={p} className="gridline" x1={PAD_L} x2={W - PAD_R} y1={y(p)} y2={y(p)} />
               ))}
               {DAYS.map((d, i) =>
@@ -146,7 +148,7 @@ export default function RegimeExplorer() {
             <span
               className="cursor-dot"
               aria-hidden="true"
-              style={{ left: `${(x(step + 0.5) / W) * 100}%`, top: `${(y(power) / BOTTOM) * 100}%` }}
+              style={{ left: `${(x(step + 0.5) / W) * 100}%`, top: `${(y(borrowLtv) / BOTTOM) * 100}%` }}
             />
           </div>
           <ol className="days" aria-hidden="true">
@@ -169,7 +171,7 @@ export default function RegimeExplorer() {
           value={step}
           style={{ "--progress": `${(step / (WEEK_STEPS - 1)) * 100}%` } as CSSProperties}
           onChange={(e) => setStep(Number(e.target.value))}
-          aria-valuetext={`${formatStep(step)}, ${REGIME_LABEL[regime]}, borrowing power ${powerPercent}% of regular session (illustrative)`}
+          aria-valuetext={`${formatStep(step)}, ${STATUS_LABEL[status]}, borrow LTV ${ltvText(borrowLtv)}`}
         />
 
         <div className="jumps" role="group" aria-label="Compare market sessions">
@@ -184,14 +186,10 @@ export default function RegimeExplorer() {
             </button>
           ))}
         </div>
-        <p className="plot-note">
-          {regime === "open" && h > 0
-            ? "This simulation starts reducing borrowing power 30 minutes before the close. The fork contracts change discounts at session boundaries."
-            : REGIME_NOTE[regime]}
-        </p>
+        <p className="plot-note">{STATUS_NOTE[status]} Health factor does not change.</p>
       </div>
 
-      <PositionPreview haircut={h} animatedHaircut={animatedHaircut} id={`${id}-position`} />
+      <PositionPreview discount={discount} animatedDiscount={animatedDiscount} id={`${id}-position`} />
     </div>
   );
 }

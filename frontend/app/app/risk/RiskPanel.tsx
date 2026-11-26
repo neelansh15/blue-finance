@@ -102,7 +102,7 @@ export default function RiskPanel({ position }: { position: RiskPosition }) {
             <div><dt>Total borrow cap · USD</dt><dd>{usd(result.recommendation.parameters.borrow_cap)}</dd></div>
             <div><dt>Total collateral cap · tokens</dt><dd>{result.recommendation.parameters.supply_cap.toLocaleString(undefined, { maximumFractionDigits: 2 })}</dd></div>
             <div><dt>New exposure recommendation</dt><dd>{result.recommendation.parameters.collateral_accepted ? "Permitted by model" : "Hold new exposure"}</dd></div>
-            <div><dt>Blue policy regime</dt><dd>{label(result.assessment.session.protocol_regime)}</dd></div>
+            <div><dt>Blue market status</dt><dd>{label(result.assessment.session.protocol_regime)}</dd></div>
             <div><dt>Underlying exchange session</dt><dd>{label(result.assessment.session.underlying_session)}</dd></div>
             <div><dt>Oracle evidence</dt><dd>{result.assessment.oracle_stale ? "Stale" : "Within freshness policy"}</dd></div>
             <div><dt>Confidence</dt><dd>{percent(result.assessment.score.confidence)}</dd></div>

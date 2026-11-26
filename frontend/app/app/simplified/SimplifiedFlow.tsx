@@ -5,34 +5,32 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { useAccount } from "wagmi";
 import { IconArrow } from "../../components/Icons";
 import TokenIcon from "../../components/TokenIcon";
-import { REGIME_LABEL } from "../../components/regimes";
+import CorpActionBanner from "../components/CorpActionBanner";
 import { useDemoAccount } from "../DemoAccount";
-import { health, money, quantity } from "../format";
+import { health, ltv, money, percent, quantity } from "../format";
 import {
-  actionMaximum, applyAction, CENTS_PER_USDT, liquidity, MARKETS, marketMetrics, parseAmount,
-  TOKENS_PER_UNIT, walletUsdt, type Market, type Position,
+  actionLimits, borrowLtv, CENTS_PER_USDT, executeAction, parseAmount, poolMetrics, positionMetrics,
+  STATUS_LABEL, stockStatus, STOCKS, TOKENS_PER_UNIT, type PoolState, type Stock, type StockId,
 } from "../markets";
 
 const steps = ["Wallet", "Action", "Market", "Transaction", "Summary"] as const;
 const choices = [
-  { action: "borrow", title: "Borrow", icon: "hand-coins", description: "Use tokenized stock as collateral to borrow USDT." },
-  { action: "lend", title: "Supply", icon: "coins", description: "Supply USDT to a market to earn interest." },
+  { action: "borrow", title: "Borrow", icon: "hand-coins", description: "Use one tokenized stock as collateral to borrow USDT." },
+  { action: "lend", title: "Supply", icon: "coins", description: "Supply USDT to the shared pool for bluUSDT and earn interest." },
 ] as const;
 type Choice = (typeof choices)[number]["action"];
 
+/** The USDT pool is the only market for suppliers. */
+const POOL = "POOL" as const;
+type Selection = StockId | typeof POOL;
+
 type Receipt = {
   action: Choice;
-  market: Market;
+  stock: StockId | null;
   amount: number;
   addedCollateral: number;
-  before: Position;
-  after: Position;
-  walletBefore: number;
-  walletAfter: number;
-  healthAfter: number | null;
-  weekendHealth: number | null;
-  availableAfter: number;
-  session: string;
+  before: PoolState;
+  after: PoolState;
   rate: number;
   address: string;
   timestamp: string;
@@ -40,7 +38,7 @@ type Receipt = {
 };
 
 const usdt = (cents: number) => `${quantity.format(cents / CENTS_PER_USDT)} USDT`;
-const tokens = (units: number, market: Market) => `${quantity.format(units / TOKENS_PER_UNIT)} ${market.symbol}`;
+const tokens = (units: number, stock: StockId) => `${quantity.format(units / TOKENS_PER_UNIT)} ${stock}`;
 
 function Details({ rows }: { rows: [string, ReactNode][] }) {
   return <dl className="app-preview">{rows.map(([label, value]) => (
@@ -48,17 +46,21 @@ function Details({ rows }: { rows: [string, ReactNode][] }) {
   ))}</dl>;
 }
 
-function MarketName({ market }: { market: Market }) {
-  return <span className="app-asset"><TokenIcon symbol={market.id} size={28} />{market.symbol}</span>;
+function StockName({ stock }: { stock: Stock }) {
+  return <span className="app-asset"><TokenIcon symbol={stock.id} size={28} />{stock.symbol}</span>;
+}
+
+function PoolName() {
+  return <span className="app-asset"><TokenIcon symbol="USDT" size={28} />USDT pool</span>;
 }
 
 export default function SimplifiedFlow() {
   const { address, isConnected, isConnecting, isReconnecting } = useAccount();
   const { setOpen } = useModal();
-  const { positions, setPositions, regime } = useDemoAccount();
+  const { state, client } = useDemoAccount();
   const [step, setStep] = useState(1);
   const [choice, setChoice] = useState<Choice>();
-  const [market, setMarket] = useState<Market>();
+  const [market, setMarket] = useState<Selection>();
   const [amount, setAmount] = useState("");
   const [collateral, setCollateral] = useState("");
   const [receipt, setReceipt] = useState<Receipt>();
@@ -67,8 +69,8 @@ export default function SimplifiedFlow() {
   const connected = isConnected && !!address;
   const active = connected ? step : 0;
   const reached = !connected ? 0 : receipt ? 4 : market ? 3 : choice ? 2 : 1;
-  const wallet = walletUsdt(positions);
-  const holdings = MARKETS.filter(({ id }) => Object.values(positions[id]).some(value => value > 0));
+  const account = state.account;
+  const pool = poolMetrics(state);
   const borrowing = choice === "borrow";
   const operation = borrowing ? "Borrow" : "Supply";
 
@@ -84,11 +86,14 @@ export default function SimplifiedFlow() {
       setCollateral("");
       setReceipt(undefined);
     }
-    setStep(2);
+    if (action === "lend") {
+      setMarket(POOL);
+      setStep(3);
+    } else setStep(2);
   }
 
-  function selectMarket(next: Market) {
-    if (market?.id !== next.id) {
+  function selectMarket(next: Selection) {
+    if (market !== next) {
       setMarket(next);
       setAmount("");
       setCollateral("");
@@ -97,35 +102,37 @@ export default function SimplifiedFlow() {
     setStep(3);
   }
 
-  const position = market && positions[market.id];
+  const stock: StockId | null = market && market !== POOL ? market : null;
+  const actionStock: StockId = stock ?? account.stock ?? "NVDAB";
   const added = parseAmount(collateral, TOKENS_PER_UNIT);
   const units = parseAmount(amount, CENTS_PER_USDT);
-  const collateralMaximum = market && position ? actionMaximum("deposit", market, position, regime, wallet) : 0;
-  const collateralError = borrowing && collateral !== "" && (added <= 0 || added > collateralMaximum);
-  const funded = position && borrowing && !collateralError ? applyAction(position, "deposit", added) : position;
-  const maximum = market && funded && choice ? actionMaximum(choice, market, funded, regime, wallet) : 0;
-  const valid = units > 0 && units <= maximum && !collateralError;
-  const projected = funded && choice && valid ? applyAction(funded, choice, units) : funded;
-  const rate = market ? borrowing ? market.borrowApr : market.supplyApr : 0;
+  const collateralLimit = stock ? actionLimits(state, stock).deposit : { max: 0 };
+  const collateralError = borrowing && collateral !== "" && (added <= 0 || added > collateralLimit.max);
+  const funded = borrowing && stock && added > 0 && !collateralError ? executeAction(state, "deposit", stock, added).state : state;
+  const limit = choice ? actionLimits(funded, actionStock)[choice] : { max: 0 };
+  const maximum = limit.max;
+  const valid = !!choice && units > 0 && units <= maximum && !collateralError;
+  const projected = valid && choice ? executeAction(funded, choice, actionStock, units).state : funded;
+  const after = positionMetrics(projected);
+  const rate = borrowing ? pool.borrowApr : pool.supplyApr;
   const amountError = amount !== "" && (units <= 0 || units > maximum);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!connected || !address || !valid || !market || !choice || !position || !projected) return;
-    const updated = { ...positions, [market.id]: projected };
-    const metrics = marketMetrics(market, projected, regime);
-    setPositions(updated);
+    if (!connected || !address || !valid || !choice) return;
+    const before = state;
+    if (borrowing && stock && added > 0 && !client.act("deposit", stock, added).ok) return;
+    if (!client.act(choice, actionStock, units).ok) return;
     setReceipt({
-      action: choice, market, amount: units, addedCollateral: borrowing ? added : 0,
-      before: position, after: projected, rate, address, timestamp: new Date().toISOString(),
-      walletBefore: wallet, walletAfter: walletUsdt(updated), session: REGIME_LABEL[regime],
-      healthAfter: metrics.health, weekendHealth: marketMetrics(market, projected, "weekend").health,
-      availableAfter: metrics.available,
+      action: choice, stock: borrowing ? actionStock : null, amount: units, addedCollateral: borrowing ? added : 0,
+      before, after: client.getState(), rate, address, timestamp: new Date().toISOString(),
     });
     setAmount("");
     setCollateral("");
     setStep(4);
   }
+
+  const receiptAfter = receipt ? positionMetrics(receipt.after) : null;
 
   return (
     <main id="app-main" tabIndex={-1} className="simple-flow">
@@ -175,61 +182,87 @@ export default function SimplifiedFlow() {
             </div>
             <h3 id="simple-positions">Your simulated positions</h3>
             <table className="simple-table" aria-labelledby="simple-positions">
-              <thead><tr><th scope="col">Market</th><th scope="col">Collateral</th><th scope="col">Borrowed</th><th scope="col">Supplied</th></tr></thead>
-              <tbody>{holdings.length ? holdings.map(item => {
-                const holding = positions[item.id];
-                return <tr key={item.id}><th scope="row"><MarketName market={item} /></th>
-                  <td>{tokens(holding.collateral, item)}</td><td>{money(holding.debt)}</td><td>{money(holding.supplied)}</td></tr>;
-              }) : <tr><td colSpan={4}>No positions yet</td></tr>}</tbody>
+              <thead><tr><th scope="col">Position</th><th scope="col">Collateral</th><th scope="col">Borrowed</th><th scope="col">Supplied</th></tr></thead>
+              <tbody>
+                {account.stock && (
+                  <tr><th scope="row"><StockName stock={STOCKS.find(item => item.id === account.stock)!} /></th>
+                    <td>{tokens(account.collateral, account.stock)}</td><td>{money(account.debt)}</td><td>–</td></tr>
+                )}
+                {account.supplied > 0 && (
+                  <tr><th scope="row"><PoolName /></th><td>–</td><td>–</td><td>{money(account.supplied)} bluUSDT</td></tr>
+                )}
+                {!account.stock && account.supplied === 0 && <tr><td colSpan={4}>No positions yet</td></tr>}
+              </tbody>
             </table>
           </>
         )}
 
-        {active === 2 && (
+        {active === 2 && borrowing && (
           <>
-            <h2 id="simple-heading" tabIndex={-1} ref={heading}>Choose a market to {operation.toLowerCase()}</h2>
+            <h2 id="simple-heading" tabIndex={-1} ref={heading}>Choose a stock to borrow against</h2>
+            {account.stock && <p>Your account uses {account.stock} as collateral. One stock per account, so other stocks need a fresh account or a repaid loan.</p>}
             <table className="simple-table" aria-labelledby="simple-heading">
-              <thead><tr><th scope="col">Market</th><th scope="col">{borrowing ? "Borrow APR" : "Supply APR"}</th>
-                <th scope="col">{borrowing ? "Can borrow" : "Your supply"}</th><th scope="col">Liquidity</th></tr></thead>
-              <tbody>{MARKETS.map(item => (
-                <tr key={item.id} className="simple-market-row">
-                  <th scope="row"><button className="simple-market" type="button" onClick={() => selectMarket(item)}
-                    aria-label={`Select ${item.symbol} market`}><MarketName market={item} /><span aria-hidden="true">→</span></button></th>
-                  <td>{(borrowing ? item.borrowApr : item.supplyApr).toFixed(2)}%</td>
-                  <td>{money(borrowing ? marketMetrics(item, positions[item.id], regime).available : positions[item.id].supplied)}</td>
-                  <td>{money(liquidity(item, positions[item.id]))}</td>
-                </tr>
-              ))}</tbody>
+              <thead><tr><th scope="col">Stock</th><th scope="col">Borrow LTV</th>
+                <th scope="col">Can borrow</th><th scope="col">Status</th></tr></thead>
+              <tbody>{STOCKS.map(item => {
+                const itemStatus = stockStatus(state, item.id);
+                return (
+                  <tr key={item.id} className="simple-market-row">
+                    <th scope="row"><button className="simple-market" type="button" onClick={() => selectMarket(item.id)}
+                      aria-label={`Select ${item.symbol}`}><StockName stock={item} /><span aria-hidden="true">→</span></button></th>
+                    <td>{ltv(borrowLtv(itemStatus))}</td>
+                    <td>{money(actionLimits(state, item.id).borrow.max)}</td>
+                    <td>{STATUS_LABEL[itemStatus]}</td>
+                  </tr>
+                );
+              })}</tbody>
             </table>
           </>
         )}
 
-        {active === 3 && market && position && (
+        {active === 2 && !borrowing && (
+          <>
+            <h2 id="simple-heading" tabIndex={-1} ref={heading}>Supply to the USDT pool</h2>
+            <table className="simple-table" aria-labelledby="simple-heading">
+              <thead><tr><th scope="col">Pool</th><th scope="col">Supply APR</th><th scope="col">Your supply</th><th scope="col">Liquidity</th></tr></thead>
+              <tbody>
+                <tr className="simple-market-row">
+                  <th scope="row"><button className="simple-market" type="button" onClick={() => selectMarket(POOL)}
+                    aria-label="Select the USDT pool"><PoolName /><span aria-hidden="true">→</span></button></th>
+                  <td>{percent(pool.supplyApr)}</td><td>{money(account.supplied)}</td><td>{money(pool.liquidity)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {active === 3 && market && choice && (
           <div className="app-ticket simple-ticket">
             <header className="app-ticket-head">
               <div className="app-asset">
                 <TokenIcon symbol="USDT" size={36} />
                 <div>
                   <h2 id="simple-heading" tabIndex={-1} ref={heading}>{operation} USDT</h2>
-                  <p className="simple-ticket-market">{market.symbol} Market</p>
+                  <p className="simple-ticket-market">{stock ? `${stock} collateral` : "USDT pool"}</p>
                 </div>
               </div>
-              <dl className="app-ticket-rate"><dt>{operation} APR</dt><dd>{rate.toFixed(2)}%</dd></dl>
+              <dl className="app-ticket-rate"><dt>{operation} APR</dt><dd>{percent(rate)}</dd></dl>
             </header>
             <form className="app-ticket-body simple-form" onSubmit={submit}>
-              {borrowing && (
+              {stock && <CorpActionBanner state={state} stock={stock} />}
+              {borrowing && stock && (
                 <div>
                   <div className="app-amount-heading"><label htmlFor="simple-collateral">Add collateral</label>
-                    <span id="simple-collateral-limit">{tokens(collateralMaximum, market)} available</span></div>
+                    <span id="simple-collateral-limit">{tokens(collateralLimit.max, stock)} available</span></div>
                   <div className="app-amount">
                     <input id="simple-collateral" inputMode="decimal" placeholder="0.00" value={collateral}
                       onChange={event => setCollateral(event.target.value)} aria-invalid={collateralError || undefined}
                       aria-describedby={collateralError ? "simple-collateral-limit simple-collateral-error" : "simple-collateral-limit"} />
-                    <span>{market.symbol}</span>
-                    <button type="button" disabled={!collateralMaximum} onClick={() => setCollateral(String(collateralMaximum / TOKENS_PER_UNIT))}>Max</button>
+                    <span>{stock}</span>
+                    <button type="button" disabled={!collateralLimit.max} onClick={() => setCollateral(String(collateralLimit.max / TOKENS_PER_UNIT))}>Max</button>
                   </div>
-                  {collateralError && <p id="simple-collateral-error" className="app-message">Enter an amount up to your available collateral, with up to four decimals.</p>}
-                  {!position.collateral && !added && <p className="app-message">Add collateral to unlock borrowing in this market.</p>}
+                  {collateralError && <p id="simple-collateral-error" className="app-message">Enter an amount up to your available {stock}, with up to four decimals.</p>}
+                  {"reason" in collateralLimit && collateralLimit.reason && <p className="app-message">{collateralLimit.reason}</p>}
                 </div>
               )}
               <div>
@@ -243,32 +276,38 @@ export default function SimplifiedFlow() {
                   <button type="button" disabled={!maximum} onClick={() => setAmount(String(maximum / CENTS_PER_USDT))}>Max</button>
                 </div>
                 {amountError && <p id="simple-amount-error" className="app-message">Enter a positive amount within the limit, with up to two decimals.</p>}
+                {!amountError && "reason" in limit && limit.reason && <p className="app-message">{limit.reason}</p>}
               </div>
-              {projected && <Details rows={borrowing ? [
-                ["Market session", REGIME_LABEL[regime]],
-                ["Projected debt", usdt(projected.debt)],
-                ["Projected health", health(marketMetrics(market, projected, regime).health)],
-                ["Weekend health", health(marketMetrics(market, projected, "weekend").health)],
-              ] : [["Projected supply", usdt(projected.supplied)], ["Demo wallet balance", usdt(wallet - (valid ? units : 0))]]} />}
+              <Details rows={borrowing && stock ? [
+                ["Market status", `${STATUS_LABEL[stockStatus(state, stock)]} · ${ltv(borrowLtv(stockStatus(state, stock)))} borrow LTV`],
+                ["Projected debt", usdt(projected.account.debt)],
+                ["Projected borrow limit", usdt(after.borrowLimit)],
+                ["Projected health factor", health(after.healthFactor)],
+                ["Liquidation price", after.liquidationPrice === null ? "None" : money(after.liquidationPrice)],
+              ] : [
+                ["Projected bluUSDT", usdt(projected.account.supplied)],
+                ["Demo wallet balance", usdt(projected.account.usdt)],
+                ["Supply APR after", percent(poolMetrics(projected).supplyApr)],
+              ]} />
               <button type="submit" className="btn app-submit" disabled={!valid}>Simulate {operation.toLowerCase()}</button>
             </form>
           </div>
         )}
 
-        {active === 4 && receipt && (
+        {active === 4 && receipt && receiptAfter && (
           <div className="simple-receipt">
             <h2 className="simple-success" id="simple-heading" tabIndex={-1} ref={heading}>
               <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor"
                 strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="m5 12 4 4L19 6" />
               </svg>
-              <span>{receipt.action === "borrow" ? "Borrowed" : "Supplied"} {usdt(receipt.amount)} {receipt.action === "borrow" ? "from" : "to"} {receipt.market.symbol}/USDT Market</span>
+              <span>{receipt.action === "borrow" ? `Borrowed ${usdt(receipt.amount)} against ${receipt.stock}` : `Supplied ${usdt(receipt.amount)} to the USDT pool`}</span>
             </h2>
             <p>Simulated transaction. Your demo position was updated.</p>
             <Details rows={[
-              ["Market", `${receipt.market.symbol} / USDT`],
+              ["Market", receipt.stock ? `${receipt.stock} collateral · USDT pool` : "USDT pool"],
               ["Amount", usdt(receipt.amount)],
-              [receipt.action === "borrow" ? "Borrow APR" : "Supply APR", `${receipt.rate.toFixed(2)}%`],
+              [receipt.action === "borrow" ? "Borrow APR" : "Supply APR", percent(receipt.rate)],
               ["Wallet", receipt.address],
               ["Executed at", receipt.timestamp],
               ["Transaction Hash", receipt.transactionHash ? (
@@ -282,17 +321,16 @@ export default function SimplifiedFlow() {
                   </svg>
                 </a>
               ) : "Unavailable for simulated transactions"],
-              ["Demo wallet balance", `${usdt(receipt.walletBefore)} → ${usdt(receipt.walletAfter)}`],
-              ...(receipt.action === "borrow" ? [
-                ["Market session", receipt.session],
-                ["Collateral added", tokens(receipt.addedCollateral, receipt.market)],
-                ["Total collateral", tokens(receipt.after.collateral, receipt.market)],
-                ["Total debt", `${usdt(receipt.before.debt)} → ${usdt(receipt.after.debt)}`],
-                ["Remaining borrowing power", usdt(receipt.availableAfter)],
-                ["Health factor", health(receipt.healthAfter)],
-                ["Weekend health", health(receipt.weekendHealth)],
+              ["Demo wallet balance", `${usdt(receipt.before.account.usdt)} → ${usdt(receipt.after.account.usdt)}`],
+              ...(receipt.action === "borrow" && receipt.stock ? [
+                ["Market status", receiptAfter.status ? STATUS_LABEL[receiptAfter.status] : "–"],
+                ["Collateral added", tokens(receipt.addedCollateral, receipt.stock)],
+                ["Total collateral", tokens(receipt.after.account.collateral, receipt.stock)],
+                ["Total debt", `${usdt(receipt.before.account.debt)} → ${usdt(receipt.after.account.debt)}`],
+                ["Borrow limit", usdt(receiptAfter.borrowLimit)],
+                ["Health factor", health(receiptAfter.healthFactor)],
               ] as [string, string][] : [
-                ["Total supplied", `${usdt(receipt.before.supplied)} → ${usdt(receipt.after.supplied)}`],
+                ["bluUSDT balance", `${usdt(receipt.before.account.supplied)} → ${usdt(receipt.after.account.supplied)}`],
               ] as [string, string][]),
             ]} />
             <button type="button" className="btn" onClick={() => {
