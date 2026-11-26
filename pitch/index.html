@@ -160,7 +160,7 @@
     <div style="position:absolute;left:72px;right:72px;bottom:70px">
       <div data-week="cover"></div>
     </div>
-    <footer style="border-color:#304776;color:#b9caec"><span>BNB Bangkok · November 2026 · Prototype, not live</span><span class="page">1</span></footer>
+    <footer style="border-color:#304776;color:#b9caec"><span>BNB Bangkok · November 2026 · Hackathon prototype on BNB mainnet, unaudited</span><span class="page">1</span></footer>
   </section></div>
 
   <!-- 2. Problem -->
@@ -242,7 +242,7 @@
       <div class="col"><h3>Ceilings per stock and session</h3><p>Debt including interest is tracked for each stock and checked on every borrow.</p></div>
       <div class="col"><h3>The trade-off</h3><p>Lenders share any shortfall across all five stocks. The ceilings limit how much one stock can contribute.</p></div>
     </div>
-    <footer><span>First listing in the v3 deployment scripts. Eligibility is a signed EIP-712 approval; the eligibility service is still to be built.</span><span class="page">5</span></footer>
+    <footer><span>First listing in the deployed pool. Eligibility is a signed EIP-712 approval; the eligibility service is still to be built.</span><span class="page">5</span></footer>
   </section></div>
 
   <!-- 6. Session limits -->
@@ -300,7 +300,7 @@
         <p class="muted small" style="margin-top:14px">At 1.96× a fall of about 21% is enough.</p>
       </div>
     </div>
-    <footer><span>Runs in the demo app on the simulated pool; no transaction is sent. Example: no starting debt, 0.3% swap fee, price held at the quote, 2× product cap.</span><span class="page">7</span></footer>
+    <footer><span>Runs in the app’s simulator; no transaction is sent. Example: no starting debt, 0.3% swap fee, price held at the quote, 2× product cap.</span><span class="page">7</span></footer>
   </section></div>
 
   <!-- 8. Failure modes -->
@@ -362,31 +362,32 @@
 
   <!-- 11. Progress -->
   <div class="frame"><section class="slide">
-    <h2>The v3 contracts run against <em>real bStocks</em> on a BNB fork</h2>
+    <h2>Deployed on BNB mainnet <em>with five real bStocks</em></h2>
     <div style="display:grid;grid-template-columns:420px 1fr;gap:72px;margin-top:40px">
       <div>
-        <div class="stat" style="font-size:120px">38/38</div>
-        <p style="margin-top:12px;font-size:20px">pool and listing tests passing on November 27, 2026</p>
+        <div class="stat" style="font-size:120px">56/56</div>
+        <p style="margin-top:12px;font-size:20px">pool, listing and calendar tests passing on November 27, 2026</p>
         <table class="counts" style="margin-top:20px">
           <tbody>
-            <tr><th>18</th><td>scenarios, offline with test tokens</td></tr>
-            <tr><th>18</th><td>the same scenarios on a BNB fork with real USDT</td></tr>
-            <tr><th>2</th><td>on a BNB fork with the real bStocks and price feeds</td></tr>
+            <tr><th>23</th><td>scenarios, offline with test tokens</td></tr>
+            <tr><th>23</th><td>the same scenarios on a BNB fork with real USDT</td></tr>
+            <tr><th>5</th><td>on the launch with live bStocks and feeds</td></tr>
+            <tr><th>5</th><td>on market holidays and early closes</td></tr>
           </tbody>
         </table>
       </div>
       <ul class="checks">
-        <li>A real TSLAB loan runs through supply, borrow, repay and withdraw</li>
-        <li>All five stocks draw from one USDT reserve</li>
+        <li><strong>Pool live on BNB Smart Chain.</strong> All 59 deployment transactions succeeded on November 27</li>
+        <li>The web app reads the live pool and sends wallet transactions to it</li>
+        <li>In fork tests, a TSLAB loan runs through supply, borrow, repay and withdraw</li>
         <li>A Tesla halt blocks Tesla borrowing only, and repayment works</li>
         <li>An announced split blocks borrowing and liquidation</li>
         <li>A genuine price gap blocks borrowing and liquidates at the live price</li>
         <li>Liquidation keeps per-stock debt correct, including a deficit</li>
-        <li>Silent monitoring and guardian holds require recovery</li>
       </ul>
     </div>
-    <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit and no mainnet deployment. The web app only simulates the pool, and keepers still run on the earlier Morpho prototype.</p>
-    <footer><span>Fork tests send nothing to mainnet. Balances are set locally.</span><span class="page">11</span></footer>
+    <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit. The pool launched with no USDT, keeper reports and eligibility are manual, and there is no liquidation bot.</p>
+    <footer><span>BluePool <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC">0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</a> · Fork tests send nothing to mainnet.</span><span class="page">11</span></footer>
   </section></div>
 
   <!-- 12. Business model -->
@@ -414,19 +415,19 @@
 
   <!-- 13. Road to mainnet -->
   <div class="frame"><section class="slide">
-    <h2>Five steps from prototype <em>to a capped mainnet launch</em></h2>
+    <h2>Five steps from live prototype <em>to open borrowing</em></h2>
     <ol class="steps">
       <li><h3>Calibrate risk</h3><p>Set discounts, limits and caps from historical gap data and the depth liquidators can actually sell into.</p></li>
-      <li><h3>Connect the product</h3><p>Wire the web app to the contracts, move keepers and the risk advisor to v3, and build the eligibility service.</p></li>
+      <li><h3>Automate operations</h3><p>Run keepers for health and prices, add a liquidation bot and build the eligibility service.</p></li>
       <li><h3>Confirm price feeds</h3><p>Confirm with Atlas which feed instances to use, and decide on a second price source.</p></li>
       <li><h3>Review and license</h3><p>Security review of the pool changes. Confirm Aave V3.6 license eligibility; it converts to MIT by March 6, 2027.</p></li>
-      <li><h3>Launch small</h3><p>Verify issuer transfer rules and shortfall handling, then open with low caps.</p></li>
+      <li><h3>Open small</h3><p>Move admin to a multisig, fund a deficit backstop, verify issuer transfer rules, then add USDT under low caps.</p></li>
     </ol>
     <div style="margin-top:64px;background:var(--sheet);padding:24px 28px;display:flex;gap:40px;align-items:center">
       <h3 style="white-space:nowrap">Leverage</h3>
-      <p class="muted">One-click leveraged borrow runs in the demo today. Live use still needs real swaps and wallet execution against the pool.</p>
+      <p class="muted">One-click leveraged borrow runs in the app’s simulator today. Live use still needs real swaps and wallet execution against the pool.</p>
     </div>
-    <footer><span>Steps and open items from architecture-v3.md and protocol/README.md.</span><span class="page">13</span></footer>
+    <footer><span>Open items from architecture-v3.md, protocol/README.md and frontend/README.md.</span><span class="page">13</span></footer>
   </section></div>
 
   <!-- 14. Close -->
@@ -436,10 +437,10 @@
     <p class="lead" style="margin-top:44px;color:var(--on-navy)">We want to talk to:</p>
     <div class="cols cols-3" style="margin-top:20px;gap:40px">
       <div class="col" style="border-color:#a6beff"><h3>Price feed teams</h3><p style="color:var(--on-navy-muted)">Atlas, to confirm which feed instances Blue should use.</p></div>
-      <div class="col" style="border-color:#a6beff"><h3>Security reviewers</h3><p style="color:var(--on-navy-muted)">To review the Aave pool changes and price contracts before launch.</p></div>
-      <div class="col" style="border-color:#a6beff"><h3>Lenders and bStock holders</h3><p style="color:var(--on-navy-muted)">To test limits and tell us what they need to borrow on-chain.</p></div>
+      <div class="col" style="border-color:#a6beff"><h3>Security reviewers</h3><p style="color:var(--on-navy-muted)">To review the Aave pool changes and price contracts before borrowing opens up.</p></div>
+      <div class="col" style="border-color:#a6beff"><h3>Lenders and bStock holders</h3><p style="color:var(--on-navy-muted)">To try the simulator and tell us what they need to borrow on-chain.</p></div>
     </div>
-    <footer style="border-color:#304776;color:#b9caec"><span><a href="https://github.com/neelansh15/blue-finance">github.com/neelansh15/blue-finance</a> · Prototype, not live. Nothing here is an offer or investment advice.</span><span class="page">14</span></footer>
+    <footer style="border-color:#304776;color:#b9caec"><span><a href="https://github.com/neelansh15/blue-finance">github.com/neelansh15/blue-finance</a> · Unaudited hackathon prototype. Nothing here is an offer or investment advice.</span><span class="page">14</span></footer>
   </section></div>
 </main>
 
