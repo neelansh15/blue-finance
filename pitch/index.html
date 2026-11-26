@@ -1,0 +1,571 @@
+<meta charset="utf-8">
+<title>Blue Finance Pitch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Layout: fixed 1280x720 slides, scaled to the window; the 168-hour market week is the recurring graphic. */
+  :root {
+    color-scheme: light;
+    --paper: #ffffff;
+    --sheet: #f3f6fd;
+    --ink: #132544;
+    --secondary: #425779;
+    --blue: #2040bf;
+    --plot: #1836a8;
+    --navy: #0b1530;
+    --rule: #cbd8ef;
+    --rule-strong: #8ca3d1;
+    --on-navy: #f3f6ff;
+    --on-navy-muted: #b9caec;
+    --grid: rgba(38, 77, 169, 0.07);
+    --grid-navy: rgba(151, 180, 249, 0.1);
+    --amber: #a85a00;
+    /* Market sessions, darkest = stock market fully open */
+    --s-open: #2040bf;
+    --s-ext: #6f8ce0;
+    --s-closed: #b9caf2;
+    --s-weekend: #f2c14e;
+
+    --sans: "Instrument Sans", system-ui, sans-serif;
+    --serif: "Instrument Serif", Georgia, serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @font-face { font-family: "Instrument Sans"; src: url("assets/instrument-sans.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+  @font-face { font-family: "Instrument Serif"; src: url("assets/instrument-serif-italic.woff2") format("woff2"); font-style: italic; font-weight: 400; font-display: swap; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: var(--navy); color: var(--ink); font: 400 18px/1.45 var(--sans); overflow: hidden; }
+
+  #deck { position: relative; width: 100%; height: 100%; }
+  .frame { position: absolute; inset: 0; display: none; }
+  .frame.active { display: block; }
+  .slide {
+    position: absolute; left: 50%; top: 50%;
+    width: 1280px; height: 720px; overflow: hidden;
+    transform: translate(-50%, -50%) scale(var(--scale, 1));
+    padding: 54px 72px 0;
+    background-color: var(--paper);
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+  .slide.navy {
+    background-color: var(--navy); color: var(--on-navy);
+    background-image: linear-gradient(var(--grid-navy) 1px, transparent 1px), linear-gradient(90deg, var(--grid-navy) 1px, transparent 1px);
+    background-size: 64px 64px; background-position: 7px 7px;
+  }
+
+  h1 { font-size: 76px; line-height: 1.04; font-weight: 560; letter-spacing: -0.025em; }
+  h2 { font-size: 42px; line-height: 1.12; font-weight: 590; letter-spacing: -0.018em; text-wrap: balance; }
+  h3 { font-size: 20px; line-height: 1.25; font-weight: 640; }
+  em { font: italic 400 1.14em/1 var(--serif); color: var(--blue); letter-spacing: 0; }
+  .navy em { color: #a6beff; }
+  .lead { font-size: 21px; color: var(--secondary); margin-top: 14px; max-width: 900px; }
+  .navy .lead { color: var(--on-navy-muted); }
+  .muted { color: var(--secondary); }
+  .small { font-size: 15px; }
+
+  footer {
+    position: absolute; left: 72px; right: 72px; bottom: 22px;
+    display: flex; justify-content: space-between; align-items: flex-end; gap: 32px;
+    border-top: 1px solid var(--rule); padding-top: 10px;
+    font: 400 11.5px/1.5 var(--mono); color: var(--secondary);
+  }
+  footer a { color: inherit; }
+  footer .page { white-space: nowrap; }
+
+  .stat { font-size: 72px; line-height: 1; font-weight: 580; letter-spacing: -0.03em; color: var(--blue); }
+  .stat small { font-size: 0.42em; letter-spacing: -0.01em; font-weight: 560; }
+
+  .cols { display: grid; gap: 24px; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .col { border-top: 2px solid var(--blue); padding-top: 14px; }
+  .col p { color: var(--secondary); font-size: 16px; margin-top: 8px; }
+
+  svg { display: block; overflow: visible; }
+  svg text { font-family: var(--mono); font-size: 12px; fill: var(--secondary); }
+  .navy svg text { fill: var(--on-navy-muted); }
+
+  .legend { display: flex; gap: 28px; font-size: 15px; margin-top: 14px; }
+  .legend span { display: flex; align-items: center; gap: 8px; }
+  .legend i { width: 14px; height: 14px; display: block; }
+
+  table { width: 100%; border-collapse: collapse; font: inherit; font-size: 16.5px; line-height: 1.35; }
+  th, td { text-align: left; vertical-align: top; padding: 13px 14px; border-bottom: 1px solid var(--rule); color: inherit; }
+  thead th { font-weight: 640; border-bottom: 2px solid var(--ink); padding-top: 0; }
+  tbody th { font-weight: 620; }
+  .no { color: var(--amber); font-weight: 620; }
+  .yes { color: var(--blue); font-weight: 620; }
+  .ours { background: var(--sheet); }
+  .counts th, .counts td { padding-block: 8px; }
+  thead th { padding-top: 12px; }
+  .tight th, .tight td { padding: 8px 4px; white-space: nowrap; }
+
+  /* Cover and close */
+  .logo { width: 260px; height: auto; display: block; }
+
+  /* Flow diagram */
+  .flow { display: grid; grid-template-columns: 1fr 76px 1.15fr 76px 1fr; align-items: stretch; margin-top: 30px; }
+  .node { border: 1px solid var(--rule-strong); padding: 20px 22px; }
+  .node p { font-size: 16px; color: var(--secondary); margin-top: 8px; }
+  .node.pool { background: var(--plot); border-color: var(--plot); color: #fff; }
+  .node.pool p { color: #e0e8ff; }
+  .arrows { display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--blue); font-size: 30px; line-height: 1.1; }
+  .tokens { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 22px; border: 1px solid var(--rule); }
+  .tokens div { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-right: 1px solid var(--rule); font-weight: 640; }
+  .tokens div:last-child { border-right: 0; }
+  .tokens img, .tokens .mono-icon { width: 34px; height: 34px; border-radius: 50%; }
+  .tokens .mono-icon { display: grid; place-items: center; background: var(--sheet); border: 1px solid var(--rule-strong); color: var(--blue); }
+
+  .steps { counter-reset: step; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; list-style: none; margin-top: 44px; }
+  .steps li { counter-increment: step; border-top: 2px solid var(--blue); padding-top: 14px; }
+  .steps li::before { content: counter(step); font: 500 13px var(--mono); color: var(--blue); }
+  .steps h3 { margin-top: 6px; font-size: 19px; }
+  .steps p { font-size: 15.5px; color: var(--secondary); margin-top: 10px; }
+
+  .checks { list-style: none; }
+  .checks li { padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 17px; }
+
+  .hint { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); display: flex; gap: 6px; z-index: 5; opacity: 0.25; transition: opacity 0.2s; }
+  .hint:hover, .hint:focus-within { opacity: 1; }
+  .hint button { font: 500 14px var(--mono); background: var(--navy); color: var(--on-navy); border: 1px solid #6882b4; min-width: 36px; height: 32px; cursor: pointer; }
+  .hint button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  /* Narrow screens: every slide stacked and scrollable */
+  body.stack { overflow: auto; }
+  body.stack #deck { height: auto; display: flex; flex-direction: column; gap: 10px; }
+  body.stack .frame { position: relative; display: block; height: calc(720px * var(--scale)); overflow: hidden; }
+  body.stack .hint { display: none; }
+
+  @page { size: 1280px 720px; margin: 0; }
+  @media print {
+    html, body { height: auto; overflow: visible; background: none; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #deck, body.stack #deck { display: block; height: auto; }
+    .frame, body.stack .frame { display: block; position: relative; width: 1280px; height: 720px; overflow: hidden; break-after: page; }
+    .frame:last-child { break-after: auto; }
+    .slide { left: 0; top: 0; transform: none; }
+    .hint { display: none; }
+  }
+</style>
+
+<main id="deck">
+
+  <!-- 1. Cover -->
+  <div class="frame"><section class="slide navy">
+    <img class="logo" src="assets/blue-finance-dark.png" alt="Blue Finance">
+    <h1 style="margin-top:84px">Borrow against tokenized stocks.<br><em>Keep your exposure.</em></h1>
+    <p class="lead" style="font-size:24px">USDT loans backed by Binance bStocks on BNB Chain, with borrowing rules that follow the US market clock.</p>
+    <div style="position:absolute;left:72px;right:72px;bottom:70px">
+      <div data-week="cover"></div>
+    </div>
+    <footer style="border-color:#304776;color:#b9caec"><span>BNB Bangkok · November 2026 · Prototype, not live</span><span class="page">1</span></footer>
+  </section></div>
+
+  <!-- 2. Problem -->
+  <div class="frame"><section class="slide">
+    <h2>The token trades all week. <em>The stock market doesn’t.</em></h2>
+    <div style="display:flex;align-items:baseline;gap:22px;margin-top:28px">
+      <div class="stat">32.5 <small>of 168 hours</small></div>
+      <p class="muted" style="max-width:520px">That is the regular US session in a normal week, about 19% of the time a bStock can change hands.</p>
+    </div>
+    <div style="margin-top:22px" data-week="problem"></div>
+    <div class="legend">
+      <span><i style="background:var(--s-open)"></i>Regular session 32.5 h</span>
+      <span><i style="background:var(--s-ext)"></i>Pre and after hours 47.5 h</span>
+      <span><i style="background:var(--s-closed)"></i>Overnight 40 h</span>
+      <span><i style="background:var(--s-weekend)"></i>Weekend 48 h</span>
+    </div>
+    <div class="cols cols-4" style="margin-top:36px">
+      <div class="col"><h3>Reopening gap</h3><p>The stock reopens at a new price, and a loan that looked safe on Friday may be short of collateral.</p></div>
+      <div class="col"><h3>Stock split</h3><p>If the price feed and the token’s share multiplier update at different moments, a healthy loan can look underwater.</p></div>
+      <div class="col"><h3>Trading halt</h3><p>The last price stops being a good basis for new debt.</p></div>
+      <div class="col"><h3>Issuer rules</h3><p>The issuer can pause a token or change who may hold and transfer it.</p></div>
+    </div>
+    <footer><span>Session hours: Blue’s on-chain MarketCalendar, US Eastern, week without holidays.</span><span class="page">2</span></footer>
+  </section></div>
+
+  <!-- 3. Market -->
+  <div class="frame"><section class="slide">
+    <h2>Tokenized stocks grew nearly <em>fivefold</em> in 2026</h2>
+    <div style="display:grid;grid-template-columns:640px 1fr;gap:64px;margin-top:34px">
+      <div>
+        <h3>Value of tokenized stocks, all issuers</h3>
+        <div data-chart="market" style="margin-top:18px"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:38px;padding-top:6px">
+        <div class="col"><div class="stat">4.96M</div><p>tokenized stock holders reported in late November.</p></div>
+        <div class="col"><div class="stat">~$1.4B</div><p>in Binance bStocks on November 3, about 38% of a $3.69B category and the largest issuer by value.</p></div>
+        <p class="muted small">bStocks launched in June 2026 as BEP-20 tokens on BNB Smart Chain. US persons are excluded.</p>
+      </div>
+    </div>
+    <footer><span><a href="https://www.bytetree.com/research/2026/11/a-breakout-year-for-tokenized-real-world-assets/">ByteTree, Nov 24 2026</a> (chart, holders; data from rwa.xyz) · <a href="https://en.cryptonomist.ch/2026/11/03/binance-tokenized-stocks-value/">Cryptonomist, Nov 3 2026</a> (bStocks; RWA.xyz dashboard)</span><span class="page">3</span></footer>
+  </section></div>
+
+  <!-- 4. Opportunity -->
+  <div class="frame"><section class="slide">
+    <h2>Borrowing against bStocks has started, <em>and it is early</em></h2>
+    <p class="lead">Lista Lending accepted bStocks as collateral in June, about a week after they launched.</p>
+    <div class="cols cols-3" style="margin-top:52px;gap:40px">
+      <div class="col"><div class="stat">$9.64M</div><p>of bStocks collateral on Lista on November 5, roughly 0.7% of all bStocks value.</p></div>
+      <div class="col"><div class="stat">46.2%</div><p>of Lista’s bStocks collateral was backing loans on September 10, up from 5.5% at the end of June.</p></div>
+      <div class="col"><div class="stat">~$32K</div><p>of collateral per market on average, with $9.64M spread over 303 markets and 93 stocks.</p></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:62px">
+      <div style="background:var(--sheet);padding:22px 24px"><h3>Room to grow</h3><p class="muted" style="margin-top:8px">Venus listed TSLAB, NVDAB and SPCXB on June 20 as collateral, with borrowing closed at launch.</p></div>
+      <div style="background:var(--sheet);padding:22px 24px"><h3>What has to change</h3><p class="muted" style="margin-top:8px">88% of bStocks sat in Binance proof-of-reserves wallets at the end of October. Holders need to move them on-chain before they can borrow.</p></div>
+    </div>
+    <footer><span><a href="https://cryptobriefing.com/lista-borrowing-tokenized-equities-bstocks-growth/">Crypto Briefing, Nov 12 2026</a> · <a href="https://crypticmedia.co/venus-protocol-adds-tokenized-stocks-to-bnb-chain-lending/">CrypticMedia, Jun 22 2026</a> · <a href="https://en.cryptonomist.ch/2026/11/03/binance-tokenized-stocks-value/">Bitquery via Cryptonomist</a> · 0.7% and $32K are our arithmetic.</span><span class="page">4</span></footer>
+  </section></div>
+
+  <!-- 5. Solution -->
+  <div class="frame"><section class="slide">
+    <h2>One pool of USDT, <em>separate rules for each stock</em></h2>
+    <p class="lead">An Aave V3 pool on BNB Chain. Lenders supply once, and every borrower draws from the same reserve.</p>
+    <div class="flow">
+      <div class="node"><h3>Lenders</h3><p>Supply USDT and receive bluUSDT, which earns interest.</p></div>
+      <div class="arrows" aria-hidden="true">→</div>
+      <div class="node pool"><h3>Shared USDT reserve</h3><p>The only borrowable asset. Cash moves to whichever stock has demand, within that stock’s debt ceiling.</p></div>
+      <div class="arrows" aria-hidden="true">⇄</div>
+      <div class="node"><h3>Borrowers</h3><p>Post one bStock per account as collateral, borrow USDT and repay at any time.</p></div>
+    </div>
+    <div class="tokens" aria-label="Collateral in the first listing">
+      <div><img src="assets/tslab.png" alt="">TSLAB</div>
+      <div><img src="assets/nvdab.png" alt="">NVDAB</div>
+      <div><img src="assets/qqqb.png" alt="">QQQB</div>
+      <div><img src="assets/spcxb.png" alt="">SPCXB</div>
+      <div><span class="mono-icon" aria-hidden="true">G</span>GOOGLB</div>
+    </div>
+    <div class="cols cols-3" style="margin-top:30px">
+      <div class="col"><h3>A halt stays local</h3><p>A Tesla halt stops new Tesla-backed loans. Nvidia borrowing continues and Tesla borrowers can repay.</p></div>
+      <div class="col"><h3>Ceilings per stock and session</h3><p>Debt including interest is tracked for each stock and checked on every borrow.</p></div>
+      <div class="col"><h3>The trade-off</h3><p>Lenders share any shortfall across all five stocks. The ceilings limit how much one stock can contribute.</p></div>
+    </div>
+    <footer><span>First listing in the v3 deployment scripts. Eligibility is a signed EIP-712 approval; the eligibility service is still to be built.</span><span class="page">5</span></footer>
+  </section></div>
+
+  <!-- 6. Session limits -->
+  <div class="frame"><section class="slide">
+    <h2>Borrow limits tighten at the close. <em>Your health holds.</em></h2>
+    <div style="display:grid;grid-template-columns:780px 1fr;gap:40px;margin-top:34px">
+      <div>
+        <div data-chart="limits"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <p><strong>$1,000</strong> of collateral and <strong>$500</strong> of debt, with the stock price held flat.</p>
+        <table class="tight">
+          <thead><tr><th>Session</th><th style="text-align:right">Borrow up to</th></tr></thead>
+          <tbody>
+            <tr><th>Regular</th><td style="text-align:right">$500</td></tr>
+            <tr><th>Pre and after hours</th><td style="text-align:right">$480</td></tr>
+            <tr><th>Overnight</th><td style="text-align:right">$450</td></tr>
+            <tr><th>Weekend</th><td style="text-align:right">$425</td></tr>
+          </tbody>
+        </table>
+        <div class="col"><div class="stat" style="font-size:54px">1.25</div><p>health factor in every session. The off-hours haircut cuts borrowing power only. Price and liquidation level stay the same.</p></div>
+      </div>
+    </div>
+    <footer><span>Prototype parameters: 50% base LTV, 62.5% liquidation threshold, 0 / 4 / 10 / 15% borrowing discounts. Not yet calibrated. Interest excluded.</span><span class="page">6</span></footer>
+  </section></div>
+
+  <!-- 7. Failure modes -->
+  <div class="frame"><section class="slide">
+    <h2>When something breaks, <em>repayment stays open</em></h2>
+    <table style="margin-top:34px">
+      <thead><tr><th style="width:300px">What happens</th><th>New borrowing</th><th>Withdraw with debt</th><th>Repay</th><th>Liquidation</th></tr></thead>
+      <tbody>
+        <tr><th>Normal trading, any session</th><td class="yes">Within limit and cap</td><td class="yes">Within limit</td><td class="yes">Open</td><td class="yes">On health factor</td></tr>
+        <tr><th>Monitoring goes silent</th><td class="no">Blocked</td><td class="yes">Within limit, on a valid price</td><td class="yes">Open</td><td class="yes">On a valid price</td></tr>
+        <tr><th>Price moves more than 20%</th><td class="no">Blocked until reviewed</td><td class="yes">Within limit, on a valid price</td><td class="yes">Open</td><td class="yes">At the live price</td></tr>
+        <tr><th>Trading halt or guardian hold</th><td class="no">Blocked</td><td class="no">Blocked</td><td class="yes">Open</td><td class="yes">On a valid price</td></tr>
+        <tr><th>Split or other corporate action</th><td class="no">Blocked</td><td class="no">Blocked</td><td class="yes">Open</td><td class="no">Waits for a new price</td></tr>
+        <tr><th>No usable price</th><td class="no">Blocked</td><td class="no">Blocked</td><td class="yes">Open</td><td class="no">Waits for a price</td></tr>
+      </tbody>
+    </table>
+    <p class="muted small" style="margin-top:22px;max-width:980px">Reopening after monitoring lapses takes 30 minutes of healthy reports. A split must be flagged on the calendar before it takes effect. Issuer transfer rules can independently block collateral movement, including liquidations.</p>
+    <footer><span>Behavior of the v3 contracts. A valid price is under 24 hours old, inside a fixed band and consistent with the share multiplier.</span><span class="page">7</span></footer>
+  </section></div>
+
+  <!-- 8. Pricing -->
+  <div class="frame"><section class="slide">
+    <h2>Strict prices for new loans, <em>live prices for liquidations</em></h2>
+    <p class="lead">Atlas prices all five bStocks. New borrowing has to pass more tests than liquidation.</p>
+    <table style="margin-top:30px">
+      <thead><tr><th style="width:330px">Test on the stock price</th><th>Health and liquidation</th><th>New borrowing</th></tr></thead>
+      <tbody>
+        <tr><th>Oldest price allowed</th><td>24 hours</td><td>2 hours, and the keeper must accept it</td></tr>
+        <tr><th>Move of more than 20%</th><td class="yes">Used right away</td><td class="no">Stops until the admin accepts it</td></tr>
+        <tr><th>Changed share multiplier</th><td class="no">Waits for the admin</td><td class="no">Stops</td></tr>
+        <tr><th>Outside the fixed price band</th><td class="no">Unusable</td><td class="no">Stops</td></tr>
+        <tr><th>Keeper health reports</th><td>Not needed</td><td>Required</td></tr>
+      </tbody>
+    </table>
+    <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:34px;gap:40px">
+      <div class="col"><h3>Chainlink values USDT</h3><p>USDT counts between $0.90 and $1.10. A round more than an hour old stops new borrowing.</p></div>
+      <div class="col"><h3>Real gaps reach liquidators</h3><p>A large price move counts for health and liquidation without waiting for review.</p></div>
+    </div>
+    <footer><span>Behavior of the v3 contracts. Atlas is the only stock price source.</span><span class="page">8</span></footer>
+  </section></div>
+
+  <!-- 9. Positioning -->
+  <div class="frame"><section class="slide">
+    <h2>Zona’s borrow controls, <em>brought to BNB bStocks</em></h2>
+    <p class="lead">Blue models its separation of borrowing permission from valuation on Zona Lend.</p>
+    <table style="margin-top:34px">
+      <thead><tr><th style="width:240px"></th><th class="ours">Blue (prototype)</th><th>Lista Lending</th><th>Zona Lend</th></tr></thead>
+      <tbody>
+        <tr><th>Chain</th><td class="ours">BNB Chain</td><td>BNB Chain</td><td>Robinhood Chain</td></tr>
+        <tr><th>Built on</th><td class="ours">Aave V3.6</td><td>Moolah, a Morpho Blue fork</td><td>Aave V3 fork</td></tr>
+        <tr><th>Loan liquidity</th><td class="ours">One shared USDT reserve</td><td>Separate lending markets, several stablecoins</td><td>USDG pool</td></tr>
+        <tr><th>Stock collateral</th><td class="ours">5 bStocks at first listing</td><td>93 bStocks (Nov 5)</td><td>Robinhood stock tokens</td></tr>
+        <tr><th>New loans off hours</th><td class="ours">Limit steps down by session</td><td>Pauses when a stock’s closed flag is set</td><td>Stops on a market schedule</td></tr>
+        <tr><th>Liquidation then</th><td class="ours">Continues on a valid price</td><td>Stops while the flag is set</td><td>Continues on a valid price</td></tr>
+      </tbody>
+    </table>
+    <footer><span>Public docs read Nov 26 2026: docs.bsc.lista.org, docs.zona.finance. Lista stock count: Crypto Briefing, Nov 12 2026.</span><span class="page">9</span></footer>
+  </section></div>
+
+  <!-- 10. Progress -->
+  <div class="frame"><section class="slide">
+    <h2>The v3 contracts run against <em>real bStocks</em> on a BNB fork</h2>
+    <div style="display:grid;grid-template-columns:420px 1fr;gap:72px;margin-top:40px">
+      <div>
+        <div class="stat" style="font-size:120px">38/38</div>
+        <p style="margin-top:12px;font-size:20px">pool and listing tests passing on November 27, 2026</p>
+        <table class="counts" style="margin-top:20px">
+          <tbody>
+            <tr><th>18</th><td>scenarios, offline with test tokens</td></tr>
+            <tr><th>18</th><td>the same scenarios on a BNB fork with real USDT</td></tr>
+            <tr><th>2</th><td>on a BNB fork with the real bStocks and price feeds</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="checks">
+        <li>A real TSLAB loan runs through supply, borrow, repay and withdraw</li>
+        <li>All five stocks draw from one USDT reserve</li>
+        <li>A Tesla halt blocks Tesla borrowing only, and repayment works</li>
+        <li>An announced split blocks borrowing and liquidation</li>
+        <li>A genuine price gap blocks borrowing and liquidates at the live price</li>
+        <li>Liquidation keeps per-stock debt correct, including a deficit</li>
+        <li>Silent monitoring and guardian holds require recovery</li>
+      </ul>
+    </div>
+    <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit and no mainnet deployment. The web app only simulates the pool, and keepers still run on the earlier Morpho prototype.</p>
+    <footer><span>Fork tests send nothing to mainnet. Balances are set locally.</span><span class="page">10</span></footer>
+  </section></div>
+
+  <!-- 11. Business model -->
+  <div class="frame"><section class="slide">
+    <h2>Blue keeps <em>10%</em> of the interest borrowers pay</h2>
+    <div style="display:grid;grid-template-columns:700px 1fr;gap:64px;margin-top:34px">
+      <div>
+        <h3>Borrow rate by share of USDT lent out</h3>
+        <div data-chart="rates" style="margin-top:18px"></div>
+      </div>
+      <div>
+        <p class="muted">At the 80% target</p>
+        <table style="margin-top:14px">
+          <tbody>
+            <tr><th>Borrowers pay</th><td style="text-align:right">6.00% a year</td></tr>
+            <tr><th>Lenders earn</th><td style="text-align:right">4.32% a year</td></tr>
+          </tbody>
+        </table>
+        <div class="col" style="margin-top:34px"><div class="stat">$60K</div><p>protocol revenue a year for every $10M borrowed.</p></div>
+        <p class="muted small" style="margin-top:28px">Revenue scales with USDT borrowed. The prototype caps the reserve at 1,000 USDT, so limits rise only after calibration and review.</p>
+      </div>
+    </div>
+    <footer><span>Illustration from prototype parameters (2% base, +4% to 80% use, +60% above; 10% reserve factor). Simple annual rates before compounding. Not a forecast.</span><span class="page">11</span></footer>
+  </section></div>
+
+  <!-- 12. Road to mainnet -->
+  <div class="frame"><section class="slide">
+    <h2>Five steps from prototype <em>to a capped mainnet launch</em></h2>
+    <ol class="steps">
+      <li><h3>Calibrate risk</h3><p>Set discounts, limits and caps from historical gap data and the depth liquidators can actually sell into.</p></li>
+      <li><h3>Connect the product</h3><p>Wire the web app to the contracts, move keepers and the risk advisor to v3, and build the eligibility service.</p></li>
+      <li><h3>Confirm price feeds</h3><p>Confirm with Atlas which feed instances to use, and decide on a second price source.</p></li>
+      <li><h3>Review and license</h3><p>Security review of the pool changes. Confirm Aave V3.6 license eligibility; it converts to MIT by March 6, 2027.</p></li>
+      <li><h3>Launch small</h3><p>Verify issuer transfer rules and shortfall handling, then open with low caps.</p></li>
+    </ol>
+    <div style="margin-top:64px;background:var(--sheet);padding:24px 28px;display:flex;gap:40px;align-items:center">
+      <h3 style="white-space:nowrap">After launch</h3>
+      <p class="muted">One-click leveraged borrow: borrow USDT, buy more of the same stock and post it as collateral, with every borrow still passing the pool’s stock rules.</p>
+    </div>
+    <footer><span>Steps and open items from architecture-v3.md and protocol/README.md.</span><span class="page">12</span></footer>
+  </section></div>
+
+  <!-- 13. Close -->
+  <div class="frame"><section class="slide navy">
+    <img class="logo" src="assets/blue-finance-dark.png" alt="Blue Finance">
+    <h1 style="margin-top:72px">Lending that knows<br><em>when the market is closed.</em></h1>
+    <p class="lead" style="margin-top:44px;color:var(--on-navy)">We want to talk to:</p>
+    <div class="cols cols-3" style="margin-top:20px;gap:40px">
+      <div class="col" style="border-color:#a6beff"><h3>Price feed teams</h3><p style="color:var(--on-navy-muted)">Atlas, to confirm which feed instances Blue should use.</p></div>
+      <div class="col" style="border-color:#a6beff"><h3>Security reviewers</h3><p style="color:var(--on-navy-muted)">To review the Aave pool changes and price contracts before launch.</p></div>
+      <div class="col" style="border-color:#a6beff"><h3>Lenders and bStock holders</h3><p style="color:var(--on-navy-muted)">To test limits and tell us what they need to borrow on-chain.</p></div>
+    </div>
+    <footer style="border-color:#304776;color:#b9caec"><span><a href="https://github.com/neelansh15/blue-finance">github.com/neelansh15/blue-finance</a> · Prototype, not live. Nothing here is an offer or investment advice.</span><span class="page">13</span></footer>
+  </section></div>
+</main>
+
+<nav class="hint" aria-label="Slide controls">
+  <button type="button" id="prev" aria-label="Previous slide">←</button>
+  <button type="button" id="next" aria-label="Next slide">→</button>
+  <button type="button" id="full" aria-label="Toggle full screen">⛶</button>
+</nav>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (parent, tag, attrs = {}, text) => {
+    const node = document.createElementNS(NS, tag);
+    for (const key in attrs) node.setAttribute(key, attrs[key]);
+    if (text !== undefined) node.textContent = text;
+    parent.appendChild(node);
+    return node;
+  };
+  const svg = (host, w, h, label) => el(host, "svg", { width: w, height: h, viewBox: `0 0 ${w} ${h}`, role: "img", "aria-label": label });
+
+  // Mirrors MarketCalendar.scheduledStatusAt for a week without holidays (hour 0 = Monday 00:00 ET).
+  const session = (hour) => {
+    const day = Math.floor(hour / 24), t = hour % 24;
+    if (day === 5) return "weekend";
+    if (day === 6) return t < 20 ? "weekend" : "closed";
+    if (t < 4) return "closed";
+    if (t < 9.5) return "ext";
+    if (t < 16) return "open";
+    if (t < 20) return "ext";
+    return day === 4 ? "weekend" : "closed";
+  };
+  const segments = [];
+  for (let h = 0; h < 168; h += 0.5) {
+    const s = session(h), last = segments[segments.length - 1];
+    if (last && last.s === s) last.end = h + 0.5; else segments.push({ s, start: h, end: h + 0.5 });
+  }
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const color = (s) => `var(--s-${s})`;
+
+  document.querySelectorAll("[data-week]").forEach((host) => {
+    const cover = host.dataset.week === "cover";
+    const w = 1136, bar = cover ? 34 : 64, top = 22;
+    const root = svg(host, w, top + bar + (cover ? 36 : 4), "One week by US stock market session. Tokens trade all 168 hours; the regular session covers 32.5.");
+    const x = (h) => (h / 168) * w;
+    DAYS.forEach((d, i) => el(root, "text", { x: x(i * 24) + 2, y: 12 }, d));
+    const colors = cover ? { open: "#a6beff", ext: "#5874c4", closed: "#2a3f7a", weekend: "#f2c14e" } : null;
+    segments.forEach((g) => el(root, "rect", { x: x(g.start), y: top, width: x(g.end) - x(g.start), height: bar, fill: cover ? colors[g.s] : color(g.s) }));
+    for (let i = 1; i < 7; i++) el(root, "line", { x1: x(i * 24), x2: x(i * 24), y1: 2, y2: top + bar, stroke: cover ? "#0b1530" : "#ffffff", "stroke-width": 2 });
+    if (cover) {
+      [["#a6beff", "Regular session"], ["#5874c4", "Pre and after hours"], ["#2a3f7a", "Overnight"], ["#f2c14e", "Weekend"]].forEach(([fill, name], i) => {
+        el(root, "rect", { x: i * 190, y: top + bar + 16, width: 11, height: 11, fill });
+        el(root, "text", { x: i * 190 + 19, y: top + bar + 26 }, name);
+      });
+    }
+  });
+
+  // Market size bars, zero baseline.
+  {
+    const host = document.querySelector('[data-chart="market"]');
+    const w = 640, h = 440, base = 400, scale = 340 / 3.5;
+    const root = svg(host, w, h, "Tokenized stock value rose from 685 million dollars on January 1, 2026 to 3.38 billion dollars by November 24, 2026.");
+    for (let v = 0; v <= 3; v++) {
+      const y = base - v * scale;
+      el(root, "line", { x1: 44, x2: w, y1: y, y2: y, stroke: "var(--rule)" });
+      el(root, "text", { x: 0, y: y + 4 }, `$${v}B`);
+    }
+    [[0.685, "$685M", "Jan 1, 2026", 120, "var(--s-ext)"], [3.38, "$3.38B", "Nov 24, 2026", 390, "var(--blue)"]].forEach(([v, label, date, x, fill]) => {
+      el(root, "rect", { x, y: base - v * scale, width: 160, height: v * scale, fill });
+      el(root, "text", { x: x + 80, y: base - v * scale - 12, "text-anchor": "middle", style: "font:600 26px var(--sans);fill:var(--ink)" }, label);
+      el(root, "text", { x: x + 80, y: base + 24, "text-anchor": "middle" }, date);
+    });
+  }
+
+  // Borrow limit by session against a flat debt and liquidation level.
+  {
+    const host = document.querySelector('[data-chart="limits"]');
+    const w = 780, h = 460, left = 48, right = 780, top = 20, bottom = 404;
+    const lo = 375, hi = 650;
+    const x = (hr) => left + (hr / 168) * (right - left);
+    const y = (v) => bottom - ((v - lo) / (hi - lo)) * (bottom - top);
+    const limit = { open: 500, ext: 480, closed: 450, weekend: 425 };
+    const root = svg(host, w, h, "Across one week the borrow limit steps between 500 and 425 dollars. Debt stays at 500 dollars and liquidation starts only at 625 dollars.");
+    [400, 450, 500, 550, 600].forEach((v) => {
+      el(root, "line", { x1: left, x2: right, y1: y(v), y2: y(v), stroke: "var(--rule)" });
+      el(root, "text", { x: 0, y: y(v) + 4 }, `$${v}`);
+    });
+    segments.forEach((g) => el(root, "rect", { x: x(g.start), y: bottom + 8, width: x(g.end) - x(g.start), height: 14, fill: color(g.s) }));
+    DAYS.forEach((d, i) => el(root, "text", { x: x(i * 24 + 12), y: bottom + 42, "text-anchor": "middle" }, d));
+    let path = "";
+    segments.forEach((g, i) => { path += `${i ? "L" : "M"}${x(g.start)},${y(limit[g.s])}L${x(g.end)},${y(limit[g.s])}`; });
+    el(root, "path", { d: `${path}L${right},${bottom}L${left},${bottom}Z`, fill: "var(--blue)", "fill-opacity": 0.09 });
+    el(root, "path", { d: path, fill: "none", stroke: "var(--blue)", "stroke-width": 2.5, "stroke-linejoin": "round" });
+    el(root, "line", { x1: left, x2: right, y1: y(625), y2: y(625), stroke: "var(--amber)", "stroke-width": 2.5 });
+    el(root, "line", { x1: left, x2: right, y1: y(500), y2: y(500), stroke: "var(--ink)", "stroke-width": 2, "stroke-dasharray": "7 6" });
+    const tag = (px, py, text, fill) => el(root, "text", { x: px, y: py, style: `font:620 15px var(--sans);fill:${fill}` }, text);
+    tag(left + 8, y(625) - 10, "Liquidation starts if debt passes $625", "var(--amber)");
+    tag(left + 8, y(500) - 10, "Debt $500", "var(--ink)");
+    tag(x(121), y(425) + 24, "Borrow limit $425", "var(--blue)");
+  }
+
+  // Interest rate curve.
+  {
+    const host = document.querySelector('[data-chart="rates"]');
+    const w = 700, h = 400, left = 48, right = 684, top = 14, bottom = 352;
+    const x = (u) => left + (u / 100) * (right - left);
+    const y = (r) => bottom - (r / 70) * (bottom - top);
+    const root = svg(host, w, h, "Borrow rate rises from 2 percent at zero use to 6 percent at 80 percent use, then to 66 percent at full use.");
+    [0, 10, 20, 30, 40, 50, 60, 70].forEach((r) => {
+      el(root, "line", { x1: left, x2: right, y1: y(r), y2: y(r), stroke: "var(--rule)" });
+      el(root, "text", { x: 0, y: y(r) + 4 }, `${r}%`);
+    });
+    [0, 20, 40, 60, 80, 100].forEach((u) => el(root, "text", { x: x(u), y: bottom + 22, "text-anchor": "middle" }, `${u}%`));
+    el(root, "text", { x: (left + right) / 2, y: bottom + 44, "text-anchor": "middle" }, "USDT lent out");
+    el(root, "path", { d: `M${x(0)},${y(2)}L${x(80)},${y(6)}L${x(100)},${y(66)}`, fill: "none", stroke: "var(--blue)", "stroke-width": 3, "stroke-linejoin": "round" });
+    el(root, "line", { x1: x(80), x2: x(80), y1: y(6), y2: bottom, stroke: "var(--blue)", "stroke-dasharray": "4 5" });
+    el(root, "circle", { cx: x(80), cy: y(6), r: 6, fill: "var(--blue)" });
+    el(root, "text", { x: x(80) - 12, y: y(6) - 14, "text-anchor": "end", style: "font:620 16px var(--sans);fill:var(--blue)" }, "6% at 80%");
+    el(root, "text", { x: x(100) - 12, y: y(66) + 4, "text-anchor": "end", style: "font:620 16px var(--sans);fill:var(--blue)" }, "66% when fully lent");
+  }
+
+  // Presentation: arrows, space, Page keys, Home/End, F for full screen, #n in the address.
+  const frames = [...document.querySelectorAll(".frame")];
+  let current = 0;
+  const show = (n, record = true) => {
+    current = Math.max(0, Math.min(frames.length - 1, n));
+    frames.forEach((f, i) => f.classList.toggle("active", i === current));
+    if (record) try { history.replaceState(null, "", `#${current + 1}`); } catch {}
+  };
+  const fit = () => {
+    const stack = innerWidth < 700 && innerHeight > innerWidth;
+    document.body.classList.toggle("stack", stack);
+    const scale = stack ? document.body.clientWidth / 1280 : Math.min(innerWidth / 1280, innerHeight / 720);
+    document.documentElement.style.setProperty("--scale", scale);
+  };
+  const fullscreen = () => {
+    const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
+    p?.catch(() => {});
+  };
+  addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target.closest?.("button, a") && (e.key === " " || e.key === "Enter")) return;
+    if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) show(current + 1);
+    else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) show(current - 1);
+    else if (e.key === "Home") show(0);
+    else if (e.key === "End") show(frames.length - 1);
+    else if (e.key.toLowerCase() === "f") fullscreen();
+    else return;
+    e.preventDefault();
+  });
+  document.getElementById("deck").addEventListener("click", (e) => {
+    if (e.target.closest("a") || document.body.classList.contains("stack") || String(getSelection())) return;
+    show(current + (e.clientX < innerWidth / 3 ? -1 : 1));
+  });
+  document.getElementById("prev").onclick = () => show(current - 1);
+  document.getElementById("next").onclick = () => show(current + 1);
+  document.getElementById("full").onclick = fullscreen;
+  const fromHash = () => show((parseInt(location.hash.slice(1), 10) || 1) - 1, false);
+  addEventListener("hashchange", fromHash);
+  addEventListener("resize", fit);
+  fit();
+  fromHash();
+})();
+</script>
