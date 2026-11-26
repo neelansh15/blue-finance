@@ -5,7 +5,6 @@ import {
   IconArrow,
   IconDoc,
   IconHalt,
-  IconIsolated,
   IconLogo,
   IconOracle,
   IconRegime,
@@ -16,99 +15,90 @@ import {
 
 const REPO = "https://github.com/neelansh15/dawn-finance/blob/main";
 
-const FEATURES = [
+const STEPS = [
   {
-    icon: <IconRegime />,
-    title: "Regime-aware borrowing power",
-    body: "A regime registry tracks Open, Extended, Closed, Weekend, Halted and Corporate-action states. The oracle applies a haircut per regime and ramps it in before the close instead of stepping.",
+    title: "Check eligibility",
+    body: "The eligibility service checks your address and issues a short-lived attestation for the Dawn router.",
   },
   {
-    icon: <IconOracle />,
-    title: "Conservative oracle",
-    body: "Collateral is valued at the lower of the primary feed and a DEX TWAP. A missing or stale source adds a haircut. In the normal path the oracle never reverts, so liquidations keep working.",
+    title: "Supply a tokenized stock",
+    body: "Post a bStock as collateral in an isolated Morpho Blue market on BNB Chain.",
   },
   {
-    icon: <IconSplit />,
-    title: "Corporate actions",
-    body: "bStock splits and reinvested dividends arrive through a display multiplier. Dawn prices per raw token, blocks new borrows around the event and freezes to the last good price until a continuity check passes.",
+    title: "Borrow stablecoins",
+    body: "The router checks how much you can borrow using the oracle price, market regime and a target loan-to-value ratio below the liquidation threshold.",
   },
   {
-    icon: <IconHalt />,
-    title: "Halts and pauses",
-    body: "Keepers watch the Nasdaq halt feed and the token pause manager. On a halt, caps are cut, new borrows stop and the price freezes with a haircut for a bounded time.",
-  },
-  {
-    icon: <IconShield />,
-    title: "Compliance handling",
-    body: "Borrows through the router need a short-lived eligibility attestation: geo checks, sanctions screening and a simulation of the token's own compliance check for the address.",
-  },
-  {
-    icon: <IconSteps />,
-    title: "Gentler liquidations",
-    body: "Opt-in PreLiquidation enables smaller partial closes before the LLTV. Morpho Blue liquidation stays permissionless, and Dawn's backstop bot has no special privileges.",
+    title: "Monitor your position",
+    body: "Track your borrow limit and weekend health so you can see how the position would hold up when the market closes.",
   },
 ];
 
-const STEPS = [
+const FEATURES = [
   {
-    n: "01",
-    title: "Check eligibility",
-    body: "The eligibility service checks location, sanctions and the token's compliance rules for your address, then signs a short-lived attestation.",
+    icon: <IconRegime />,
+    title: "Market-hour adjustments",
+    body: "A regime registry tracks market hours, halts and corporate actions. The oracle starts adjusting collateral value before the close to reduce the impact of a sudden change.",
   },
   {
-    n: "02",
-    title: "Post a tokenized stock",
-    body: "Supply a bStock as collateral through the Dawn router into an isolated market on Morpho Blue. Balances are shown in UI units.",
+    icon: <IconOracle />,
+    title: "Conservative collateral pricing",
+    body: "Dawn’s oracle design uses the Atlas price feed and applies a regime-specific haircut. It can fall back to the last good price for a limited time if the feed fails.",
   },
   {
-    n: "03",
-    title: "Borrow stablecoins",
-    body: "The router sizes your limit from the oracle price, the current regime and a target LTV stricter than the market LLTV.",
+    icon: <IconSplit />,
+    title: "Stock splits and dividends",
+    body: "Dawn accounts for the bStock display multiplier so a split can change the displayed balance without creating an artificial drop in collateral value.",
   },
   {
-    n: "04",
-    title: "Stay ahead of the gap",
-    body: "Keepers update the regime, watch splits, dividends and halts, and route any liquidation through gentler partial closes first.",
+    icon: <IconHalt />,
+    title: "Trading halts and token pauses",
+    body: "Keepers monitor halt and pause signals. Dawn’s design cuts market caps, restricts new borrows through the router and can freeze the oracle price with a haircut.",
+  },
+  {
+    icon: <IconShield />,
+    title: "Eligibility checks",
+    body: "The router requires a short-lived attestation based on location, sanctions screening and the bStock’s address-level compliance rules.",
+  },
+  {
+    icon: <IconSteps />,
+    title: "Partial liquidations",
+    body: "Opt-in PreLiquidation allows smaller partial closes before the market’s liquidation threshold. Morpho Blue liquidations remain permissionless.",
   },
 ];
 
 const ROADMAP = [
   {
     tag: "Now",
-    title: "Hackathon demo",
-    when: "BNB Bangkok, Nov 2026",
+    title: "Prototype",
     items: [
-      "One NVDAB / USDT market at 62.5% LLTV, testnet or mainnet fork",
-      "DawnOracle v0 with regime haircuts and bounded freeze",
-      "Router v0 with regime-based target LTV",
+      "One NVDAB / USDT market on a testnet or fork",
+      "Regime-based collateral pricing and borrow limits",
     ],
     now: true,
   },
   {
     tag: "Phase 2",
-    title: "Production plumbing",
-    when: "Planned",
-    items: ["Wrapped collateral for router-only borrowing", "Eligibility service and Vault V2 with caps", "PreLiquidation onboarding and halt monitor"],
+    title: "Production controls",
+    items: ["Wrapped collateral and eligibility service", "Vault caps, halt monitoring and opt-in PreLiquidation"],
   },
   {
     tag: "Phase 3",
-    title: "Parameters and breadth",
-    when: "Planned",
-    items: ["Gap-quantile pipeline for haircuts and LLTVs", "More bStocks and NAV-accumulating tokens", "Dividend ex-date logic and audits"],
+    title: "Calibration and assets",
+    items: ["Historical gap analysis and risk parameters", "More collateral assets, dividend logic and audits"],
   },
   {
-    tag: "Later",
-    title: "Leverage and shorting",
-    when: "Exploratory",
-    items: ["Leverage vault on the same markets and risk layer", "Shorting once borrowable equity-token supply exists"],
+    tag: "Exploratory",
+    title: "Additional strategies",
+    items: ["Leverage vaults", "Shorting once borrowable stock-token supply exists"],
   },
 ];
 
 const DOCS = [
-  { file: "architecture-v1.md", title: "Architecture v1", body: "The design on unmodified Morpho Blue: oracle, regimes, splits, halts, dividends, liquidation." },
-  { file: "README.md", title: "README", body: "Project overview and the research files." },
-  { file: "morpho-blue.md", title: "Morpho Blue research", body: "Market model, oracle, liquidation and vaults." },
-  { file: "idea-progression.md", title: "Idea progression", body: "How the direction evolved and why." },
+  { file: "architecture-v1.md", title: "Protocol architecture", body: "Oracle, regimes, router and liquidation design." },
+  { file: "README.md", title: "Project overview", body: "Dawn’s scope and research files." },
+  { file: "morpho-blue.md", title: "Morpho Blue research", body: "Markets, oracles, liquidation and vaults." },
+  { file: "idea-progression.md", title: "Design decisions", body: "How the project direction evolved." },
 ];
 
 export default function Home() {
@@ -125,21 +115,11 @@ export default function Home() {
             <span>Dawn Finance</span>
           </a>
           <ul className="nav-links">
-            <li>
-              <a href="#how">How it works</a>
-            </li>
-            <li className="hide-sm">
-              <a href="#regimes">Simulator</a>
-            </li>
-            <li>
-              <a href="#risk">Risk layer</a>
-            </li>
-            <li className="hide-sm">
-              <a href="#roadmap">Roadmap</a>
-            </li>
-            <li className="hide-sm">
-              <a href="#docs">Docs</a>
-            </li>
+            <li><a href="#regimes">Simulator</a></li>
+            <li><a href="#how">How it works</a></li>
+            <li className="hide-sm"><a href="#risk">Risk layer</a></li>
+            <li className="hide-sm"><a href="#roadmap">Roadmap</a></li>
+            <li className="hide-sm"><a href="#docs">Docs</a></li>
           </ul>
           <span className="nav-status">
             <span className="status-dot" aria-hidden="true" />
@@ -149,237 +129,181 @@ export default function Home() {
       </header>
 
       <main id="main">
-        {/* Hero */}
         <section className="hero" id="top" aria-labelledby="hero-title">
-          <div className="wrap hero-grid">
-            <div className="hero-copy">
-              <p className="eyebrow">Market-aware lending on BNB Chain</p>
-              <h1 id="hero-title">
-                Borrow against <span className="h1-soft">tokenized stocks.</span>
-              </h1>
-              <p className="lead">
-                Post tokenized US stocks as collateral and borrow stablecoins. Dawn adjusts how much you can borrow
-                as the US market opens and closes.
-              </p>
-              <div className="ctas">
-                <a className="btn btn-primary" href="#regimes">
-                  Explore borrowing power
-                  <IconArrow />
-                </a>
-                <a className="btn btn-quiet" href={`${REPO}/architecture-v1.md`}>
-                  Read the architecture
-                  <IconArrow />
-                </a>
-              </div>
-            </div>
-
-            <div className="hero-card">
-              <PositionPreview />
-            </div>
-          </div>
-          <div className="hero-stack">
-            <div className="wrap hero-stack-inner">
-              <p>Built on</p>
-              <ul className="built-on" aria-label="Built on">
-                <li>Morpho Blue</li>
-                <li>BNB Chain</li>
-                <li>bStocks</li>
-              </ul>
-              <span className="hero-draft">BNB Bangkok prototype · Not live</span>
+          <div className="wrap hero-copy">
+            <p className="eyebrow">Tokenized US equities on BNB Chain</p>
+            <h1 id="hero-title">
+              Stock-backed lending <span>that follows market hours.</span>
+            </h1>
+            <p className="lead">
+              Borrow stablecoins using tokenized US stocks as collateral. Dawn adjusts borrowing power as US
+              markets open and close.
+            </p>
+            <div className="ctas">
+              <a className="btn btn-primary" href="#regimes">
+                Try the simulator
+                <IconArrow />
+              </a>
+              <a className="btn btn-quiet" href={`${REPO}/architecture-v1.md`}>
+                Read the architecture
+                <IconArrow />
+              </a>
             </div>
           </div>
         </section>
 
-        {/* Problem */}
-        <section className="section" id="problem" aria-labelledby="problem-title">
+        <section className="market-demo" id="regimes" aria-labelledby="regimes-title">
           <div className="wrap">
-            <Reveal className="section-head section-head-split">
+            <div className="panel">
+              <div className="demo-head">
+                <div>
+                  <p className="kicker">Market-hours simulator</p>
+                  <h2 id="regimes-title">See borrowing power change</h2>
+                </div>
+                <span className="illustrative-tag">Illustrative</span>
+              </div>
+              <div className="demo-body">
+                <RegimeExplorer />
+                <p className="panel-foot">
+                  Move the slider or select a point on the chart. Times are US Eastern. The haircuts are examples
+                  and will be calibrated against historical price gaps.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="section gap-section" id="problem" aria-labelledby="problem-title">
+          <Reveal className="wrap gap-layout">
+            <div className="section-head">
+              <p className="kicker">The market gap</p>
+              <h2 id="problem-title">The token can trade while the stock market is closed</h2>
+              <p className="intro">
+                Onchain trading continues after hours. When the underlying market reopens, the stock can jump past
+                its last traded price. Dawn values collateral more conservatively outside regular hours.
+              </p>
+            </div>
+            <dl className="market-facts">
               <div>
-                <p className="kicker">The market gap</p>
-                <h2 id="problem-title">Tokens trade 24/7. US stocks trade in sessions.</h2>
+                <dt>Tokenized stocks</dt>
+                <dd className="fact-figure num">24/7</dd>
+                <dd>Onchain trading</dd>
               </div>
-              <p className="intro">
-                A bStock can change hands on a Saturday, but the share it tracks only trades in set US sessions. When the
-                market reopens, price can jump past where it closed. Lending built for always-on crypto treats every hour
-                the same.
-              </p>
-            </Reveal>
-            <div className="facts">
-              <Reveal as="article" className="fact">
-                <p className="fact-figure num">
-                  6.5<span>h</span>
-                </p>
-                <p className="fact-label">Regular US session per weekday (9:30 to 16:00 ET). The rest is extended, overnight or weekend.</p>
-              </Reveal>
-              <Reveal as="article" className="fact" delay={80}>
-                <p className="fact-figure num">
-                  56<span>%</span>
-                </p>
-                <p className="fact-label">
-                  Of bStock volume trades outside regular hours.
-                  <span className="source">Binance Research, Oct 20 2026</span>
-                </p>
-              </Reveal>
-              <Reveal as="article" className="fact" delay={160}>
-                <p className="fact-figure num">
-                  8<span>:1</span>
-                </p>
-                <p className="fact-label">
-                  SNDKB split, delivered through a multiplier change. A naive oracle reads it as a crash.
-                  <span className="source">Binance, Nov 11 2026</span>
-                </p>
-              </Reveal>
-            </div>
-          </div>
+              <div>
+                <dt>Underlying stocks</dt>
+                <dd className="fact-figure num">6.5<span>h</span></dd>
+                <dd>Regular US session per weekday</dd>
+              </div>
+            </dl>
+          </Reveal>
         </section>
 
-        {/* Regime explorer */}
-        <section className="section section-raised" id="regimes" aria-labelledby="regimes-title">
-          <div className="wrap">
-            <Reveal className="section-head">
-              <p className="kicker">Interactive simulator</p>
-              <h2 id="regimes-title">Borrowing power follows the market clock</h2>
-              <p className="intro">
-                Move through the week to see how market hours affect the collateral haircut and borrowing power.
-              </p>
-            </Reveal>
-            <Reveal className="panel">
-              <span className="illustrative-tag illustrative-corner">Illustrative</span>
-              <RegimeExplorer />
-              <p className="panel-foot">
-                US Eastern time. Holidays follow the weekend level and halts freeze the price with their own haircut. Real
-                haircuts would come from a historical gap model that has not been finalized.
-              </p>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="section" id="how" aria-labelledby="how-title">
+        <section className="section section-raised" id="how" aria-labelledby="how-title">
           <div className="wrap">
             <Reveal className="section-head">
               <p className="kicker">How it works</p>
-              <h2 id="how-title">Four steps, one isolated market</h2>
+              <h2 id="how-title">From stock collateral to a stablecoin loan</h2>
               <p className="intro">
-                Dawn does not fork the lending core. Accounting, borrow, repay and liquidation stay in Morpho Blue. Dawn&apos;s
-                logic lives in the oracle, a router and offchain keepers.
+                Morpho Blue handles lending in isolated markets. Dawn adds a router and oracle to manage the risks
+                specific to tokenized stocks.
               </p>
             </Reveal>
-            <ol className="flow">
-              {STEPS.map((s, i) => (
-                <Reveal as="li" key={s.n} className="flow-step" delay={i * 70}>
-                  <span className="flow-n num" aria-hidden="true">
-                    {s.n}
-                  </span>
-                  <h3>{s.title}</h3>
-                  <p>{s.body}</p>
-                </Reveal>
-              ))}
-            </ol>
+            <div className="loan-layout">
+              <ol className="flow">
+                {STEPS.map((step, index) => (
+                  <li className="flow-step" key={step.title}>
+                    <span className="flow-n num" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                    <div>
+                      <h3>{step.title}</h3>
+                      <p>{step.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <PositionPreview />
+            </div>
           </div>
         </section>
 
-        {/* Risk layer */}
-        <section className="section section-raised" id="risk" aria-labelledby="risk-title">
+        <section className="section" id="risk" aria-labelledby="risk-title">
           <div className="wrap">
             <Reveal className="section-head">
               <p className="kicker">The risk layer</p>
-              <h2 id="risk-title">Built for what makes stocks different</h2>
+              <h2 id="risk-title">How Dawn handles equity risk</h2>
               <p className="intro">
-                Isolated markets keep bad debt in one market from touching another. On top of that, Dawn handles the events
-                crypto lending was never designed for.
+                One isolated market per collateral and loan pair limits how bad debt can spread. Dawn’s risk layer
+                also accounts for market events that affect the token or the underlying stock.
               </p>
             </Reveal>
             <div className="features">
-              {FEATURES.map((f, i) => (
-                <Reveal as="article" key={f.title} className="feature" delay={(i % 3) * 70}>
-                  <span className="feature-icon">{f.icon}</span>
-                  <h3>{f.title}</h3>
-                  <p>{f.body}</p>
-                </Reveal>
+              {FEATURES.map((feature) => (
+                <article className="feature" key={feature.title}>
+                  <span className="feature-icon">{feature.icon}</span>
+                  <div>
+                    <h3>{feature.title}</h3>
+                    <p>{feature.body}</p>
+                  </div>
+                </article>
               ))}
             </div>
-            <Reveal className="callout">
-              <span className="feature-icon">
-                <IconIsolated />
-              </span>
-              <p>
-                <strong>Stablecoin-only borrowing in v1.</strong> You post a tokenized stock and borrow stablecoins, so only
-                the collateral price matters: one oracle and one rate curve per market.
-              </p>
-            </Reveal>
           </div>
         </section>
 
-        {/* Roadmap */}
-        <section className="section" id="roadmap" aria-labelledby="roadmap-title">
+        <section className="section section-raised" id="roadmap" aria-labelledby="roadmap-title">
           <div className="wrap">
             <Reveal className="section-head">
               <p className="kicker">Roadmap</p>
-              <h2 id="roadmap-title">Start narrow, widen carefully</h2>
-              <p className="intro">Draft plan. Nothing here is live or scheduled.</p>
+              <h2 id="roadmap-title">One market for the prototype</h2>
+              <p className="intro">The BNB Bangkok prototype focuses on NVDAB collateral and USDT borrowing. Later phases are proposed.</p>
             </Reveal>
             <ol className="roadmap">
-              {ROADMAP.map((r, i) => (
-                <Reveal as="li" key={r.tag} className={`stage${r.now ? " stage-now" : ""}`} delay={i * 70}>
-                  <div className="stage-head">
-                    <span className="stage-tag">{r.tag}</span>
-                    <span className="stage-when">{r.when}</span>
-                  </div>
-                  <h3>{r.title}</h3>
+              {ROADMAP.map((stage) => (
+                <li className={`stage${stage.now ? " stage-now" : ""}`} key={stage.tag}>
+                  <p className="stage-tag">{stage.tag}</p>
+                  <h3>{stage.title}</h3>
                   <ul>
-                    {r.items.map((it) => (
-                      <li key={it}>{it}</li>
-                    ))}
+                    {stage.items.map((item) => <li key={item}>{item}</li>)}
                   </ul>
-                </Reveal>
+                </li>
               ))}
             </ol>
           </div>
         </section>
 
-        {/* Docs */}
-        <section className="section section-raised" id="docs" aria-labelledby="docs-title">
-          <div className="wrap">
-            <Reveal className="section-head">
-              <p className="kicker">Docs</p>
+        <section className="section" id="docs" aria-labelledby="docs-title">
+          <Reveal className="wrap docs-layout">
+            <div className="section-head">
+              <p className="kicker">Documentation</p>
               <h2 id="docs-title">Read the design</h2>
-              <p className="intro">Every claim on this page traces back to these files.</p>
-            </Reveal>
+              <p className="intro">Explore the architecture, research and decisions behind the prototype.</p>
+            </div>
             <ul className="docs">
-              {DOCS.map((d) => (
-                <li key={d.file}>
-                  <a href={`${REPO}/${d.file}`}>
-                    <span className="doc-icon">
-                      <IconDoc />
-                    </span>
+              {DOCS.map((doc) => (
+                <li key={doc.file}>
+                  <a href={`${REPO}/${doc.file}`}>
+                    <span className="doc-icon"><IconDoc /></span>
                     <span className="doc-text">
-                      <strong>{d.title}</strong>
-                      <span>{d.body}</span>
+                      <strong>{doc.title}</strong>
+                      <span>{doc.body}</span>
                     </span>
-                    <span className="doc-arrow">
-                      <IconArrow />
-                    </span>
+                    <span className="doc-arrow"><IconArrow /></span>
                   </a>
                 </li>
               ))}
             </ul>
-          </div>
+          </Reveal>
         </section>
       </main>
 
       <footer className="footer">
         <div className="wrap footer-inner">
-          <div className="brand brand-footer">
+          <a className="brand brand-footer" href="#top" aria-label="Dawn Finance, back to top">
             <IconLogo />
             <span>Dawn Finance</span>
-          </div>
+          </a>
           <div>
-            <p className="disclaimer">Draft. Prototype built for BNB Bangkok, Nov 2026. Not financial advice. Not live.</p>
-            <p className="small">
-              Dawn Finance is a working name. Built on BNB Chain and Morpho Blue. Designs and parameters are unverified and
-              subject to change. All figures in mock interfaces are illustrative.
-            </p>
+            <p className="disclaimer">BNB Bangkok prototype, Nov 2026. Not live.</p>
+            <p className="small">Built on BNB Chain and Morpho Blue. Parameters are subject to change. Simulator values are illustrative and do not constitute financial advice.</p>
           </div>
         </div>
       </footer>

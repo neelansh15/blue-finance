@@ -19,6 +19,7 @@ const PAD_R = 8;
 const TOP = 16;
 const BOTTOM = 168;
 const MIN_POWER = 0.8; // y-axis floor (relative power), illustrative
+const POWER_TICKS = [1, 0.9, MIN_POWER];
 
 const x = (step: number) => PAD_L + (step / WEEK_STEPS) * (W - PAD_L - PAD_R);
 const y = (power: number) => TOP + ((1 - power) / (1 - MIN_POWER)) * (BOTTOM - TOP);
@@ -89,54 +90,63 @@ export default function RegimeExplorer() {
       <p className="readout-note">{REGIME_NOTE[regime]}</p>
 
       <div className="chart">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${W} ${BOTTOM}`}
-          preserveAspectRatio="none"
-          role="img"
-          aria-labelledby={`${id}-t ${id}-d`}
-          onPointerDown={onPointer}
-          onPointerMove={(e) => (e.buttons === 1 ? onPointer(e) : undefined)}
-        >
-          <title id={`${id}-t`}>Illustrative borrowing power across one week, by market regime</title>
-          <desc id={`${id}-d`}>
-            Borrowing power is full during each weekday regular session, ramps down in the last half hour before
-            the close, is slightly lower in extended hours, lower overnight, and lowest from Friday evening until
-            Monday pre-market. Values are illustrative.
-          </desc>
-          <defs>
-            <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.28" />
-              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          {bands.map((b) => (
-            <rect
-              key={b.from}
-              className={`band band-${b.r}`}
-              x={x(b.from)}
-              y={TOP}
-              width={x(b.to) - x(b.from)}
-              height={BOTTOM - TOP}
-            />
+        <div className="chart-axis" aria-hidden="true">
+          {POWER_TICKS.map((tick) => (
+            <span key={tick} style={{ top: `${(y(tick) / BOTTOM) * 100}%` }}>
+              {Math.round(tick * 100)}%
+            </span>
           ))}
-          {[1, 0.9, MIN_POWER].map((p) => (
-            <line key={p} className="gridline" x1={PAD_L} x2={W - PAD_R} y1={y(p)} y2={y(p)} />
-          ))}
-          {DAYS.map((d, i) =>
-            i > 0 ? (
-              <line key={d} className="dayline" x1={x(i * STEPS_PER_DAY)} x2={x(i * STEPS_PER_DAY)} y1={TOP} y2={BOTTOM} />
-            ) : null,
-          )}
-          <path d={area} fill={`url(#${id}-fill)`} />
-          <path d={line} className="power-line" />
-          <line className="cursor" x1={x(step + 0.5)} x2={x(step + 0.5)} y1={TOP - 6} y2={BOTTOM} />
-        </svg>
-        <span
-          className="cursor-dot"
-          aria-hidden="true"
-          style={{ left: `${(x(step + 0.5) / W) * 100}%`, top: `${(y(power) / BOTTOM) * 100}%` }}
-        />
+        </div>
+        <div className="chart-plot">
+          <svg
+            ref={svgRef}
+            viewBox={`0 0 ${W} ${BOTTOM}`}
+            preserveAspectRatio="none"
+            role="img"
+            aria-labelledby={`${id}-t ${id}-d`}
+            onPointerDown={onPointer}
+            onPointerMove={(e) => (e.buttons === 1 ? onPointer(e) : undefined)}
+          >
+            <title id={`${id}-t`}>Illustrative borrowing power across one week, by market regime</title>
+            <desc id={`${id}-d`}>
+              Borrowing power is full during each weekday regular session, ramps down in the last half hour before
+              the close, is slightly lower in extended hours, lower overnight, and lowest from Friday evening until
+              Monday pre-market. Values are illustrative.
+            </desc>
+            <defs>
+              <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {bands.map((b) => (
+              <rect
+                key={b.from}
+                className={`band band-${b.r}`}
+                x={x(b.from)}
+                y={TOP}
+                width={x(b.to) - x(b.from)}
+                height={BOTTOM - TOP}
+              />
+            ))}
+            {POWER_TICKS.map((p) => (
+              <line key={p} className="gridline" x1={PAD_L} x2={W - PAD_R} y1={y(p)} y2={y(p)} />
+            ))}
+            {DAYS.map((d, i) =>
+              i > 0 ? (
+                <line key={d} className="dayline" x1={x(i * STEPS_PER_DAY)} x2={x(i * STEPS_PER_DAY)} y1={TOP} y2={BOTTOM} />
+              ) : null,
+            )}
+            <path d={area} fill={`url(#${id}-fill)`} />
+            <path d={line} className="power-line" />
+            <line className="cursor" x1={x(step + 0.5)} x2={x(step + 0.5)} y1={TOP - 6} y2={BOTTOM} />
+          </svg>
+          <span
+            className="cursor-dot"
+            aria-hidden="true"
+            style={{ left: `${(x(step + 0.5) / W) * 100}%`, top: `${(y(power) / BOTTOM) * 100}%` }}
+          />
+        </div>
         <ol className="days" aria-hidden="true">
           {DAYS.map((d) => (
             <li key={d}>{d}</li>
