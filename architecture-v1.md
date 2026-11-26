@@ -134,6 +134,13 @@ Labels used below:
 ### Halt data
 
 - **[F] Nasdaq Trader Trade Halt RSS.** `https://www.nasdaqtrader.com/rss.aspx?feed=tradehalts` covers Nasdaq-listed and other exchange-listed securities. It updates once per minute on trading days, and the terms forbid polling more often than once per minute. Source: https://www.nasdaqtrader.com/Trader.aspx?id=TradeHaltRSS
+- **[F, live-tested Nov 26, 2026] Binance bapi RWA endpoints** (public, no key, undocumented-ish `/ai` paths, no SLA). Base `https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/market/token/rwa`; send `Accept-Encoding: identity`. Source: binance/binance-skills-hub `binance-tokenized-securities-info`, plus the Binance Web3 dev-docs `llms-full.txt`.
+  - `/stock/detail/list/ai?type=3`: bStock list (`type` 1 = Ondo, 2 = xStocks, 3 = bStock) with chainId, contractAddress, ticker and multiplier.
+  - `/market/status/ai`: session clock (`openState`, `marketStatus`, `reasonCode`, `nextOpenTime`, `nextCloseTime`). Documented for Ondo; not confirmed to match the bStock or NYSE clock.
+  - `/asset/market/status/ai?chainId=56&contractAddress=<addr>`: per-token `openState`, `marketStatus` (premarket, regular, postmarket, overnight, closed, pause), `reasonCode` (TRADING, MARKET_CLOSED, MARKET_PAUSED, ASSET_PAUSED, ASSET_LIMITED, UNSUPPORTED, MARKET_MAINTENANCE) and `reasonMsg` (stock_split, cash_dividend, stock_dividend, merger, acquisition, spinoff, maintenance, earnings). Live TSLAB call on Thanksgiving returned TRADING with `marketStatus:null`: it tracks whether the token is tradable, not the US session. ASSET_PAUSED was not observed live.
+- **[F] Binance Stocks API** (`/sapi/v1/equity/market/exchangeInfo`, WS `wss://nbstream.binance.com/equity` `tradingStatus` stream) covers the real shares, not the tokens. It gives `tradability` and a tape field. Not tested; may need signed requests.
+- **[F] Binance Spot `GET /api/v3/exchangeInfo`** symbol `status` (TRADING, HALT, BREAK); polling only, no push.
+- **[F] Binance Stock Trading FAQ (updated Oct 6, 2026)** session table in ET: pre 4:00-9:30, regular 9:30-16:00, post 16:00-20:00, overnight 20:00-4:00 (selected stocks), closed Fri 20:00 to Sun 20:00 and on holidays. bStock Spot trades 24/7.
 - **[U]** Reason codes (T1/T2/LUDP/H10, etc.) come from a secondary page.
 
 ---
@@ -326,9 +333,14 @@ price() = p_raw × (1 − h[regime]) × decimals scaling to 1e36
 - **[F] Nasdaq Trader Trade Halt RSS.** Covers all US-listed securities, polled at most once per minute.
 - **[U]** NYSE trade-halts page.
 - **[U]** SEC trading-suspension orders (sec.gov litigation/suspensions).
+- **Binance bapi per-asset status** (`/asset/market/status/ai`): bStock-specific pauses and corporate-action codes (see Halt data). Poll per token every 30-60s.
+- **Binance Spot `exchangeInfo` status** for the bStock pair (HALT or BREAK).
+- **On-chain `UIMultiplierUpdated`** from the bStock contract.
 - Issuer and Binance announcements, which reach bStock-specific suspensions.
 - Atlas behavior: staleness or a feed pause, as in the SNDKB case [F].
 - A DEX-vs-Atlas divergence alarm.
+
+**Signal combination [D]:** the keeper runs all sources. Any single source (Nasdaq halt, bapi ASSET_PAUSED or MARKET_PAUSED, Spot HALT or BREAK, a multiplier update, Atlas staleness) can only make the regime more conservative (HALTED, or CORP_ACTION for splits and dividends). Clearing needs a Nasdaq resumption, the bapi status back to TRADING, and the price-continuity check. The session clock itself (OPEN, EXTENDED, CLOSED, WEEKEND) is computed in the keeper from the ET table and a US holiday calendar; the bapi market status is only a secondary cross-check. None of the Binance endpoints is a contractual API, so a fetch failure is treated as unknown: it never clears a halt, and after a timeout it moves the regime to HALTED.
 
 **Response [D]:**
 
