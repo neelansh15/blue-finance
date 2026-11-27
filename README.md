@@ -144,7 +144,7 @@ Token and feed addresses are listed in the [protocol README](protocol/README.md#
 |---|---|
 | [`protocol/`](protocol/README.md) | The current Aave V3 deployment, with offline and BNB mainnet fork tests. |
 | [`frontend/`](frontend/README.md) | Landing page, onchain workspace, and pre-funded simulator. |
-| [`keepers/`](keepers/README.md) and [`demo/`](demo/README.md) | Includes the BNB Mainnet keeper and eligibility service. The older regime keeper and liquidation bot target Morpho. |
+| [`keepers/`](keepers/README.md) and [`demo/`](demo/README.md) | Includes the BNB Mainnet keeper and eligibility service, and a standalone [Aave pool keeper](keepers/README.md#aave-pool-keeper) that is a dry run by default. The older regime keeper and liquidation bot target Morpho. |
 | [`ai-risk-controller/`](ai-risk-controller/README.md) | Advisory only, on simulated data. Its Blue parameter proposals still follow the Morpho design. |
 | [`protocol-old/`](protocol-old/README.md) | The earlier prototype on Morpho Blue, kept for reference. |
 

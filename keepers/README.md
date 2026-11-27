@@ -16,6 +16,81 @@ The first report cycle starts four minutes after the service starts. A stock bec
 
 The service watches the [demo pool](src/v3/bsc-demo.json), which lists test tokens. Set `BLUE_DEPLOYMENT=real` to watch the [live pool](src/v3/bsc-mainnet.json). Both pools use the same keeper wallet, so run one service at a time.
 
+## Aave pool keeper
+
+[`src/blueKeeper.ts`](src/blueKeeper.ts) serves the current BNB deployment. It is a dry run unless `DRY_RUN=false`.
+
+This keeper and the eligibility service above use the same keeper wallet, so run only one of them for a pool at a time.
+
+    pnpm blue-keeper --once       # one pass, nothing sent
+    RISK_API_URL=https://blue-risk-controller.onrender.com pnpm blue-keeper
+
+| Each tick | Transaction |
+|---|---|
+| A stock or USDT source stopped passing and has a new valid round | `refresh()` |
+| Nasdaq and Binance status are ok and both prices are usable | `report(stock, true)`, every 5 minutes |
+| Either source shows a halt or corporate action | `setOverride(stock, HALTED)`, renewed near expiry; `report(stock, false)` if refused |
+| A status source is unknown | None. Borrowing closes when the last heartbeat is 10 minutes old |
+
+It never calls `suspend()` or sets `CORP_ACTION`, since both stop liquidations. A corporate action is logged as `corp_action_needs_review`. A price move over the continuity limit shows as `DiscontinuousPrice` and needs the admin. Risk API scores are logged as `risk_advisory` and cause no transaction unless risk actions are on.
+
+| Var | Default | Meaning |
+|---|---|---|
+| RPC_URL | `https://bsc-rpc.publicnode.com` | BNB Chain JSON-RPC |
+| KEEPER_ADDRESS | `0x68c09dcC4d11D7974BA3E8e96D69CED9C31e733A` | Keeper wallet, also the guardian |
+| DRY_RUN | true | only `false` or `0` sends transactions |
+| KEEPER_PRIVATE_KEY | - | key for KEEPER_ADDRESS, required when live |
+| POLL_INTERVAL_MS | 30000 | loop period |
+| REPORT_INTERVAL_S | 300 | heartbeat period, must stay under 600 with two polls |
+| OVERRIDE_DURATION_S / OVERRIDE_REFRESH_MARGIN_S | 3600 / 600 | halt length and renewal margin |
+| RISK_API_URL | - | risk API to poll; `run-keeper.sh` sets the hosted one |
+| RISK_ACTIONS | off | `true` lets scores tighten borrowing |
+| RISK_POLL_S | 300 | seconds between polls |
+| RISK_CONFIRMATIONS | 3 | consecutive readings that must all reach a level |
+| RISK_MAX_AGE_S | 900 | older evidence is ignored; must exceed RISK_POLL_S |
+| RISK_ALLOW_SIMULATED | off | counts simulated scores; refused unless `BLUE_DEPLOYMENT=demo` |
+
+A dry run simulates `refresh` and halts as the currently appointed keeper. A `report` that depends on an unsent refresh is logged without simulation.
+
+### Risk actions
+
+| Category on every recent reading | Keeper action |
+|---|---|
+| LOW, MODERATE | None |
+| ELEVATED | `setOverride(stock, CLOSED)` when the current status is looser |
+| HIGH | `setOverride(stock, WEEKEND)` when the current status is looser |
+| CRITICAL | `report(stock, false)` once, then no heartbeat |
+
+The mildest level among the last readings applies, so with the defaults the keeper acts after about 10 minutes of agreeing readings and stops after one lower reading. An override already onchain runs until it expires (`OVERRIDE_DURATION_S`), since the keeper cannot clear it, and is renewed while the risk persists. After a pause, borrowing needs the 30-minute recovery again.
+
+Simulated, stale or unavailable results never cause a transaction on the live pool, and an API outage never does. The hosted API currently marks all its results simulated, so on the live pool risk actions change nothing yet. The keeper never raises limits or caps from a score.
+
+### Run it live
+
+    ./run-keeper.sh            # sends real transactions
+    ./run-keeper.sh --dry-run  # needs no key
+    ./run-keeper.sh --forget   # delete the stored key
+    ./run-keeper.sh --risk     # live, with risk actions on
+    ./run-keeper.sh --demo --risk --dry-run   # demo pool, simulated scores count
+
+The first live run asks for the keeper private key and stores it in the macOS Keychain. Programs running as your user can read it from there. The script keeps the Mac from idle sleeping; closing the lid still stops the heartbeat.
+
+On the demo pool, transactions go to its test tokens while Nasdaq and Binance status is read for the real bStocks, so a real halt also halts the demo stock.
+
+### Move the keeper and guardian roles
+
+[`scripts/rotateKeeper.ts`](scripts/rotateKeeper.ts) sets `0x68c09dcC4d11D7974BA3E8e96D69CED9C31e733A` as keeper and guardian in one atomic batch of nine calls.
+
+    pnpm rotate-keeper --check    # simulate only
+    pnpm rotate-keeper            # serves http://127.0.0.1:9546; sign with the admin wallet
+    pnpm rotate-keeper --verify   # confirm every role onchain
+
+The wallet must support `wallet_sendCalls` (EIP-5792) on BNB Chain. The new keeper then needs BNB for gas.
+
+**`0x08DcE649f86AF45dA8648FaD31D1C33A617C52d1` is compromised (November 27, 2026). Do not fund it or give it a role.**
+
+While one wallet is both keeper and guardian, its key must sit with the running bot, so a leaked key exposes both roles.
+
 ## Earlier Morpho prototype
 
 The commands and environment variables below apply to the previous Morpho prototype.

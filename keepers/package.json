@@ -10,7 +10,9 @@
     "liquidation-bot": "tsx src/liquidationBot.ts",
     "demo": "tsx src/demoControl.ts",
     "smoke": "tsx scripts/liveSmoke.ts",
-    "bnb-automation": "tsx src/v3/server.ts"
+    "bnb-automation": "tsx src/v3/server.ts",
+    "blue-keeper": "tsx src/blueKeeper.ts",
+    "rotate-keeper": "tsx scripts/rotateKeeper.ts"
   },
   "dependencies": {
     "fast-xml-parser": "^4.5.0",

@@ -89,7 +89,7 @@ They deploy in Foundry’s local fork against live state and send nothing to BNB
 
 ## BNB mainnet deployment
 
-The hackathon pool deployed on November 27, 2026 to BNB Smart Chain, chain ID 56. All 59 deployment transactions succeeded. The deployment seeded zero USDT. The main account holds the admin, keeper, and eligibility signer roles. The guardian is a distinct account.
+The hackathon pool deployed on November 27, 2026 to BNB Smart Chain, chain ID 56. All 59 deployment transactions succeeded. The deployment seeded zero USDT. The main account holds the admin and eligibility signer roles. The keeper and guardian roles belong to `0x68c09dcC4d11D7974BA3E8e96D69CED9C31e733A`, moved there with [`rotateKeeper.ts`](../keepers/scripts/rotateKeeper.ts). The earlier holder, `0x08DcE649f86AF45dA8648FaD31D1C33A617C52d1`, is compromised.
 
 | Contract | Address |
 | --- | --- |
