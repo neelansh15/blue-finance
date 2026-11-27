@@ -19,7 +19,7 @@ Earn, Borrow, Dashboard, Risk and Simplified Mode under `/app` read and write th
 | `/app/borrow` | Five collateral markets, positions, borrowing gates, eligibility, collateral supply and withdrawal, borrow and repay |
 | `/app/dashboard` | The connected wallet’s positions |
 | `/app/risk` | Contract risk metrics, followed by clearly labelled synthetic advisory scenarios |
-| `/app/simplified` | Five-step borrow or supply with a confirmed summary. Leveraged borrowing is a simulation |
+| `/app/simplified` | Five-step borrow, supply or leveraged borrow with a confirmed summary. Leveraged borrowing is a simulation on the demo pool |
 
 Shared logic lives in [`app/app/live`](app/app/live) and [`src/lib/blue/live-position.ts`](src/lib/blue/live-position.ts).
 
@@ -29,7 +29,24 @@ Set the server-only `BLUE_ELIGIBILITY_URL` and `BLUE_ELIGIBILITY_API_TOKEN` to e
 
 ### Leveraged borrowing
 
-Live leverage is not enabled. The current flow runs on the simulated pool. Before it can send transactions it needs a verified swap route and quote for each bStock, onchain slippage and deadline limits, simulation of the full call sequence, wallet batching through EIP-5792, and a reviewed recovery path for partial failure. The pool disables flash loans.
+With `NEXT_PUBLIC_BLUE_DEPLOYMENT=real`, leverage in Simplified Mode sends real transactions. On the demo pool it stays a simulation, because the test tokens have no swap pools.
+
+An increase borrows USDT, buys more of the same bStock on PancakeSwap v3 and supplies it. A reduction withdraws, sells and repays. [`live-leverage.ts`](src/lib/blue/live-leverage.ts) plans the calls and [`swap.ts`](src/lib/blue/swap.ts) holds the router, quoter and fee tiers.
+
+| Rule | Value |
+|---|---|
+| Product cap | 2×, less when the market status lowers the borrow LTV |
+| Swaps | Exact output, spending at most the quote plus 0.5%, valid for 180 seconds. Unspent tokens stay in the wallet |
+| Price guard | No plan when the swap price is more than 2% worse than the oracle price |
+| One click | One atomic EIP-5792 batch, simulated with `eth_simulateV1` before the wallet is asked |
+| Batch size | At most 10 calls, MetaMask’s default limit: about two borrow rounds, so a lower maximum than step by step |
+| Step by step | Up to five rounds, one transaction per call. A stopped run offers to repay or resupply what the last step left in the wallet |
+
+A borrow needs everything an ordinary borrow does: USDT liquidity, healthy keeper reports, fresh prices and eligibility. Flash loans are disabled in the pool.
+
+To simulate an open and a close against current BNB Chain state, without signing or sending anything:
+
+    BLUE_RUN_LIVE_SMOKE=true NEXT_PUBLIC_BLUE_DEPLOYMENT=real npm test -- src/lib/blue/live-leverage.smoke.test.ts
 
 ### Operator workspace
 

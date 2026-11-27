@@ -12,7 +12,10 @@ import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { bsc } from "wagmi/chains";
 import {
   BLUE, controlsContract, dataProviderContract, poolContract, priceSourceAbi, tokenContract,
+  tokenErrorAbi,
 } from "../../../src/lib/blue/mainnet";
+import { routerContract } from "../../../src/lib/blue/swap";
+import type { Call } from "../../../src/lib/blue/live-leverage";
 import { readLiveState } from "../../../src/lib/blue/live-state";
 import { usdtDebt, type LiveAction, type LiveState, type LiveStock } from "../../../src/lib/blue/live-position";
 
@@ -23,7 +26,9 @@ export type Feedback = { message: string; error?: boolean; hash?: Hex };
 export type TxResult = { ok: boolean; steps: TxStep[] };
 export type Send = (to: Address, data: Hex, label: string) => Promise<TransactionReceipt>;
 
-const transactionAbi = [...poolContract.abi, ...controlsContract.abi, ...priceSourceAbi, ...tokenContract(BLUE.usdt).abi];
+const transactionAbi = [
+  ...poolContract.abi, ...controlsContract.abi, ...priceSourceAbi, ...tokenContract(BLUE.usdt).abi, ...routerContract.abi, ...tokenErrorAbi,
+];
 
 export function errorMessage(error: unknown) {
   if (error instanceof BaseError) {
@@ -45,6 +50,8 @@ export function errorMessage(error: unknown) {
         case "ReserveFrozen": return "The reserve is frozen.";
         case "DiscontinuousPrice": return "The latest round is outside the accepted price band. The admin must review it.";
         case "UnusablePrice": return "The source has no usable price round.";
+        case "ERC20InsufficientAllowance": return "The token approval does not cover this amount.";
+        case "ERC20InsufficientBalance": return "Your wallet does not hold enough of this token.";
         case "InvalidEligibility": return "The eligibility signature has expired or its nonce changed.";
         default: return revert.shortMessage;
       }
@@ -268,7 +275,60 @@ export function useBlueTransactions(refetch: () => Promise<unknown>) {
     });
   }
 
+  /**
+   * Sends calls as one atomic EIP-5792 batch from the connected account: all of them take effect, or none.
+   * The whole sequence is simulated first, so a call that would revert never reaches the wallet.
+   */
+  async function sendBatch(calls: Call[]): Promise<TxResult> {
+    const steps: TxStep[] = [];
+    if (!address || !wallet || !publicClient || !ready || busyRef.current) return { ok: false, steps };
+    const account = address;
+    busyRef.current = true;
+    setBusy(true);
+    let submitted = false;
+    let settledOnchain = false;
+    let ok = false;
+    try {
+      setFeedback({ message: "Simulating the whole batch…" });
+      const [block] = await publicClient.simulateBlocks({
+        blocks: [{ calls: calls.map(({ to, data }) => ({ account, to, data })) }],
+      });
+      const failed = block.calls.findIndex(call => call.status !== "success");
+      if (failed >= 0) {
+        const revert = new ContractFunctionRevertedError({ abi: transactionAbi, data: block.calls[failed].data, functionName: calls[failed].label });
+        throw new Error(`The simulation failed at “${calls[failed].label}”, so nothing was sent. ${errorMessage(revert)}`);
+      }
+      setFeedback({ message: `Approve the batch of ${calls.length} calls in your wallet.` });
+      const { id } = await wallet.sendCalls({
+        account, chain: bsc, forceAtomic: true, calls: calls.map(({ to, data }) => ({ to, data })),
+      });
+      submitted = true;
+      setFeedback({ message: "Waiting for the batch to confirm…" });
+      const result = await wallet.waitForCallsStatus({ id, timeout: 120_000 });
+      settledOnchain = result.status !== "pending";
+      for (const receipt of result.receipts ?? []) steps.push({ label: "Batch", hash: receipt.transactionHash });
+      if (result.status !== "success" || result.receipts?.some(receipt => receipt.status !== "success")) {
+        throw new Error("The batch reverted, so your position is unchanged.");
+      }
+      ok = true;
+      setFeedback({ message: "Batch confirmed.", hash: steps.at(-1)?.hash });
+    } catch (error) {
+      const reason = submitted && !settledOnchain
+        ? "The batch was submitted. Check your wallet’s activity before trying again."
+        : errorMessage(error);
+      setFeedback({ message: reason, error: true, hash: steps.at(-1)?.hash });
+    } finally {
+      try {
+        await refetch();
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    }
+    return { ok, steps };
+  }
+
   const clearFeedback = () => { if (!busyRef.current) setFeedback(undefined); };
 
-  return { ready, busy, feedback, setFeedback, clearFeedback, run, execute, supplyAndBorrow, enableCollateral, requestEligibility };
+  return { ready, busy, feedback, setFeedback, clearFeedback, run, sendBatch, execute, supplyAndBorrow, enableCollateral, requestEligibility };
 }

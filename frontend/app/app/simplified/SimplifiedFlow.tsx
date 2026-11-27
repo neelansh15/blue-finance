@@ -10,19 +10,22 @@ import { useDemoAccount } from "../DemoAccount";
 import { ReadStatus, TxFeedback, WalletAction } from "../live/LiveParts";
 import { EXPLORER, useBlueState, useBlueTransactions, type TxStep } from "../live/useBlueLive";
 import { LEVERAGE } from "../../../src/lib/blue/leverage";
+import { LEVERAGE_LIVE } from "../../../src/lib/blue/swap";
 import { IS_DEMO, parseTokenAmount } from "../../../src/lib/blue/mainnet";
 import {
   actionLimit, blockingStock, borrowGate, borrowLtv, borrowRoom, formatAmount, formatBps, formatHealth, formatRate,
   formatUsd, isEligible, liveStock, pinnedStock, position, statusLabel, usdtDebt, type LiveLimit, type LiveState,
 } from "../../../src/lib/blue/live-position";
 import { LeverageMarkets, LeverageSummary, LeverageTicket, type LeverageReceipt } from "./LeverageFlow";
+import { LiveLeverageMarkets, LiveLeverageSummary, LiveLeverageTicket, type LiveLeverageReceipt } from "./LiveLeverageFlow";
 import { STOCKS, type Stock, type StockId } from "../markets";
 
 const steps = ["Wallet", "Action", "Market", "Transaction", "Summary"] as const;
 const choices = [
   { action: "borrow", title: "Borrow", icon: "hand-coins", description: "Use one tokenized stock as collateral to borrow USDT." },
-  { action: "leverage", title: "One-click leveraged borrow", icon: "trending-up", subtitle: `Up to ${LEVERAGE.cap}× leverage · Simulation`,
-    description: "Preview borrowing USDT, buying more of the same stock and supplying it as collateral." },
+  { action: "leverage", title: "One-click leveraged borrow", icon: "trending-up",
+    subtitle: `Up to ${LEVERAGE.cap}× leverage${LEVERAGE_LIVE ? "" : " · Simulation"}`,
+    description: `${LEVERAGE_LIVE ? "Borrow" : "Preview borrowing"} USDT, ${LEVERAGE_LIVE ? "buy" : "buying"} more of the same stock and ${LEVERAGE_LIVE ? "supply" : "supplying"} it as collateral.` },
   { action: "lend", title: "Supply", icon: "coins", description: "Supply USDT to the shared pool for bluUSDT and earn interest." },
 ] as const;
 type Choice = (typeof choices)[number]["action"];
@@ -73,7 +76,7 @@ function ExplorerLink({ hash }: { hash: string }) {
 }
 
 function SimulationNotice() {
-  return <p className="dapp-banner" role="note"><strong>Simulation.</strong> Sample balances, prices and swaps. No transaction is sent. Live leverage is not enabled.</p>;
+  return <p className="dapp-banner" role="note"><strong>Simulation.</strong> Sample balances, prices and swaps. No transaction is sent. The demo market’s test tokens have no swap pools, so leverage runs on the live pool only.</p>;
 }
 
 /** Limits for the guided borrow, which may add collateral before borrowing. */
@@ -109,11 +112,12 @@ function Guide() {
   const [receipt, setReceipt] = useState<Receipt>();
   const [partial, setPartial] = useState<TxStep[]>([]);
   const [leverageReceipt, setLeverageReceipt] = useState<LeverageReceipt>();
+  const [liveReceipt, setLiveReceipt] = useState<LiveLeverageReceipt>();
   const heading = useRef<HTMLHeadingElement>(null);
 
   const connected = isConnected && !!address;
   const active = connected ? step : 0;
-  const reached = !connected ? 0 : receipt || leverageReceipt ? 4 : market ? 3 : choice ? 2 : 1;
+  const reached = !connected ? 0 : receipt || leverageReceipt || liveReceipt ? 4 : market ? 3 : choice ? 2 : 1;
   const account = data?.account ? data : undefined;
   const borrowing = choice === "borrow";
   const levering = choice === "leverage";
@@ -129,6 +133,7 @@ function Guide() {
     setCollateral("");
     setReceipt(undefined);
     setLeverageReceipt(undefined);
+    setLiveReceipt(undefined);
     setPartial([]);
     tx.clearFeedback();
   }
@@ -217,7 +222,8 @@ function Guide() {
       <header className="simple-masthead">
         <div className="wrap">
           <h1>Simplified Mode</h1>
-          <p>Borrow or supply USDT on BNB Smart Chain, or preview a leveraged borrow in simulation.</p>
+          <p>{LEVERAGE_LIVE ? "Borrow, supply USDT or open a leveraged position on BNB Smart Chain."
+            : "Borrow or supply USDT on BNB Smart Chain, or preview a leveraged borrow in simulation."}</p>
           <nav aria-label="Transaction steps">
             <ol className="simple-steps">
               {steps.map((label, index) => (
@@ -307,7 +313,11 @@ function Guide() {
           </>
         )}
 
-        {active === 2 && levering && (
+        {active === 2 && levering && LEVERAGE_LIVE && (
+          <LiveLeverageMarkets query={query} heading={heading} onSelect={selectMarket} />
+        )}
+
+        {active === 2 && levering && !LEVERAGE_LIVE && (
           <>
             <SimulationNotice />
             <LeverageMarkets state={demo.state} heading={heading} onSelect={selectMarket} />
@@ -333,7 +343,16 @@ function Guide() {
           </>
         )}
 
-        {active === 3 && levering && stock && address && (
+        {active === 3 && levering && LEVERAGE_LIVE && stock && (
+          <LiveLeverageTicket key={stock} id={stock} query={query} tx={tx} heading={heading}
+            onDone={next => { setLiveReceipt(next); setStep(4); }} />
+        )}
+
+        {active === 4 && levering && liveReceipt && (
+          <LiveLeverageSummary receipt={liveReceipt} heading={heading} onRestart={restart} />
+        )}
+
+        {active === 3 && levering && !LEVERAGE_LIVE && stock && address && (
           <>
             <SimulationNotice />
             <LeverageTicket key={stock} state={demo.state} client={demo.client} stock={stock} address={address} heading={heading}

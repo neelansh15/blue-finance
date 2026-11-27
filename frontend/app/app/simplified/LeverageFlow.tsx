@@ -31,12 +31,12 @@ export type LeverageReceipt = {
   timestamp: string;
 };
 
-type Batching = "checking" | "supported" | "unsupported" | "unavailable" | "wrong-chain";
+export type Batching = "checking" | "supported" | "unsupported" | "unavailable" | "wrong-chain";
 type BatchingOverride = "detected" | "supported" | "unsupported";
 
 const usdt = (cents: number) => `${quantity.format(cents / CENTS_PER_USDT)} USDT`;
 const tokens = (units: number, stock: StockId) => `${quantity.format(units / TOKENS_PER_UNIT)} ${stock}`;
-const times = (value: number | null) =>
+export const times = (value: number | null) =>
   value === null ? "–" : Number.isFinite(value) ? `${value.toFixed(2)}×` : "No equity";
 const isSwap = (step: LeverageStep) => step.kind === "buy" || step.kind === "sell";
 
@@ -47,20 +47,21 @@ function Details({ rows }: { rows: [string, ReactNode][] }) {
 }
 
 /** Checks the wallet's atomic batching capability on BNB Chain, again whenever the account or network changes. */
-function useBatching(): Batching {
+export function useBatching(): Batching {
   const { address, chainId } = useAccount();
-  const caps = useCapabilities({ chainId: bsc.id, query: { retry: false, enabled: !!address } });
+  // Asked for every chain: a wallet may report nothing for BNB Chain, which is an answer rather than a failure.
+  const caps = useCapabilities({ query: { retry: false, enabled: !!address } });
   const { refetch } = caps;
   useEffect(() => { if (address) void refetch(); }, [address, chainId, refetch]);
   if (caps.isPending) return "checking";
   if (caps.isError) return "unavailable";
-  const raw = caps.data as { atomic?: { status?: string }; atomicBatch?: { supported?: boolean } } | undefined;
+  const raw = (caps.data as Record<number, { atomic?: { status?: string }; atomicBatch?: { supported?: boolean } }>)[bsc.id];
   const supported = raw?.atomic?.status === "supported" || raw?.atomic?.status === "ready" || raw?.atomicBatch?.supported === true;
   if (!supported) return "unsupported";
   return chainId === bsc.id ? "supported" : "wrong-chain";
 }
 
-const BATCHING_TEXT: Record<Batching, string> = {
+export const BATCHING_TEXT: Record<Batching, string> = {
   checking: "Checking your wallet…",
   supported: "Your wallet can batch calls atomically on BNB Chain.",
   unsupported: "Your wallet does not report atomic batching on BNB Chain.",

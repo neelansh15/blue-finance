@@ -119,6 +119,12 @@ export const priceSourceAbi = parseAbi([
 
 export const stockTokenAbi = parseAbi(["function uiMultiplier() view returns (uint256)"]);
 
+/** Custom errors the stock tokens revert with. */
+export const tokenErrorAbi = parseAbi([
+  "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
+  "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+]);
+
 export const tokenContract = (address: Address) => ({ address, abi: erc20Abi });
 
 export const eligibilityDomain = {
