@@ -300,35 +300,36 @@
   <!-- 7. Leveraged borrow -->
   <div class="frame"><section class="slide">
     <h2>One-click leveraged borrow, <em>inside the pool’s limits</em></h2>
-    <p class="lead">Borrow USDT, buy more of the same stock and post it as collateral, in one action.</p>
+    <p class="lead">Borrow USDT, buy more of the same stock on PancakeSwap and post it as collateral.</p>
     <div style="display:grid;grid-template-columns:1fr 440px;gap:64px;margin-top:34px">
       <div>
         <ol class="steps three">
           <li><h3>Borrow USDT</h3><p>An ordinary pool borrow, within the stock’s current limit.</p></li>
-          <li><h3>Swap to bStock</h3><p>Buy more of the same stock, with a slippage bound.</p></li>
-          <li><h3>Supply it</h3><p>The new collateral makes room for the next round, up to five.</p></li>
+          <li><h3>Swap to bStock</h3><p>0.5% slippage limit. No swap if the price is over 2% worse than the oracle.</p></li>
+          <li><h3>Supply it</h3><p>The new collateral makes room for the next round.</p></li>
         </ol>
-        <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:34px;gap:18px">
-          <div style="background:var(--sheet);padding:18px 20px"><h3>One click</h3><p class="muted small" style="margin-top:8px">For wallets that batch calls on BNB Chain (EIP-5792). If any step fails, the position stays as it was.</p></div>
-          <div style="background:var(--sheet);padding:18px 20px"><h3>Guided steps</h3><p class="muted small" style="margin-top:8px">For other wallets. Confirm each step, and repay with the borrowed USDT if a swap fails.</p></div>
+        <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:30px;gap:18px">
+          <div style="background:var(--sheet);padding:18px 20px"><h3>One click</h3><p class="muted small" style="margin-top:8px">One EIP-5792 batch, simulated first. All steps run or none do. Ten calls fit about two rounds.</p></div>
+          <div style="background:var(--sheet);padding:18px 20px"><h3>Step by step</h3><p class="muted small" style="margin-top:8px">Up to five rounds. A stopped run offers to repay or resupply what is left in the wallet.</p></div>
         </div>
-        <p class="muted small" style="margin-top:18px">The same screen reduces or closes a position.</p>
+        <p class="muted small" style="margin-top:18px">The same screen reduces or closes a position. Borrowing still needs USDT in the pool, healthy keeper reports and an eligible wallet.</p>
       </div>
       <div>
         <h3 style="margin-bottom:14px">Highest leverage by session</h3>
         <table class="tight">
+          <thead><tr><th>Session</th><th style="text-align:right">One click</th><th style="text-align:right">Step by step</th></tr></thead>
           <tbody>
-            <tr><th>Regular</th><td style="text-align:right">1.96×</td></tr>
-            <tr><th>Pre and after hours</th><td style="text-align:right">1.89×</td></tr>
-            <tr><th>Overnight</th><td style="text-align:right">1.80×</td></tr>
-            <tr><th>Weekend</th><td style="text-align:right">1.72×</td></tr>
+            <tr><th>Regular</th><td style="text-align:right">1.74×</td><td style="text-align:right">1.96×</td></tr>
+            <tr><th>Pre and after hours</th><td style="text-align:right">1.71×</td><td style="text-align:right">1.89×</td></tr>
+            <tr><th>Overnight</th><td style="text-align:right">1.65×</td><td style="text-align:right">1.80×</td></tr>
+            <tr><th>Weekend</th><td style="text-align:right">1.60×</td><td style="text-align:right">1.72×</td></tr>
           </tbody>
         </table>
-        <div class="col" style="margin-top:26px"><div class="stat" style="font-size:54px">1.5×</div><p>turns $1,000 of stock into about $1,498, with $499 of debt. Health factor 1.87. Liquidation if the price falls about 47%.</p></div>
-        <p class="muted small" style="margin-top:14px">At 1.96× a fall of about 21% is enough.</p>
+        <div class="col" style="margin-top:22px"><div class="stat" style="font-size:54px">1.5×</div><p>turns $1,000 of stock into about $1,494, with $498 of debt. Health factor 1.88. Liquidation if the price falls about 47%.</p></div>
+        <p class="muted small" style="margin-top:12px">At 1.96× a fall of about 21% is enough.</p>
       </div>
     </div>
-    <footer><span>Runs in the app’s simulator; no transaction is sent. Example: no starting debt, 0.3% swap fee, price held at the quote, 2× product cap.</span><span class="page">7</span></footer>
+    <footer><span>Built for the live pool; the default demo pool simulates it. Example: no starting debt, 0.25% swap fee, no price impact, 2× cap.</span><span class="page">7</span></footer>
   </section></div>
 
   <!-- 8. Failure modes -->
@@ -494,7 +495,7 @@
     </ol>
     <div style="margin-top:64px;background:var(--sheet);padding:24px 28px;display:flex;gap:40px;align-items:center">
       <h3 style="white-space:nowrap">Leverage</h3>
-      <p class="muted">One-click leveraged borrow runs in the app’s simulator today. Live use still needs real swaps and wallet execution against the pool.</p>
+      <p class="muted">One-click leveraged borrow is built for the live pool and simulated on the demo pool. Live borrowing still needs USDT in the pool, a running keeper and eligible wallets.</p>
     </div>
     <footer><span>Open items from architecture-v3.md, protocol/README.md and frontend/README.md.</span><span class="page">14</span></footer>
   </section></div>
