@@ -1,24 +1,30 @@
-// PancakeSwap v3 on BNB Smart Chain, where the real bStocks trade against USDT.
-// Addresses match https://developer.pancake.xyz/contracts/v3/addresses.
+// Swaps for leveraged borrowing. The live pool trades the real bStocks on PancakeSwap v3
+// (addresses match https://developer.pancake.xyz/contracts/v3/addresses). The demo pool trades its test tokens
+// against protocol/src/mocks/DemoSwapRouter.sol, which has the same interface and fills at the oracle price.
 
 import { parseAbi, type Address, type PublicClient } from "viem";
+import demoSwap from "./demo-swap.json";
 import { BLUE, IS_DEMO } from "./mainnet";
 import type { StockId } from "./pool";
 
-export const SWAP = {
+const PANCAKE = {
   router: "0x1b81D678ffb9C0263b24A97847620C99d213eB14",
   quoter: "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",
-  /** The most liquid USDT pool for each stock on November 27, 2026. */
-  fees: { TSLAB: 2500, NVDAB: 2500, QQQB: 500, SPCXB: 2500, GOOGLB: 2500 },
-} as const satisfies { router: Address; quoter: Address; fees: Record<StockId, number> };
+} as const;
 
-/** The demo pool's test tokens have no swap pools, so leverage sends transactions on the live pool only. */
-export const LEVERAGE_LIVE = !IS_DEMO;
+export const SWAP: { router: Address; quoter: Address; fees: Record<StockId, number> } = {
+  ...(IS_DEMO ? { router: demoSwap.router as Address, quoter: demoSwap.router as Address } : PANCAKE),
+  /** The most liquid PancakeSwap USDT pool for each stock on November 27, 2026. The demo swap ignores it. */
+  fees: { TSLAB: 2500, NVDAB: 2500, QQQB: 500, SPCXB: 2500, GOOGLB: 2500 },
+};
 
 export const routerContract = {
   address: SWAP.router,
   abi: parseAbi([
     "function exactOutputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountOut, uint256 amountInMaximum, uint160 sqrtPriceLimitX96) params) payable returns (uint256 amountIn)",
+    "error Expired()",
+    "error TooMuchRequested()",
+    "error UnsupportedPair()",
   ]),
 } as const;
 

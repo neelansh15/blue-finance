@@ -19,7 +19,7 @@
 
 ### Working demo
 
-Run the frontend and open `/app/earn`, `/app/borrow` or `/app/simplified` for the live pool. `/app` keeps the operator workspace. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, supply liquidity and configure the [keeper and eligibility service](keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). Until that service is running, eligibility and keeper reports use the manual operator flow. Leveraged borrowing in Simplified Mode [sends transactions on the live pool](frontend/README.md#leveraged-borrowing) and stays a simulation on the demo pool. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
+Run the frontend and open `/app/earn`, `/app/borrow` or `/app/simplified` for the live pool. `/app` keeps the operator workspace. You can view the five bStock markets without a wallet. Connect a BNB Smart Chain wallet with a small amount of the reserve's USDT and BNB for gas to demonstrate supplying and withdrawing USDT. The launch seeded zero USDT. For a live loan, supply liquidity and configure the [keeper and eligibility service](keepers/README.md#bnb-mainnet-keeper-and-eligibility-service). Until that service is running, eligibility and keeper reports use the manual operator flow. [Leveraged borrowing in Simplified Mode](frontend/README.md#leveraged-borrowing) uses the same pool as the rest of the app. See the [demo walkthrough](frontend/README.md#onchain-demo-app).
 
 Open `/app/simulator` for a pre-funded walkthrough of lending, borrowing, a halt and repayment without wallet transactions.
 

@@ -85,7 +85,7 @@ export const articles: DocArticle[] = [
       {
         id: "demo",
         title: "Run the demo",
-        body: <><p>Connect a wallet on BNB Smart Chain with the demo pool’s test USDT and BNB for gas. Supply a small amount, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The demo pool was deployed with no liquidity. Borrowing also needs liquidity, a keeper that has completed the recovery window with fresh prices, and eligibility for the selected stock. Borrow and Risk show these gates. Leveraged borrowing in Simplified Mode is a simulation on the demo pool. On the live pool it sends real transactions, swapping through PancakeSwap. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
+        body: <><p>Connect a wallet on BNB Smart Chain with the demo pool’s test USDT and BNB for gas. Supply a small amount, confirm the wallet requests, and watch the available liquidity and your bluUSDT balance update. Use Withdraw USDT to redeem it when the reserve has liquidity.</p><p>The demo pool was deployed with no liquidity. Borrowing also needs liquidity, a keeper that has completed the recovery window with fresh prices, and eligibility for the selected stock. Borrow and Risk show these gates. Leveraged borrowing in Simplified Mode uses the same demo pool, swapping test tokens at the oracle price through a demo swap contract. The simulator has a funded position and lets you demonstrate a borrow, halt and repayment immediately.</p></>,
       },
     ],
     sources: [

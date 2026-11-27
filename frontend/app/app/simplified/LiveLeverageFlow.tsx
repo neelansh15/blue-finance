@@ -6,7 +6,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import { erc20Abi, formatUnits, maxUint256, type Address } from "viem";
-import { useAccount, usePublicClient } from "wagmi";
+import { useAccount, useBytecode, usePublicClient } from "wagmi";
 import { bsc } from "wagmi/chains";
 import TokenIcon from "../../components/TokenIcon";
 import { ReadStatus, TxFeedback, WalletAction } from "../live/LiveParts";
@@ -19,10 +19,10 @@ import {
   borrowGate, borrowLtv, formatAmount, formatBps, formatHealth, formatRate, formatUsd, isEligible, liveStock,
   pinnedStock, position, statusLabel, usdtDebt, type LiveState,
 } from "../../../src/lib/blue/live-position";
-import { parseTokenAmount } from "../../../src/lib/blue/mainnet";
-import { quotePrice } from "../../../src/lib/blue/swap";
+import { IS_DEMO, parseTokenAmount } from "../../../src/lib/blue/mainnet";
+import { quotePrice, SWAP } from "../../../src/lib/blue/swap";
 import { STOCKS, type StockId } from "../markets";
-import { BATCHING_TEXT, times, useBatching } from "./LeverageFlow";
+import { BATCHING_TEXT, times, useBatching } from "./batching";
 
 type Query = ReturnType<typeof useBlueState>;
 type Transactions = ReturnType<typeof useBlueTransactions>;
@@ -82,7 +82,7 @@ export function LiveLeverageMarkets({ query, heading, onSelect }: {
   return (
     <>
       <h2 id="simple-heading" tabIndex={-1} ref={heading}>Choose a stock for leveraged borrowing</h2>
-      <p>Opening or increasing a leveraged long borrows USDT, swaps it for more of the same stock on PancakeSwap and supplies that stock as collateral.
+      <p>Opening or increasing a leveraged long borrows USDT, swaps it for more of the same stock on {IS_DEMO ? "the demo swap" : "PancakeSwap"} and supplies that stock as collateral.
         {pinned && ` Your account uses ${pinned.id} as collateral, so leverage applies to ${pinned.id}.`}</p>
       <ReadStatus query={query} />
       <table className="simple-table" aria-labelledby="simple-heading">
@@ -129,6 +129,8 @@ export function LiveLeverageTicket({ id, query, tx, heading, onDone }: {
     steps: LiveStep[]; done: number; before: LiveState; transactions: TxStep[]; tidied?: string;
   }>();
 
+  const swapCode = useBytecode({ address: SWAP.router, chainId: bsc.id, query: { refetchInterval: 20_000 } });
+  const swapMissing = swapCode.isSuccess && !swapCode.data;
   const canBatch = batching === "supported";
   const batch = canBatch && !stepwise;
   const parsed = parseTokenAmount(collateral);
@@ -156,7 +158,7 @@ export function LiveLeverageTicket({ id, query, tx, heading, onDone }: {
     JSON.stringify({ target, add: add.toString(), withdrawAll: withdrawAll && closing, batch }), 400);
   const quote = useQuery({
     queryKey: ["blue-leverage-quote", address, id, request, query.dataUpdatedAt],
-    enabled: !!account && !!client,
+    enabled: !!account && !!client && !!swapCode.data,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const input = JSON.parse(request) as { target: number; add: string; withdrawAll: boolean; batch: boolean };
@@ -297,6 +299,10 @@ export function LiveLeverageTicket({ id, query, tx, heading, onDone }: {
           <div className="dapp-banner" role="status"><strong>New borrowing is gated.</strong> {borrowGate(data, liveStock(data, id))}</div>
         )}
 
+        {swapMissing && (
+          <div className="dapp-banner" role="status"><strong>Leverage is not open yet.</strong> The swap contract has not been deployed.</div>
+        )}
+
         {!progress && (
           <>
             <Details rows={[
@@ -395,7 +401,7 @@ export function LiveLeverageTicket({ id, query, tx, heading, onDone }: {
                 </button>
               </WalletAction>
               {message && <p className="app-message" role="alert">{message}</p>}
-              <p className="lev-note">Real tokens and BNB gas on unaudited prototype contracts. Swaps leave any unspent USDT or {id} in your wallet. Leverage increases losses and the risk of liquidation.</p>
+              <p className="lev-note">{IS_DEMO ? "Test tokens with no value; transactions cost real BNB gas." : "Real tokens and BNB gas."} The contracts are unaudited. Swaps leave any unspent USDT or {id} in your wallet. Leverage increases losses and the risk of liquidation.</p>
             </fieldset>
           </>
         )}

@@ -19,7 +19,7 @@ Earn, Borrow, Dashboard, Risk and Simplified Mode under `/app` read and write th
 | `/app/borrow` | Five collateral markets, positions, borrowing gates, eligibility, collateral supply and withdrawal, borrow and repay |
 | `/app/dashboard` | The connected wallet’s positions |
 | `/app/risk` | Contract risk metrics, followed by clearly labelled synthetic advisory scenarios |
-| `/app/simplified` | Five-step borrow, supply or leveraged borrow with a confirmed summary. Leveraged borrowing is a simulation on the demo pool |
+| `/app/simplified` | Five-step borrow, supply or leveraged borrow with a confirmed summary. All three use the pool the rest of the app uses |
 
 Shared logic lives in [`app/app/live`](app/app/live) and [`src/lib/blue/live-position.ts`](src/lib/blue/live-position.ts).
 
@@ -29,9 +29,14 @@ Set the server-only `BLUE_ELIGIBILITY_URL` and `BLUE_ELIGIBILITY_API_TOKEN` to e
 
 ### Leveraged borrowing
 
-With `NEXT_PUBLIC_BLUE_DEPLOYMENT=real`, leverage in Simplified Mode sends real transactions. On the demo pool it stays a simulation, because the test tokens have no swap pools.
+Leverage in Simplified Mode sends real transactions on whichever pool the app uses. The live pool swaps on PancakeSwap v3. The demo pool’s test tokens swap on [`DemoSwapRouter`](../protocol/src/mocks/DemoSwapRouter.sol), which fills at the oracle price plus 0.25% from tokens minted to it.
 
-An increase borrows USDT, buys more of the same bStock on PancakeSwap v3 and supplies it. A reduction withdraws, sells and repays. [`live-leverage.ts`](src/lib/blue/live-leverage.ts) plans the calls and [`swap.ts`](src/lib/blue/swap.ts) holds the router, quoter and fee tiers.
+The demo admin deploys and stocks that contract once, in one signature. The ticket says leverage is not open until it exists.
+
+    (cd ../protocol && forge build)
+    (cd ../keepers && pnpm demo-swap)   # then open http://127.0.0.1:9547
+
+An increase borrows USDT, buys more of the same stock and supplies it. A reduction withdraws, sells and repays. [`live-leverage.ts`](src/lib/blue/live-leverage.ts) plans the calls and [`swap.ts`](src/lib/blue/swap.ts) holds the router, quoter and fee tiers.
 
 | Rule | Value |
 |---|---|

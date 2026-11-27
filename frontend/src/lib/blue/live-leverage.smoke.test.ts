@@ -15,7 +15,8 @@ import { batchCalls, planLive, swapSize, type LivePlan, type LiveRequest } from 
 import type { LiveState } from "./live-position";
 import { readLiveState } from "./live-state";
 import { BLUE, BSC_RPC_URL, controlsContract, dataProviderContract, liveStocks, priceSourceAbi } from "./mainnet";
-import { LEVERAGE_LIVE, quotePrice } from "./swap";
+import { IS_DEMO } from "./mainnet";
+import { quotePrice } from "./swap";
 
 const WAD = 10n ** 18n;
 const USER = "0x00000000000000000000000000000000000b1e01";
@@ -29,7 +30,7 @@ const word = (value: Address | bigint, slot: bigint | Hex) => keccak256(encodeAb
   [value, slot],
 ));
 
-const run = process.env.BLUE_RUN_LIVE_SMOKE === "true" && LEVERAGE_LIVE;
+const run = process.env.BLUE_RUN_LIVE_SMOKE === "true" && !IS_DEMO;
 
 describe.skipIf(!run)("live leverage against BNB Chain", () => {
   it("opens a leveraged position in one batch and closes it in another", async () => {

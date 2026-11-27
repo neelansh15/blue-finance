@@ -12,7 +12,8 @@
     "smoke": "tsx scripts/liveSmoke.ts",
     "bnb-automation": "tsx src/v3/server.ts",
     "blue-keeper": "tsx src/blueKeeper.ts",
-    "rotate-keeper": "tsx scripts/rotateKeeper.ts"
+    "rotate-keeper": "tsx scripts/rotateKeeper.ts",
+    "demo-swap": "tsx scripts/deployDemoSwap.ts"
   },
   "dependencies": {
     "fast-xml-parser": "^4.5.0",
