@@ -127,6 +127,34 @@
   .checks { list-style: none; }
   .checks li { padding: 12px 0; border-bottom: 1px solid var(--rule); font-size: 17px; }
 
+  /* Risk intelligence diagram: solid boxes exist in code, dashed boxes do not yet */
+  .ri-inputs .tag { padding-block: 4px; }
+  .ri-inputs { display: flex; align-items: center; gap: 14px; margin-top: 18px; background: var(--sheet); padding: 11px 18px; font-size: 15.5px; }
+  .ri-inputs ul { display: flex; flex: 1; justify-content: space-between; list-style: none; }
+  .ri-inputs li + li::before { content: "·"; margin-right: 14px; color: var(--rule-strong); }
+  .tag { display: inline-block; vertical-align: middle; font: 500 11px/14px var(--mono); padding: 1px 7px; border: 1px solid currentColor; white-space: nowrap; }
+  .tag.sim { color: var(--amber); }
+  .tag.live { color: var(--blue); }
+  .ri-arrow { height: 24px; text-align: center; color: var(--blue); font-size: 19px; line-height: 23px; }
+  .ri-core { border: 2px solid var(--plot); padding: 12px 14px 14px; }
+  .ri-core header { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; }
+  .ri-core header p { font-size: 15px; color: var(--secondary); }
+  .ri-stages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 22px; list-style: none; margin-top: 10px; }
+  .ri-stages li { position: relative; display: flex; flex-direction: column; background: var(--sheet); padding: 11px 12px; min-height: 138px; }
+  .ri-stages li + li::before { content: "→"; position: absolute; left: -19px; top: 50%; transform: translateY(-50%); color: var(--blue); }
+  .ri-stages h4 { font-size: 15.5px; line-height: 1.2; font-weight: 640; }
+  .ri-stages p { font-size: 13.5px; line-height: 1.38; color: var(--secondary); margin-top: 6px; }
+  .ri-stages small { margin-top: auto; padding-top: 6px; font: 500 11px var(--mono); color: var(--blue); }
+  .ri-out { display: grid; grid-template-columns: 1.3fr 1fr; gap: 22px; }
+  .ri-box { border: 1px solid var(--rule-strong); padding: 12px 16px; }
+  .ri-box h3 { font-size: 17px; }
+  .ri-box table { font-size: 14px; margin-top: 6px; }
+  .ri-box th, .ri-box td { padding: 4px 0; }
+  .ri-box th .tag { margin-left: 6px; }
+  .ri-box p { font-size: 13.5px; line-height: 1.4; color: var(--secondary); margin-top: 7px; }
+  .ri-box .planned { border: 1.5px dashed var(--rule-strong); padding: 9px 12px; margin-top: 11px; }
+  .ri-box .planned strong { color: var(--ink); }
+
   .hint { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); display: flex; gap: 6px; z-index: 5; opacity: 0.25; transition: opacity 0.2s; }
   .hint:hover, .hint:focus-within { opacity: 1; }
   .hint button { font: 500 14px var(--mono); background: var(--navy); color: var(--on-navy); border: 1px solid #6882b4; min-width: 36px; height: 32px; cursor: pointer; }
@@ -342,7 +370,48 @@
     <footer><span>Behavior of the v3 contracts. Atlas is the only stock price source.</span><span class="page">9</span></footer>
   </section></div>
 
-  <!-- 10. Positioning -->
+  <!-- 10. Risk intelligence -->
+  <div class="frame"><section class="slide">
+    <h2>Risk intelligence <em>that can only tighten borrowing</em></h2>
+    <div class="ri-inputs">
+      <span class="tag sim">Simulated today</span>
+      <ul aria-label="Controller inputs"><li>Stock prices</li><li>Token prices</li><li>Liquidity</li><li>Issuer documents</li><li>Borrower positions</li><li>Oracle health</li></ul>
+    </div>
+    <div class="ri-arrow" aria-hidden="true">↓</div>
+    <div class="ri-core">
+      <header><h3>Blue risk controller</h3><p>An LLM can read issuer documents. Fixed rules set every number.</p></header>
+      <ol class="ri-stages">
+        <li><h4>Asset intelligence</h4><p>Flags redemption, backing and corporate-action risk, tied to quoted text.</p><small>5 stocks</small></li>
+        <li><h4>Quantitative risk</h4><p>Scores volatility, liquidity, issuer, oracle and concentration risk, 0 to 100.</p><small>5 stocks</small></li>
+        <li><h4>Parameter optimiser</h4><p>Proposes borrow limits and exposure caps inside fixed bounds.</p><small>NVDA so far</small></li>
+        <li><h4>Borrower impact</h4><p>Stress-tests positions: health, liquidations and shortfall.</p><small>NVDA so far</small></li>
+        <li><h4>Recommendation</h4><p>Versioned, linked to an evidence hash, expires in 15 minutes.</p><small>NVDA so far</small></li>
+      </ol>
+    </div>
+    <div class="ri-out" aria-hidden="true"><div class="ri-arrow">↓ <span class="tag live">score</span></div><div class="ri-arrow">↓ <span class="tag live">proposal</span></div></div>
+    <div class="ri-out">
+      <div class="ri-box">
+        <h3>Keeper: the path on-chain</h3>
+        <table>
+          <tbody>
+            <tr><th>Nasdaq or Binance halt <span class="tag live">live feed</span></th><td>Halts that stock’s new loans</td></tr>
+            <tr><th>Score elevated</th><td>Overnight borrow limit</td></tr>
+            <tr><th>Score high</th><td>Weekend borrow limit</td></tr>
+            <tr><th>Score critical</th><td>Pauses that stock’s new loans</td></tr>
+          </tbody>
+        </table>
+        <p>Dry run by default. Score actions are opt-in, need repeated fresh readings and ignore simulated data on the live pool.</p>
+      </div>
+      <div class="ri-box">
+        <h3>People: review the proposal</h3>
+        <p>The app’s Risk page shows it as unsigned and pending review. Nothing executes it, and no score changes the liquidation threshold.</p>
+        <p class="planned"><strong>Not built yet:</strong> signed recommendations and an on-chain risk manager that checks bounds and approvals.</p>
+      </div>
+    </div>
+    <footer><span>From ai-risk-controller and keepers code. Heuristics are uncalibrated. The last three stages still model the earlier Morpho design.</span><span class="page">10</span></footer>
+  </section></div>
+
+  <!-- 11. Positioning -->
   <div class="frame"><section class="slide">
     <h2>Zona’s borrow controls, <em>brought to BNB bStocks</em></h2>
     <p class="lead">Blue models its separation of borrowing permission from valuation on Zona Lend.</p>
@@ -357,10 +426,10 @@
         <tr><th>Liquidation then</th><td class="ours">Continues on a valid price</td><td>Stops while the flag is set</td><td>Continues on a valid price</td></tr>
       </tbody>
     </table>
-    <footer><span>Public docs read Nov 26 2026: docs.bsc.lista.org, docs.zona.finance. Lista stock count: Crypto Briefing, Nov 12 2026.</span><span class="page">10</span></footer>
+    <footer><span>Public docs read Nov 26 2026: docs.bsc.lista.org, docs.zona.finance. Lista stock count: Crypto Briefing, Nov 12 2026.</span><span class="page">11</span></footer>
   </section></div>
 
-  <!-- 11. Progress -->
+  <!-- 12. Progress -->
   <div class="frame"><section class="slide">
     <h2>Deployed on BNB mainnet <em>with five real bStocks</em></h2>
     <div style="display:grid;grid-template-columns:420px 1fr;gap:72px;margin-top:40px">
@@ -387,10 +456,10 @@
       </ul>
     </div>
     <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit. The pool launched with no USDT. A keeper and eligibility service is written but not yet active, and the new pool has no liquidation bot.</p>
-    <footer><span>BluePool <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC">0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</a> · Fork tests send nothing to mainnet.</span><span class="page">11</span></footer>
+    <footer><span>BluePool <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC">0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</a> · Fork tests send nothing to mainnet.</span><span class="page">12</span></footer>
   </section></div>
 
-  <!-- 12. Business model -->
+  <!-- 13. Business model -->
   <div class="frame"><section class="slide">
     <h2>Blue keeps <em>10%</em> of the interest borrowers pay</h2>
     <div style="display:grid;grid-template-columns:700px 1fr;gap:64px;margin-top:34px">
@@ -410,10 +479,10 @@
         <p class="muted small" style="margin-top:28px">Revenue scales with USDT borrowed. The prototype caps the reserve at 1,000 USDT, so limits rise only after calibration and review.</p>
       </div>
     </div>
-    <footer><span>Illustration from prototype parameters (2% base, +4% to 80% use, +60% above; 10% reserve factor). Simple annual rates before compounding. Not a forecast.</span><span class="page">12</span></footer>
+    <footer><span>Illustration from prototype parameters (2% base, +4% to 80% use, +60% above; 10% reserve factor). Simple annual rates before compounding. Not a forecast.</span><span class="page">13</span></footer>
   </section></div>
 
-  <!-- 13. Road to mainnet -->
+  <!-- 14. Road to mainnet -->
   <div class="frame"><section class="slide">
     <h2>Five steps from live prototype <em>to open borrowing</em></h2>
     <ol class="steps">
@@ -427,10 +496,10 @@
       <h3 style="white-space:nowrap">Leverage</h3>
       <p class="muted">One-click leveraged borrow runs in the app’s simulator today. Live use still needs real swaps and wallet execution against the pool.</p>
     </div>
-    <footer><span>Open items from architecture-v3.md, protocol/README.md and frontend/README.md.</span><span class="page">13</span></footer>
+    <footer><span>Open items from architecture-v3.md, protocol/README.md and frontend/README.md.</span><span class="page">14</span></footer>
   </section></div>
 
-  <!-- 14. Close -->
+  <!-- 15. Close -->
   <div class="frame"><section class="slide navy">
     <img class="logo" src="assets/blue-finance-dark.png" alt="Blue Finance">
     <h1 style="margin-top:72px">Lending that knows<br><em>when the market is closed.</em></h1>
@@ -440,7 +509,7 @@
       <div class="col" style="border-color:#a6beff"><h3>Security reviewers</h3><p style="color:var(--on-navy-muted)">To review the Aave pool changes and price contracts before borrowing opens up.</p></div>
       <div class="col" style="border-color:#a6beff"><h3>Lenders and bStock holders</h3><p style="color:var(--on-navy-muted)">To try the simulator and tell us what they need to borrow on-chain.</p></div>
     </div>
-    <footer style="border-color:#304776;color:#b9caec"><span><a href="https://github.com/neelansh15/blue-finance">github.com/neelansh15/blue-finance</a> · Unaudited hackathon prototype. Nothing here is an offer or investment advice.</span><span class="page">14</span></footer>
+    <footer style="border-color:#304776;color:#b9caec"><span><a href="https://github.com/neelansh15/blue-finance">github.com/neelansh15/blue-finance</a> · Unaudited hackathon prototype. Nothing here is an offer or investment advice.</span><span class="page">15</span></footer>
   </section></div>
 </main>
 
