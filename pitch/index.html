@@ -378,7 +378,7 @@
       </div>
       <ul class="checks">
         <li><strong>Pool live on BNB Smart Chain.</strong> All 59 deployment transactions succeeded on November 27</li>
-        <li>The web app reads the live pool and sends wallet transactions to it</li>
+        <li>The web app sends wallet transactions on BNB Chain, by default to a demo pool of test tokens</li>
         <li>In fork tests, a TSLAB loan runs through supply, borrow, repay and withdraw</li>
         <li>A Tesla halt blocks Tesla borrowing only, and repayment works</li>
         <li>An announced split blocks borrowing and liquidation</li>
@@ -386,7 +386,7 @@
         <li>Liquidation keeps per-stock debt correct, including a deficit</li>
       </ul>
     </div>
-    <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit. The pool launched with no USDT. A keeper and eligibility service is written but not yet active or connected to the app, and the new pool has no liquidation bot.</p>
+    <p style="margin-top:34px;padding:16px 20px;background:var(--sheet)"><strong>Not yet done:</strong> no audit. The pool launched with no USDT. A keeper and eligibility service is written but not yet active, and the new pool has no liquidation bot.</p>
     <footer><span>BluePool <a href="https://bscscan.com/address/0xDAC47642621B0C3E4191Fe68281EddAC355f12bC">0xDAC47642621B0C3E4191Fe68281EddAC355f12bC</a> · Fork tests send nothing to mainnet.</span><span class="page">11</span></footer>
   </section></div>
 
@@ -418,7 +418,7 @@
     <h2>Five steps from live prototype <em>to open borrowing</em></h2>
     <ol class="steps">
       <li><h3>Calibrate risk</h3><p>Set discounts, limits and caps from historical gap data and the depth liquidators can actually sell into.</p></li>
-      <li><h3>Activate automation</h3><p>Run the new keeper and eligibility service, connect it to the app and add a liquidation bot.</p></li>
+      <li><h3>Activate automation</h3><p>Run the keeper and eligibility service on the live pool, configure the app to use it and add a liquidation bot.</p></li>
       <li><h3>Confirm price feeds</h3><p>Confirm with Atlas which feed instances to use, and decide on a second price source.</p></li>
       <li><h3>Review and license</h3><p>Security review of the pool changes. Confirm Aave V3.6 license eligibility; it converts to MIT by March 6, 2027.</p></li>
       <li><h3>Open small</h3><p>Move admin to a multisig, fund a deficit backstop, verify issuer transfer rules, then add USDT under low caps.</p></li>
